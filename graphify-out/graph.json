@@ -137,8 +137,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "identifiable",
-      "community": 89,
-      "community_name": ".operator()",
+      "community": 33,
+      "community_name": "Match Controller Turn Flow",
       "norm_label": "identifiable"
     },
     {
@@ -192,8 +192,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sources_isolynapp_appstate_appstate",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 89,
+      "community_name": ".operator()",
       "norm_label": "appstate"
     },
     {
@@ -489,8 +489,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_components_pipglyph",
-      "community": 21,
-      "community_name": "Weather Condition Enum",
+      "community": 49,
+      "community_name": "TimePhase Classification",
       "norm_label": "pipglyph.swift"
     },
     {
@@ -500,8 +500,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sources_isolynapp_components_pipglyph_pipglyph",
-      "community": 21,
-      "community_name": "Weather Condition Enum",
+      "community": 49,
+      "community_name": "TimePhase Classification",
       "norm_label": "pipglyph"
     },
     {
@@ -511,8 +511,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_components_pipglyph_swift_int",
-      "community": 21,
-      "community_name": "Weather Condition Enum",
+      "community": 49,
+      "community_name": "TimePhase Classification",
       "norm_label": "int"
     },
     {
@@ -522,8 +522,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_components_pipglyph_swift_cgfloat",
-      "community": 21,
-      "community_name": "Weather Condition Enum",
+      "community": 49,
+      "community_name": "TimePhase Classification",
       "norm_label": "cgfloat"
     },
     {
@@ -731,8 +731,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession",
-      "community": 23,
-      "community_name": "RulesEngine Decisions",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": "enginesession.swift"
     },
     {
@@ -766,8 +766,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": "enginesession"
     },
     {
@@ -799,8 +799,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_createfirstround",
-      "community": 74,
-      "community_name": "Engine Baseline Result",
+      "community": 48,
+      "community_name": "Swift Enum Metadata (generated)",
       "norm_label": ".createfirstround()"
     },
     {
@@ -810,8 +810,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_swift_matchformat",
-      "community": 74,
-      "community_name": "Engine Baseline Result",
+      "community": 48,
+      "community_name": "Swift Enum Metadata (generated)",
       "norm_label": "matchformat"
     },
     {
@@ -843,8 +843,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_close",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": ".close()"
     },
     {
@@ -854,8 +854,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_deinit",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": ".deinit()"
     },
     {
@@ -876,8 +876,8 @@
       "source_location": "L113",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_submitmove",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": ".submitmove()"
     },
     {
@@ -887,8 +887,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_swift_move",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": "move"
     },
     {
@@ -898,8 +898,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_swift_uint64",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": "uint64"
     },
     {
@@ -909,8 +909,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_voluntarydraw",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": ".voluntarydraw()"
     },
     {
@@ -920,8 +920,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_resolveforceddraw",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": ".resolveforceddraw()"
     },
     {
@@ -931,8 +931,8 @@
       "source_location": "L138",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_endturnwithnoplay",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": ".endturnwithnoplay()"
     },
     {
@@ -942,8 +942,8 @@
       "source_location": "L152",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginesession_enginesession_recordroundinto",
-      "community": 0,
-      "community_name": "Bridge Analysis Pipeline",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": ".recordroundinto()"
     },
     {
@@ -986,8 +986,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sendable",
-      "community": 0,
-      "community_name": "Bridge Analysis Pipeline",
+      "community": 9,
+      "community_name": "Engine Core Containers",
       "norm_label": "sendable"
     },
     {
@@ -1130,8 +1130,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_tile",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "tile"
     },
     {
@@ -1163,8 +1163,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_tile_hasface",
-      "community": 77,
-      "community_name": "Soak Test Result",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".hasface()"
     },
     {
@@ -1174,8 +1174,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_swift_bool",
-      "community": 77,
-      "community_name": "Soak Test Result",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "bool"
     },
     {
@@ -1196,8 +1196,8 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_tile_index",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".index()"
     },
     {
@@ -1339,8 +1339,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_gamesnapshot",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "gamesnapshot"
     },
     {
@@ -1350,8 +1350,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_swift_uint64",
-      "community": 77,
-      "community_name": "Soak Test Result",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "uint64"
     },
     {
@@ -1559,8 +1559,8 @@
       "source_location": "L352",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_commandoutcome",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": "commandoutcome"
     },
     {
@@ -1581,8 +1581,8 @@
       "source_location": "L363",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_commandoutcome_fromdtoorthrow",
-      "community": 48,
-      "community_name": "Swift Enum Metadata (generated)",
+      "community": 39,
+      "community_name": "Generated File Lock Utility",
       "norm_label": ".fromdtoorthrow()"
     },
     {
@@ -1592,8 +1592,8 @@
       "source_location": "L379",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_analysisoutcome",
-      "community": 77,
-      "community_name": "Soak Test Result",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "analysisoutcome"
     },
     {
@@ -1603,8 +1603,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_enginetypes_swift_double",
-      "community": 77,
-      "community_name": "Soak Test Result",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "double"
     },
     {
@@ -1724,8 +1724,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "sources_isolynapp_engine_matchcoordinator_matchcoordinator_recordround",
-      "community": 0,
-      "community_name": "Bridge Analysis Pipeline",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": ".recordround()"
     },
     {
@@ -1768,8 +1768,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "environmentclock.swift"
     },
     {
@@ -1779,8 +1779,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_environmentclock",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 15,
+      "community_name": "Sandbox Mode Requirements",
       "norm_label": "environmentclock"
     },
     {
@@ -1790,8 +1790,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_systemenvironmentclock",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "systemenvironmentclock"
     },
     {
@@ -1801,8 +1801,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_systemenvironmentclock_now",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".now()"
     },
     {
@@ -1812,8 +1812,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_swift_date",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "date"
     },
     {
@@ -1823,8 +1823,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_systemenvironmentclock_timezone",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".timezone()"
     },
     {
@@ -1834,8 +1834,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "timezone",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "timezone"
     },
     {
@@ -1845,8 +1845,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_fixedenvironmentclock",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "fixedenvironmentclock"
     },
     {
@@ -1856,8 +1856,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_fixedenvironmentclock_now",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".now()"
     },
     {
@@ -1867,8 +1867,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentclock_fixedenvironmentclock_timezone",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".timezone()"
     },
     {
@@ -2033,8 +2033,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_environmentmanager_environmentmanager_makeweathersource",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 15,
+      "community_name": "Sandbox Mode Requirements",
       "norm_label": ".makeweathersource()"
     },
     {
@@ -2387,8 +2387,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_randomweatherservice_randomweatherservice",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 15,
+      "community_name": "Sandbox Mode Requirements",
       "norm_label": "randomweatherservice"
     },
     {
@@ -2398,8 +2398,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_randomweatherservice_swift_double",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 15,
+      "community_name": "Sandbox Mode Requirements",
       "norm_label": "double"
     },
     {
@@ -2409,8 +2409,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_randomweatherservice_randomweatherservice_init",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 15,
+      "community_name": "Sandbox Mode Requirements",
       "norm_label": ".init()"
     },
     {
@@ -2420,8 +2420,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_randomweatherservice_randomweatherservice_currentcondition",
-      "community": 39,
-      "community_name": "Generated File Lock Utility",
+      "community": 15,
+      "community_name": "Sandbox Mode Requirements",
       "norm_label": ".currentcondition()"
     },
     {
@@ -2717,8 +2717,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_timephase_swift_double",
-      "community": 23,
-      "community_name": "RulesEngine Decisions",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "double"
     },
     {
@@ -2728,8 +2728,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "sources_isolynapp_environment_timephase_timephase_classify",
-      "community": 23,
-      "community_name": "RulesEngine Decisions",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".classify()"
     },
     {
@@ -3267,8 +3267,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_game_appearance_settingsdrawer",
-      "community": 78,
-      "community_name": "Match-Level Objective",
+      "community": 30,
+      "community_name": "Fuzz Harness Input Model",
       "norm_label": "settingsdrawer.swift"
     },
     {
@@ -3311,8 +3311,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "sources_isolynapp_game_appearance_settingsdrawer_dominoappearancesection",
-      "community": 78,
-      "community_name": "Match-Level Objective",
+      "community": 21,
+      "community_name": "Weather Condition Enum",
       "norm_label": "dominoappearancesection"
     },
     {
@@ -3410,8 +3410,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "boardcamera"
     },
     {
@@ -3421,8 +3421,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_cgfloat",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "cgfloat"
     },
     {
@@ -3432,8 +3432,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "timeinterval",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "timeinterval"
     },
     {
@@ -3443,8 +3443,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_task",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "task"
     },
     {
@@ -3454,8 +3454,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_void",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "void"
     },
     {
@@ -3465,8 +3465,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_never",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "never"
     },
     {
@@ -3476,8 +3476,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_double",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "double"
     },
     {
@@ -3487,8 +3487,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera_reset",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": ".reset()"
     },
     {
@@ -3498,8 +3498,8 @@
       "source_location": "L66",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera_begindrag",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": ".begindrag()"
     },
     {
@@ -3509,8 +3509,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_cgpoint",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "cgpoint"
     },
     {
@@ -3520,8 +3520,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera_updatedrag",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": ".updatedrag()"
     },
     {
@@ -3531,8 +3531,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_swift_cgsize",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": "cgsize"
     },
     {
@@ -3542,8 +3542,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera_enddrag",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": ".enddrag()"
     },
     {
@@ -3553,8 +3553,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera_recordsample",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": ".recordsample()"
     },
     {
@@ -3564,8 +3564,8 @@
       "source_location": "L114",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_boardcamera_boardcamera_startinertia",
-      "community": 65,
-      "community_name": "Primary Capsule Button Style",
+      "community": 27,
+      "community_name": "GameState Mutation & Undo",
       "norm_label": ".startinertia()"
     },
     {
@@ -3586,8 +3586,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gesturearbiter",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "gesturearbiter"
     },
     {
@@ -3597,8 +3597,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gestureowner",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "gestureowner"
     },
     {
@@ -3608,8 +3608,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gestureowner_idle",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "idle"
     },
     {
@@ -3619,8 +3619,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gestureowner_pending",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "pending"
     },
     {
@@ -3630,8 +3630,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gestureowner_boardpan",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "boardpan"
     },
     {
@@ -3641,8 +3641,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gestureowner_dominodrag",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "dominodrag"
     },
     {
@@ -3652,8 +3652,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_swift_cgpoint",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "cgpoint"
     },
     {
@@ -3663,8 +3663,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_swift_cgfloat",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "cgfloat"
     },
     {
@@ -3674,8 +3674,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gesturearbiter_pointerdown",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": ".pointerdown()"
     },
     {
@@ -3685,8 +3685,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gesturearbiter_pointermoved",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": ".pointermoved()"
     },
     {
@@ -3696,8 +3696,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_swift_bool",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": "bool"
     },
     {
@@ -3707,8 +3707,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gesturearbiter_pointerup",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": ".pointerup()"
     },
     {
@@ -3718,8 +3718,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "sources_isolynapp_game_camera_gesturearbiter_gesturearbiter_cancel",
-      "community": 13,
-      "community_name": "Swift Value Witness Tables (generated)",
+      "community": 32,
+      "community_name": "Generated Initializers (noise)",
       "norm_label": ".cancel()"
     },
     {
@@ -3806,8 +3806,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "sources_isolynapp_game_chainandzonesview_chainandzonesview_playonside",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".playonside()"
     },
     {
@@ -3960,8 +3960,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 30,
+      "community_name": "Fuzz Harness Input Model",
       "norm_label": "gameviewmodel.swift"
     },
     {
@@ -3982,8 +3982,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_phase",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 46,
+      "community_name": "Determinizer Sampling Internals",
       "norm_label": "phase"
     },
     {
@@ -3993,8 +3993,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_phase_loading",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 46,
+      "community_name": "Determinizer Sampling Internals",
       "norm_label": "loading"
     },
     {
@@ -4004,8 +4004,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_phase_playing",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 46,
+      "community_name": "Determinizer Sampling Internals",
       "norm_label": "playing"
     },
     {
@@ -4015,8 +4015,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_phase_roundover",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 46,
+      "community_name": "Determinizer Sampling Internals",
       "norm_label": "roundover"
     },
     {
@@ -4026,8 +4026,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_phase_matchover",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 46,
+      "community_name": "Determinizer Sampling Internals",
       "norm_label": "matchover"
     },
     {
@@ -4037,8 +4037,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_swift_matchformat",
-      "community": 74,
-      "community_name": "Engine Baseline Result",
+      "community": 45,
+      "community_name": "Chain Placement Ops",
       "norm_label": "matchformat"
     },
     {
@@ -4081,8 +4081,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "objectidentifier",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": "objectidentifier"
     },
     {
@@ -4103,8 +4103,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_gameviewmodel_init",
-      "community": 74,
-      "community_name": "Engine Baseline Result",
+      "community": 45,
+      "community_name": "Chain Placement Ops",
       "norm_label": ".init()"
     },
     {
@@ -4202,8 +4202,8 @@
       "source_location": "L258",
       "_origin": "ast",
       "id": "sources_isolynapp_game_gameviewmodel_gameviewmodel_recordroundiffresh",
-      "community": 45,
-      "community_name": "Chain Placement Ops",
+      "community": 77,
+      "community_name": "Soak Test Result",
       "norm_label": ".recordroundiffresh()"
     },
     {
@@ -4279,8 +4279,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "handrackview.swift"
     },
     {
@@ -4290,8 +4290,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_handrackview",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "handrackview"
     },
     {
@@ -4301,8 +4301,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_swift_set",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "set"
     },
     {
@@ -4312,8 +4312,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_swift_move",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "move"
     },
     {
@@ -4323,8 +4323,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_swift_bool",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "bool"
     },
     {
@@ -4334,8 +4334,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_swift_void",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "void"
     },
     {
@@ -4345,8 +4345,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_swift_cgfloat",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "cgfloat"
     },
     {
@@ -4356,8 +4356,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_handrackview_tilebutton",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".tilebutton()"
     },
     {
@@ -4367,8 +4367,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_handrackview_playablesides",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".playablesides()"
     },
     {
@@ -4378,8 +4378,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "sources_isolynapp_game_handrackview_handrackview_handletap",
-      "community": 82,
-      "community_name": "HandRackView",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".handletap()"
     },
     {
@@ -4400,8 +4400,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "hoverchaincontroller"
     },
     {
@@ -4411,8 +4411,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_swift_int",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "int"
     },
     {
@@ -4422,8 +4422,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_swift_task",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "task"
     },
     {
@@ -4433,8 +4433,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_swift_void",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "void"
     },
     {
@@ -4444,8 +4444,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_swift_never",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "never"
     },
     {
@@ -4455,8 +4455,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_swift_uint64",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "uint64"
     },
     {
@@ -4466,8 +4466,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_settarget",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".settarget()"
     },
     {
@@ -4477,8 +4477,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_rotate",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".rotate()"
     },
     {
@@ -4488,8 +4488,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_suspend",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".suspend()"
     },
     {
@@ -4499,8 +4499,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_resume",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".resume()"
     },
     {
@@ -4510,8 +4510,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_scheduledismissal",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".scheduledismissal()"
     },
     {
@@ -4521,8 +4521,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_cancelscheduleddismissal",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".cancelscheduleddismissal()"
     },
     {
@@ -4532,8 +4532,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_dismiss",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".dismiss()"
     },
     {
@@ -4543,8 +4543,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchaincontroller_hoverchaincontroller_invalidate",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".invalidate()"
     },
     {
@@ -4554,8 +4554,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "hoverchainmodel.swift"
     },
     {
@@ -4642,8 +4642,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "hoverchainnodekind"
     },
     {
@@ -4653,8 +4653,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "int",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "int"
     },
     {
@@ -4664,8 +4664,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind_baseuninformed",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "baseuninformed"
     },
     {
@@ -4675,8 +4675,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind_historicalinformed",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "historicalinformed"
     },
     {
@@ -4686,8 +4686,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind_presentinformed",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "presentinformed"
     },
     {
@@ -4697,8 +4697,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind_lockedoff",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "lockedoff"
     },
     {
@@ -4708,8 +4708,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind_predictive",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "predictive"
     },
     {
@@ -4719,8 +4719,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainnodekind_complete",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "complete"
     },
     {
@@ -4730,8 +4730,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_swift_string",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "string"
     },
     {
@@ -4741,8 +4741,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchainentry",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "hoverchainentry"
     },
     {
@@ -4752,8 +4752,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_swift_bool",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "bool"
     },
     {
@@ -4763,8 +4763,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchain",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "hoverchain"
     },
     {
@@ -4774,8 +4774,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_swift_uint64",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": "uint64"
     },
     {
@@ -4785,8 +4785,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainmodel_hoverchain_resolve",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 22,
+      "community_name": "DominoTile Identity",
       "norm_label": ".resolve()"
     },
     {
@@ -4807,8 +4807,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_hoverchainoverlay",
-      "community": 43,
-      "community_name": "Live WeatherKit Service",
+      "community": 30,
+      "community_name": "Fuzz Harness Input Model",
       "norm_label": "hoverchainoverlay.swift"
     },
     {
@@ -4917,8 +4917,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "tileknowledgeresolver"
     },
     {
@@ -4928,8 +4928,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_swift_int",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "int"
     },
     {
@@ -4939,8 +4939,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_numberfamily",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".numberfamily()"
     },
     {
@@ -4950,8 +4950,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_resolvefamily",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".resolvefamily()"
     },
     {
@@ -4961,8 +4961,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_classify",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".classify()"
     },
     {
@@ -4972,8 +4972,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_isplayed",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".isplayed()"
     },
     {
@@ -4983,8 +4983,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_swift_bool",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "bool"
     },
     {
@@ -4994,8 +4994,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_isinmyhand",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".isinmyhand()"
     },
     {
@@ -5005,8 +5005,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_islockedoff",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".islockedoff()"
     },
     {
@@ -5016,8 +5016,8 @@
       "source_location": "L112",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_tileknowledgeresolver_predictedopponentprobability",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": ".predictedopponentprobability()"
     },
     {
@@ -5027,8 +5027,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynapp_game_hoverchain_tileknowledgeresolver_swift_double",
-      "community": 56,
-      "community_name": "Closing Opportunity Heuristic",
+      "community": 0,
+      "community_name": "Bridge Analysis Pipeline",
       "norm_label": "double"
     },
     {
@@ -5390,8 +5390,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_game_roundendoverlay",
-      "community": 84,
-      "community_name": "RoundEndOverlay",
+      "community": 30,
+      "community_name": "Fuzz Harness Input Model",
       "norm_label": "roundendoverlay.swift"
     },
     {
@@ -5467,8 +5467,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynapp_isolynapp",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 89,
+      "community_name": ".operator()",
       "norm_label": "isolynapp.swift"
     },
     {
@@ -5478,8 +5478,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "sources_isolynapp_isolynapp_isolynapp",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 89,
+      "community_name": ".operator()",
       "norm_label": "isolynapp"
     },
     {
@@ -5489,8 +5489,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "app",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 89,
+      "community_name": ".operator()",
       "norm_label": "app"
     },
     {
@@ -5500,8 +5500,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "sources_isolynapp_isolynapp_isolynapp_init",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 89,
+      "community_name": ".operator()",
       "norm_label": ".init()"
     },
     {
@@ -5511,8 +5511,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "scene",
-      "community": 30,
-      "community_name": "Fuzz Harness Input Model",
+      "community": 89,
+      "community_name": ".operator()",
       "norm_label": "scene"
     },
     {
@@ -5852,8 +5852,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "sources_isolynengine_beliefstate_beliefstate_totalprobabilitymass",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "beliefstate::totalprobabilitymass()"
     },
     {
@@ -5874,8 +5874,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "sources_isolynengine_beliefstate_beliefstate_applyopponentdraw",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "beliefstate::applyopponentdraw()"
     },
     {
@@ -5885,8 +5885,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_blockingheuristic",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "blockingheuristic.cpp"
     },
     {
@@ -5896,8 +5896,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sources_isolynengine_blockingheuristic_blockingheuristic_score",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "blockingheuristic::score()"
     },
     {
@@ -5907,8 +5907,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_boneyard",
-      "community": 40,
-      "community_name": "IsolynTheme Design Tokens",
+      "community": 85,
+      "community_name": "Determinizer::sample",
       "norm_label": "boneyard.cpp"
     },
     {
@@ -5918,8 +5918,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sources_isolynengine_boneyard_boneyard_boneyard",
-      "community": 40,
-      "community_name": "IsolynTheme Design Tokens",
+      "community": 85,
+      "community_name": "Determinizer::sample",
       "norm_label": "boneyard::boneyard()"
     },
     {
@@ -5929,8 +5929,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_boneyard_cpp_vector",
-      "community": 40,
-      "community_name": "IsolynTheme Design Tokens",
+      "community": 85,
+      "community_name": "Determinizer::sample",
       "norm_label": "vector"
     },
     {
@@ -5951,8 +5951,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "sources_isolynengine_boneyard_boneyard_undodraw",
-      "community": 40,
-      "community_name": "IsolynTheme Design Tokens",
+      "community": 85,
+      "community_name": "Determinizer::sample",
       "norm_label": "boneyard::undodraw()"
     },
     {
@@ -5962,8 +5962,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sources_isolynengine_boneyard_boneyard_lockedtiles",
-      "community": 40,
-      "community_name": "IsolynTheme Design Tokens",
+      "community": 85,
+      "community_name": "Determinizer::sample",
       "norm_label": "boneyard::lockedtiles()"
     },
     {
@@ -5973,8 +5973,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_chain",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain.cpp"
     },
     {
@@ -5984,8 +5984,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_placeopening",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::placeopening()"
     },
     {
@@ -5995,8 +5995,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_placeleft",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::placeleft()"
     },
     {
@@ -6006,8 +6006,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_placeright",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::placeright()"
     },
     {
@@ -6017,8 +6017,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_undoopening",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::undoopening()"
     },
     {
@@ -6028,8 +6028,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_undoleft",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::undoleft()"
     },
     {
@@ -6039,8 +6039,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_undoright",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::undoright()"
     },
     {
@@ -6050,8 +6050,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_chain_fromknownstate",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "chain::fromknownstate()"
     },
     {
@@ -6061,8 +6061,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_chain_cpp_deque",
-      "community": 32,
-      "community_name": "Generated Initializers (noise)",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "deque"
     },
     {
@@ -6193,8 +6193,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_determinizer",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 40,
+      "community_name": "IsolynTheme Design Tokens",
       "norm_label": "determinizer.cpp"
     },
     {
@@ -6204,8 +6204,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sources_isolynengine_determinizer_determinizer_sample",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 40,
+      "community_name": "IsolynTheme Design Tokens",
       "norm_label": "determinizer::sample()"
     },
     {
@@ -6215,8 +6215,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_determinizer_cpp_vector",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 40,
+      "community_name": "IsolynTheme Design Tokens",
       "norm_label": "vector"
     },
     {
@@ -6226,8 +6226,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_determinizer_cpp_pair",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 40,
+      "community_name": "IsolynTheme Design Tokens",
       "norm_label": "pair"
     },
     {
@@ -6237,8 +6237,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_determinizer_cpp_map",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 40,
+      "community_name": "IsolynTheme Design Tokens",
       "norm_label": "map"
     },
     {
@@ -6248,8 +6248,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_determinizer_cpp_mt19937_64",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 40,
+      "community_name": "IsolynTheme Design Tokens",
       "norm_label": "mt19937_64"
     },
     {
@@ -6325,8 +6325,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_dominotile",
-      "community": 49,
-      "community_name": "TimePhase Classification",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "dominotile.cpp"
     },
     {
@@ -6336,8 +6336,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sources_isolynengine_dominotile_dominotile_describe",
-      "community": 49,
-      "community_name": "TimePhase Classification",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "dominotile::describe()"
     },
     {
@@ -6347,8 +6347,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_dominotile_cpp_string",
-      "community": 49,
-      "community_name": "TimePhase Classification",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "string"
     },
     {
@@ -6622,8 +6622,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_matchcontroller_dealfirstround",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": "matchcontroller::dealfirstround()"
     },
     {
@@ -6633,8 +6633,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_cpp_gamemode",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": "gamemode"
     },
     {
@@ -6644,8 +6644,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_matchcontroller_dealsubsequentround",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": "matchcontroller::dealsubsequentround()"
     },
     {
@@ -6666,8 +6666,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_matchcontroller_currentplayerhaslegalmove",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "matchcontroller::currentplayerhaslegalmove()"
     },
     {
@@ -6677,8 +6677,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_matchcontroller_voluntarydraw",
-      "community": 34,
-      "community_name": "Handle Table Operations",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "matchcontroller::voluntarydraw()"
     },
     {
@@ -6688,8 +6688,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_matchcontroller_resolveforceddraw",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "matchcontroller::resolveforceddraw()"
     },
     {
@@ -6699,8 +6699,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_cpp_vector",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "vector"
     },
     {
@@ -6765,8 +6765,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "sources_isolynengine_matchcontroller_matchcontroller_checkforclose",
-      "community": 62,
-      "community_name": "Mode Selector Screen",
+      "community": 34,
+      "community_name": "Handle Table Operations",
       "norm_label": "matchcontroller::checkforclose()"
     },
     {
@@ -6776,8 +6776,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_mobilityheuristic",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "mobilityheuristic.cpp"
     },
     {
@@ -6787,8 +6787,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sources_isolynengine_mobilityheuristic_mobilityheuristic_score",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "mobilityheuristic::score()"
     },
     {
@@ -6985,8 +6985,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "sources_isolynengine_probabilityengine_probabilityengine_constructfromgamestate",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "probabilityengine::constructfromgamestate()"
     },
     {
@@ -7282,8 +7282,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "sources_isolynengine_searchengine_searchengine_decisioncriterion",
-      "community": 62,
-      "community_name": "Mode Selector Screen",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "searchengine::decisioncriterion()"
     },
     {
@@ -7293,8 +7293,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_searchengine_cpp_vector",
-      "community": 62,
-      "community_name": "Mode Selector Screen",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "vector"
     },
     {
@@ -7304,8 +7304,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_searchengine_cpp_gamemode",
-      "community": 62,
-      "community_name": "Mode Selector Screen",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "gamemode"
     },
     {
@@ -7370,8 +7370,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sources_isolynengine_simulationengine",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 4,
+      "community_name": "Star Field Rendering",
       "norm_label": "simulationengine.cpp"
     },
     {
@@ -7381,8 +7381,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "sources_isolynengine_simulationengine_simulationengine_sampledeterminizedstate",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 4,
+      "community_name": "Star Field Rendering",
       "norm_label": "simulationengine::sampledeterminizedstate()"
     },
     {
@@ -7392,8 +7392,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_simulationengine_cpp_mt19937_64",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 4,
+      "community_name": "Star Field Rendering",
       "norm_label": "mt19937_64"
     },
     {
@@ -7436,8 +7436,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "sources_isolynengine_include_beliefstate_beliefstate_istracked",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "istracked"
     },
     {
@@ -7447,8 +7447,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "sources_isolynengine_include_beliefstate_beliefstate_probability",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "probability"
     },
     {
@@ -7458,8 +7458,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "sources_isolynengine_include_beliefstate_beliefstate_totalprobabilitymass",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "totalprobabilitymass"
     },
     {
@@ -7469,8 +7469,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "sources_isolynengine_include_beliefstate_beliefstate_marktileknown",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "marktileknown"
     },
     {
@@ -7480,8 +7480,8 @@
       "source_location": "L119",
       "_origin": "ast",
       "id": "sources_isolynengine_include_beliefstate_beliefstate_applyopponentdraw",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "applyopponentdraw"
     },
     {
@@ -7810,8 +7810,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "sources_isolynengine_include_chain_chain_fromknownstate",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 4,
+      "community_name": "Star Field Rendering",
       "norm_label": "fromknownstate"
     },
     {
@@ -7953,8 +7953,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_dealresult",
-      "community": 118,
-      "community_name": "DealResult",
+      "community": 79,
+      "community_name": "Repository Tree Snapshot",
       "norm_label": "dealresult"
     },
     {
@@ -7964,8 +7964,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_hpp_vector",
-      "community": 118,
-      "community_name": "DealResult",
+      "community": 79,
+      "community_name": "Repository Tree Snapshot",
       "norm_label": "vector"
     },
     {
@@ -7975,8 +7975,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_dealresult_hands",
-      "community": 118,
-      "community_name": "DealResult",
+      "community": 79,
+      "community_name": "Repository Tree Snapshot",
       "norm_label": "hands"
     },
     {
@@ -7986,8 +7986,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_dealresult_boneyard",
-      "community": 118,
-      "community_name": "DealResult",
+      "community": 79,
+      "community_name": "Repository Tree Snapshot",
       "norm_label": "boneyard"
     },
     {
@@ -7997,8 +7997,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_dealer",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": "dealer"
     },
     {
@@ -8008,8 +8008,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_dealer_deal",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": "deal"
     },
     {
@@ -8052,8 +8052,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dealer_dealer_excludedtilesformode",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "excludedtilesformode"
     },
     {
@@ -8074,8 +8074,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "sources_isolynengine_include_determinizer_determinizer",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 4,
+      "community_name": "Star Field Rendering",
       "norm_label": "determinizer"
     },
     {
@@ -8085,8 +8085,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "sources_isolynengine_include_determinizer_determinizer_sample",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 4,
+      "community_name": "Star Field Rendering",
       "norm_label": "sample"
     },
     {
@@ -8250,8 +8250,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sources_isolynengine_include_dominotile_dominotile_fromindex",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": ".fromindex()"
     },
     {
@@ -8371,8 +8371,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "sources_isolynengine_include_entropysource_entropysource",
-      "community": 6,
-      "community_name": "Swift Runtime Metadata (generated)",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": "entropysource"
     },
     {
@@ -8382,8 +8382,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sources_isolynengine_include_entropysource_entropysource_entropysource",
-      "community": 6,
-      "community_name": "Swift Runtime Metadata (generated)",
+      "community": 83,
+      "community_name": "SimulationEngine::sampleDeterminizedState",
       "norm_label": ".entropysource()"
     },
     {
@@ -8536,8 +8536,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "sources_isolynengine_include_evaluationengine_evaluationengine",
-      "community": 22,
-      "community_name": "DominoTile Identity",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "evaluationengine"
     },
     {
@@ -8547,8 +8547,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "sources_isolynengine_include_evaluationengine_evaluationengine_kmobilityweight",
-      "community": 22,
-      "community_name": "DominoTile Identity",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "kmobilityweight"
     },
     {
@@ -8558,8 +8558,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "sources_isolynengine_include_evaluationengine_evaluationengine_kblockingweight",
-      "community": 22,
-      "community_name": "DominoTile Identity",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "kblockingweight"
     },
     {
@@ -8569,8 +8569,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "sources_isolynengine_include_evaluationengine_evaluationengine_kexpectedvalueweight",
-      "community": 22,
-      "community_name": "DominoTile Identity",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "kexpectedvalueweight"
     },
     {
@@ -8580,8 +8580,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "sources_isolynengine_include_evaluationengine_evaluationengine_kclosingopportunityweight",
-      "community": 22,
-      "community_name": "DominoTile Identity",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "kclosingopportunityweight"
     },
     {
@@ -8591,8 +8591,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "sources_isolynengine_include_evaluationengine_evaluationengine_evaluate",
-      "community": 22,
-      "community_name": "DominoTile Identity",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "evaluate"
     },
     {
@@ -8701,8 +8701,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "sources_isolynengine_include_gamestate_gamestate_currentplayerindex",
-      "community": 57,
-      "community_name": "Pip Glyph Signature",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": ".currentplayerindex()"
     },
     {
@@ -8712,8 +8712,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "sources_isolynengine_include_gamestate_gamestate_setcurrentplayerindex",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 18,
+      "community_name": "Score System (Unwired)",
       "norm_label": "setcurrentplayerindex"
     },
     {
@@ -8943,8 +8943,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "sources_isolynengine_include_matchcontroller_matchcontroller_currentplayerhaslegalmove",
-      "community": 18,
-      "community_name": "Score System (Unwired)",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "currentplayerhaslegalmove"
     },
     {
@@ -9097,8 +9097,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sources_isolynengine_include_move_move",
-      "community": 46,
-      "community_name": "Determinizer Sampling Internals",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": "move"
     },
     {
@@ -9108,8 +9108,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "sources_isolynengine_include_move_move_tile",
-      "community": 46,
-      "community_name": "Determinizer Sampling Internals",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": "tile"
     },
     {
@@ -9119,8 +9119,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sources_isolynengine_include_move_move_side",
-      "community": 46,
-      "community_name": "Determinizer Sampling Internals",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": "side"
     },
     {
@@ -9130,8 +9130,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "sources_isolynengine_include_move_move_operator",
-      "community": 46,
-      "community_name": "Determinizer Sampling Internals",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": ".operator==()"
     },
     {
@@ -9141,8 +9141,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "sources_isolynengine_include_move_move_describe",
-      "community": 46,
-      "community_name": "Determinizer Sampling Internals",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": "describe"
     },
     {
@@ -9273,8 +9273,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "sources_isolynengine_include_movegenerator_movegenerator",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "movegenerator"
     },
     {
@@ -9295,8 +9295,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "sources_isolynengine_include_movegenerator_movegenerator_hasanylegalmove",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 36,
+      "community_name": "Environment Data Models",
       "norm_label": "hasanylegalmove"
     },
     {
@@ -9306,8 +9306,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "sources_isolynengine_include_movegenerator_movegenerator_ispositionclosed",
-      "community": 17,
-      "community_name": "Round Outcome & Blocking",
+      "community": 34,
+      "community_name": "Handle Table Operations",
       "norm_label": "ispositionclosed"
     },
     {
@@ -9361,8 +9361,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "probabilityengine"
     },
     {
@@ -9372,8 +9372,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine_constructfromgamestate",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "constructfromgamestate"
     },
     {
@@ -9383,8 +9383,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine_observeplay",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "observeplay"
     },
     {
@@ -9394,8 +9394,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine_observedraw",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "observedraw"
     },
     {
@@ -9405,8 +9405,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine_probabilityholdstile",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "probabilityholdstile"
     },
     {
@@ -9416,8 +9416,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine_expectedremainingvalue",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "expectedremainingvalue"
     },
     {
@@ -9427,8 +9427,8 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "sources_isolynengine_include_probabilityengine_probabilityengine_probabilityholdsatleast",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "probabilityholdsatleast"
     },
     {
@@ -9482,8 +9482,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "sources_isolynengine_include_rulesengine_playrecord",
-      "community": 19,
-      "community_name": "Appearance Curve Interpolation",
+      "community": 25,
+      "community_name": "Analysis Snapshot Internals",
       "norm_label": "playrecord"
     },
     {
@@ -9493,8 +9493,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "sources_isolynengine_include_rulesengine_playrecord_playerindex",
-      "community": 19,
-      "community_name": "Appearance Curve Interpolation",
+      "community": 25,
+      "community_name": "Analysis Snapshot Internals",
       "norm_label": "playerindex"
     },
     {
@@ -9504,8 +9504,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sources_isolynengine_include_rulesengine_playrecord_tile",
-      "community": 19,
-      "community_name": "Appearance Curve Interpolation",
+      "community": 25,
+      "community_name": "Analysis Snapshot Internals",
       "norm_label": "tile"
     },
     {
@@ -9537,8 +9537,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "sources_isolynengine_include_rulesengine_rulesengine_determinecloser",
-      "community": 62,
-      "community_name": "Mode Selector Screen",
+      "community": 34,
+      "community_name": "Handle Table Operations",
       "norm_label": "determinecloser"
     },
     {
@@ -9856,8 +9856,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "sources_isolynengine_include_searchengine_searchengine",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "searchengine"
     },
     {
@@ -9867,8 +9867,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "sources_isolynengine_include_searchengine_searchengine_choosebestmove",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "choosebestmove"
     },
     {
@@ -9878,8 +9878,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "sources_isolynengine_include_searchengine_searchengine_searchnode",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "searchnode"
     },
     {
@@ -9889,8 +9889,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sources_isolynengine_include_searchengine_searchengine_decisioncriterion",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 17,
+      "community_name": "Round Outcome & Blocking",
       "norm_label": "decisioncriterion"
     },
     {
@@ -9911,8 +9911,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "sources_isolynengine_include_simulationengine_simulationengine",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": "simulationengine"
     },
     {
@@ -9922,8 +9922,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "sources_isolynengine_include_simulationengine_simulationengine_sampledeterminizedstate",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 1,
+      "community_name": "Dealer & Tile Accounting",
       "norm_label": "sampledeterminizedstate"
     },
     {
@@ -10032,8 +10032,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_toenginemove",
-      "community": 14,
-      "community_name": "Bridge Safety & Verification",
+      "community": 8,
+      "community_name": "XCTest Infrastructure (generated)",
       "norm_label": "toenginemove()"
     },
     {
@@ -10043,8 +10043,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_cpp_move",
-      "community": 14,
-      "community_name": "Bridge Safety & Verification",
+      "community": 8,
+      "community_name": "XCTest Infrastructure (generated)",
       "norm_label": "move"
     },
     {
@@ -10054,8 +10054,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_fromenginemove",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 8,
+      "community_name": "XCTest Infrastructure (generated)",
       "norm_label": "fromenginemove()"
     },
     {
@@ -10120,8 +10120,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_cpp_bridgestatus",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "bridgestatus"
     },
     {
@@ -10131,8 +10131,8 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_failedsnapshot",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 10,
+      "community_name": "Swift Testing Library (generated)",
       "norm_label": "failedsnapshot()"
     },
     {
@@ -10142,8 +10142,8 @@
       "source_location": "L121",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_failedanalysis",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "failedanalysis()"
     },
     {
@@ -10274,8 +10274,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "analysissnapshotimpl"
     },
     {
@@ -10285,8 +10285,8 @@
       "source_location": "L152",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_world",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "world"
     },
     {
@@ -10296,8 +10296,8 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_belief",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "belief"
     },
     {
@@ -10307,8 +10307,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_mode",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "mode"
     },
     {
@@ -10318,8 +10318,8 @@
       "source_location": "L155",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_believerplayerindex",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "believerplayerindex"
     },
     {
@@ -10329,8 +10329,8 @@
       "source_location": "L156",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_stateversionanalyzed",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "stateversionanalyzed"
     },
     {
@@ -10340,8 +10340,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_cpp_atomic",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "atomic"
     },
     {
@@ -10351,8 +10351,8 @@
       "source_location": "L157",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_cancelrequested",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": "cancelrequested"
     },
     {
@@ -10362,8 +10362,8 @@
       "source_location": "L158",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_analysissnapshotimpl_analysissnapshotimpl",
-      "community": 12,
-      "community_name": "Simulation & Shuffle Tests",
+      "community": 5,
+      "community_name": "Move Legality Gate",
       "norm_label": ".analysissnapshotimpl()"
     },
     {
@@ -10373,8 +10373,8 @@
       "source_location": "L166",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_handletable",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "handletable"
     },
     {
@@ -10406,8 +10406,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "impl",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "impl"
     },
     {
@@ -10417,8 +10417,8 @@
       "source_location": "L183",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_handletable_find",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 11,
+      "community_name": "Evaluation Engine Weights",
       "norm_label": ".find()"
     },
     {
@@ -10428,8 +10428,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "shared_ptr",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "shared_ptr"
     },
     {
@@ -10450,8 +10450,8 @@
       "source_location": "L193",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_handletable_size",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": ".size()"
     },
     {
@@ -10461,8 +10461,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_cpp_size_t",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "size_t"
     },
     {
@@ -10472,8 +10472,8 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_handletable_m_mutex",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "m_mutex"
     },
     {
@@ -10483,8 +10483,8 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_handletable_m_nextid",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "m_nextid"
     },
     {
@@ -10494,8 +10494,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "unordered_map",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "unordered_map"
     },
     {
@@ -10505,8 +10505,8 @@
       "source_location": "L196",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_handletable_m_entries",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 14,
+      "community_name": "Bridge Safety & Verification",
       "norm_label": "m_entries"
     },
     {
@@ -10615,8 +10615,8 @@
       "source_location": "L223",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_buildsnapshot",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 10,
+      "community_name": "Swift Testing Library (generated)",
       "norm_label": "buildsnapshot()"
     },
     {
@@ -10670,8 +10670,8 @@
       "source_location": "L332",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_bridge_get_snapshot",
-      "community": 24,
-      "community_name": "Boneyard Draw Mechanics",
+      "community": 10,
+      "community_name": "Swift Testing Library (generated)",
       "norm_label": "bridge_get_snapshot()"
     },
     {
@@ -10780,8 +10780,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "matchhandle",
-      "community": 26,
-      "community_name": "App Navigation State",
+      "community": 24,
+      "community_name": "Boneyard Draw Mechanics",
       "norm_label": "matchhandle"
     },
     {
@@ -10791,8 +10791,8 @@
       "source_location": "L464",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_bridge_match_record_round",
-      "community": 26,
-      "community_name": "App Navigation State",
+      "community": 62,
+      "community_name": "Mode Selector Screen",
       "norm_label": "bridge_match_record_round()"
     },
     {
@@ -10802,8 +10802,8 @@
       "source_location": "L534",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_bridge_match_close",
-      "community": 26,
-      "community_name": "App Navigation State",
+      "community": 24,
+      "community_name": "Boneyard Draw Mechanics",
       "norm_label": "bridge_match_close()"
     },
     {
@@ -10813,8 +10813,8 @@
       "source_location": "L539",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_bridge_analysis_snapshot_create",
-      "community": 24,
-      "community_name": "Boneyard Draw Mechanics",
+      "community": 11,
+      "community_name": "Evaluation Engine Weights",
       "norm_label": "bridge_analysis_snapshot_create()"
     },
     {
@@ -10824,8 +10824,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "analysishandle",
-      "community": 24,
-      "community_name": "Boneyard Draw Mechanics",
+      "community": 11,
+      "community_name": "Evaluation Engine Weights",
       "norm_label": "analysishandle"
     },
     {
@@ -10835,8 +10835,8 @@
       "source_location": "L576",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_bridge_analysis_run",
-      "community": 80,
-      "community_name": "AnalysisSnapshotImpl",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "bridge_analysis_run()"
     },
     {
@@ -10846,8 +10846,8 @@
       "source_location": "L611",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_isolynbridge_bridge_analysis_request_cancel",
-      "community": 24,
-      "community_name": "Boneyard Draw Mechanics",
+      "community": 11,
+      "community_name": "Evaluation Engine Weights",
       "norm_label": "bridge_analysis_request_cancel()"
     },
     {
@@ -11341,8 +11341,8 @@
       "source_location": "L259",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "analysisresultdto"
     },
     {
@@ -11352,8 +11352,8 @@
       "source_location": "L260",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_status",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "status"
     },
     {
@@ -11363,8 +11363,8 @@
       "source_location": "L263",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_stateversionanalyzed",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "stateversionanalyzed"
     },
     {
@@ -11374,8 +11374,8 @@
       "source_location": "L264",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_completed",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "completed"
     },
     {
@@ -11385,8 +11385,8 @@
       "source_location": "L265",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_samplescompleted",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "samplescompleted"
     },
     {
@@ -11396,8 +11396,8 @@
       "source_location": "L266",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_samplesconfigured",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "samplesconfigured"
     },
     {
@@ -11407,8 +11407,8 @@
       "source_location": "L267",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_recommendedmove",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "recommendedmove"
     },
     {
@@ -11418,8 +11418,8 @@
       "source_location": "L268",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_expectedvalueperplayer",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "expectedvalueperplayer"
     },
     {
@@ -11429,8 +11429,8 @@
       "source_location": "L269",
       "_origin": "ast",
       "id": "sources_isolynenginebridge_include_isolynbridge_analysisresultdto_playercount",
-      "community": 8,
-      "community_name": "XCTest Infrastructure (generated)",
+      "community": 26,
+      "community_name": "App Navigation State",
       "norm_label": "playercount"
     },
     {
@@ -11517,8 +11517,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynapptests_colormathtests",
-      "community": 87,
-      "community_name": "EnvironmentTests.swift",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "colormathtests.swift"
     },
     {
@@ -11529,8 +11529,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "xctest",
-      "community": 87,
-      "community_name": "EnvironmentTests.swift",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "xctest"
     },
     {
@@ -11541,8 +11541,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "isolynapp",
-      "community": 87,
-      "community_name": "EnvironmentTests.swift",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "isolynapp"
     },
     {
@@ -11651,8 +11651,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynapptests_environmenttests",
-      "community": 87,
-      "community_name": "EnvironmentTests.swift",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "environmenttests.swift"
     },
     {
@@ -11882,8 +11882,8 @@
       "source_location": "L142",
       "_origin": "ast",
       "id": "tests_isolynapptests_environmenttests_environmentmanagertests",
-      "community": 15,
-      "community_name": "Sandbox Mode Requirements",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "environmentmanagertests"
     },
     {
@@ -11904,8 +11904,8 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "tests_isolynapptests_environmenttests_environmentmanagertests_test_init_resolvesstateimmediately",
-      "community": 15,
-      "community_name": "Sandbox Mode Requirements",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".test_init_resolvesstateimmediately()"
     },
     {
@@ -11915,8 +11915,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "tests_isolynapptests_environmenttests_environmentmanagertests_test_init_capturestransitionprogress",
-      "community": 15,
-      "community_name": "Sandbox Mode Requirements",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".test_init_capturestransitionprogress()"
     },
     {
@@ -11926,8 +11926,8 @@
       "source_location": "L168",
       "_origin": "ast",
       "id": "tests_isolynapptests_environmenttests_environmentmanagertests_test_init_recordstheresolvedtimezone",
-      "community": 15,
-      "community_name": "Sandbox Mode Requirements",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".test_init_recordstheresolvedtimezone()"
     },
     {
@@ -11937,8 +11937,8 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "tests_isolynapptests_environmenttests_environmentmanagertests_test_init_capturestimeofdayminutes",
-      "community": 15,
-      "community_name": "Sandbox Mode Requirements",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": ".test_init_capturestimeofdayminutes()"
     },
     {
@@ -12014,8 +12014,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynapptests_gameviewmodeltests",
-      "community": 87,
-      "community_name": "EnvironmentTests.swift",
+      "community": 7,
+      "community_name": "Expected Value Heuristic",
       "norm_label": "gameviewmodeltests.swift"
     },
     {
@@ -12366,8 +12366,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynenginetests_beliefstatetests",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "beliefstatetests.cpp"
     },
     {
@@ -12377,8 +12377,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_isolynenginetests_beliefstatetests_approxequal",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "approxequal()"
     },
     {
@@ -12388,8 +12388,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "tests_isolynenginetests_beliefstatetests_main",
-      "community": 5,
-      "community_name": "Move Legality Gate",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "main()"
     },
     {
@@ -12443,8 +12443,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynenginetests_dealertests",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "dealertests.cpp"
     },
     {
@@ -12454,8 +12454,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "tests_isolynenginetests_dealertests_handcontains",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "handcontains()"
     },
     {
@@ -12465,8 +12465,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_isolynenginetests_dealertests_cpp_vector",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "vector"
     },
     {
@@ -12476,8 +12476,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "tests_isolynenginetests_dealertests_main",
-      "community": 79,
-      "community_name": "Repository Tree Snapshot",
+      "community": 16,
+      "community_name": "Belief State Probability Core",
       "norm_label": "main()"
     },
     {
@@ -12498,8 +12498,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_isolynenginetests_determinizertests_main",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "main()"
     },
     {
@@ -12707,8 +12707,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynenginetests_probabilityenginetests",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "probabilityenginetests.cpp"
     },
     {
@@ -12718,8 +12718,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_isolynenginetests_probabilityenginetests_approxequal",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "approxequal()"
     },
     {
@@ -12729,8 +12729,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "tests_isolynenginetests_probabilityenginetests_main",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "main()"
     },
     {
@@ -12784,8 +12784,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynenginetests_searchenginecancellationtests",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "searchenginecancellationtests.cpp"
     },
     {
@@ -12806,8 +12806,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "tests_isolynenginetests_searchenginecancellationtests_main",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "main()"
     },
     {
@@ -12817,8 +12817,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynenginetests_searchenginetests",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "searchenginetests.cpp"
     },
     {
@@ -12828,8 +12828,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_isolynenginetests_searchenginetests_main",
-      "community": 83,
-      "community_name": "SimulationEngine::sampleDeterminizedState",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "main()"
     },
     {
@@ -12839,8 +12839,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_isolynenginetests_simulationenginetests",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "simulationenginetests.cpp"
     },
     {
@@ -12850,8 +12850,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_isolynenginetests_simulationenginetests_main",
-      "community": 36,
-      "community_name": "Environment Data Models",
+      "community": 59,
+      "community_name": "Entry Screen",
       "norm_label": "main()"
     },
     {
@@ -15324,6 +15324,17 @@
       "norm_label": "ui\u201003 \u2014 real hand + screen chrome (\u00a79\u2013\u00a714, \u00a728)"
     },
     {
+      "label": "UI\u2011QA \u2014 OWNER VISUAL SIGN-OFF",
+      "file_type": "document",
+      "source_file": "fix-log.md",
+      "source_location": "L290",
+      "_origin": "ast",
+      "id": "fix_log_ui_qa_owner_visual_sign_off",
+      "community": 37,
+      "community_name": "Test Issue Reporting (generated)",
+      "norm_label": "ui\u2010qa \u2014 owner visual sign-off"
+    },
+    {
       "label": "isolyn current audit.md",
       "file_type": "document",
       "source_file": "isolyn current audit.md",
@@ -15800,7 +15811,7 @@
       "label": "5. CONTEXT FROM EARLY PRODUCTION (survival of the retired HANDOFF.md)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L133",
+      "source_location": "L143",
       "_origin": "ast",
       "id": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "community": 61,
@@ -15811,7 +15822,7 @@
       "label": "5.1 Governing documents (authority order \u2014 still binding)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L140",
+      "source_location": "L150",
       "_origin": "ast",
       "id": "legacy_handoff_5_1_governing_documents_authority_order_still_binding",
       "community": 61,
@@ -15822,7 +15833,7 @@
       "label": "5.2 The sandbox-loss lesson (why \"commit often\" is house law)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L153",
+      "source_location": "L163",
       "_origin": "ast",
       "id": "legacy_handoff_5_2_the_sandbox_loss_lesson_why_commit_often_is_house_law",
       "community": 61,
@@ -15833,7 +15844,7 @@
       "label": "5.3 The twelve ambiguity resolutions (numbering = load-bearing)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L161",
+      "source_location": "L171",
       "_origin": "ast",
       "id": "legacy_handoff_5_3_the_twelve_ambiguity_resolutions_numbering_load_bearing",
       "community": 61,
@@ -15844,7 +15855,7 @@
       "label": "5.4 Engine rigor status (stated plainly \u2014 do NOT \"fix\" these)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L213",
+      "source_location": "L223",
       "_origin": "ast",
       "id": "legacy_handoff_5_4_engine_rigor_status_stated_plainly_do_not_fix_these",
       "community": 61,
@@ -15855,7 +15866,7 @@
       "label": "5.5 Still-open design questions (unchanged by Phases 1\u20132)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L233",
+      "source_location": "L243",
       "_origin": "ast",
       "id": "legacy_handoff_5_5_still_open_design_questions_unchanged_by_phases_1_2",
       "community": 61,
@@ -15866,7 +15877,7 @@
       "label": "5.6 Early production timeline (compressed; full narratives retired)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L243",
+      "source_location": "L253",
       "_origin": "ast",
       "id": "legacy_handoff_5_6_early_production_timeline_compressed_full_narratives_retired",
       "community": 61,
@@ -15877,7 +15888,7 @@
       "label": "6. \u2705 CHECK MY WORK \u2014 copy, paste, compare",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L264",
+      "source_location": "L274",
       "_origin": "ast",
       "id": "legacy_handoff_6_check_my_work_copy_paste_compare",
       "community": 61,
@@ -15888,7 +15899,7 @@
       "label": "7. HOUSE RULES (inherited from early production \u2014 still law)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L372",
+      "source_location": "L382",
       "_origin": "ast",
       "id": "legacy_handoff_7_house_rules_inherited_from_early_production_still_law",
       "community": 61,
@@ -15899,7 +15910,7 @@
       "label": "8. IF YOU ARE A WEAK AI (or cautious human): DO EXACTLY THIS",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L399",
+      "source_location": "L409",
       "_origin": "ast",
       "id": "legacy_handoff_8_if_you_are_a_weak_ai_or_cautious_human_do_exactly_this",
       "community": 61,
@@ -15910,7 +15921,7 @@
       "label": "9. GLOSSARY (jargon \u2192 plain)",
       "file_type": "document",
       "source_file": "legacy handoff.md",
-      "source_location": "L418",
+      "source_location": "L428",
       "_origin": "ast",
       "id": "legacy_handoff_9_glossary_jargon_plain",
       "community": 61,
@@ -45609,6 +45620,16 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "fix-log.md",
+      "source_location": "L290",
+      "weight": 1.0,
+      "source": "fix_log_ui_rebuild_dominoes_ui_fix_non_negotiable_md_executed",
+      "target": "fix_log_ui_qa_owner_visual_sign_off",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "isolyn current audit.md",
       "source_location": "L1",
       "weight": 1.0,
@@ -46010,7 +46031,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L133",
+      "source_location": "L143",
       "weight": 1.0,
       "source": "legacy_handoff_isolyn_legacy_handoff_read_me_before_anything_else",
       "target": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
@@ -46020,7 +46041,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L264",
+      "source_location": "L274",
       "weight": 1.0,
       "source": "legacy_handoff_isolyn_legacy_handoff_read_me_before_anything_else",
       "target": "legacy_handoff_6_check_my_work_copy_paste_compare",
@@ -46030,7 +46051,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L372",
+      "source_location": "L382",
       "weight": 1.0,
       "source": "legacy_handoff_isolyn_legacy_handoff_read_me_before_anything_else",
       "target": "legacy_handoff_7_house_rules_inherited_from_early_production_still_law",
@@ -46040,7 +46061,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L399",
+      "source_location": "L409",
       "weight": 1.0,
       "source": "legacy_handoff_isolyn_legacy_handoff_read_me_before_anything_else",
       "target": "legacy_handoff_8_if_you_are_a_weak_ai_or_cautious_human_do_exactly_this",
@@ -46050,7 +46071,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L418",
+      "source_location": "L428",
       "weight": 1.0,
       "source": "legacy_handoff_isolyn_legacy_handoff_read_me_before_anything_else",
       "target": "legacy_handoff_9_glossary_jargon_plain",
@@ -46060,7 +46081,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L140",
+      "source_location": "L150",
       "weight": 1.0,
       "source": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "target": "legacy_handoff_5_1_governing_documents_authority_order_still_binding",
@@ -46070,7 +46091,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L153",
+      "source_location": "L163",
       "weight": 1.0,
       "source": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "target": "legacy_handoff_5_2_the_sandbox_loss_lesson_why_commit_often_is_house_law",
@@ -46080,7 +46101,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L161",
+      "source_location": "L171",
       "weight": 1.0,
       "source": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "target": "legacy_handoff_5_3_the_twelve_ambiguity_resolutions_numbering_load_bearing",
@@ -46090,7 +46111,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L213",
+      "source_location": "L223",
       "weight": 1.0,
       "source": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "target": "legacy_handoff_5_4_engine_rigor_status_stated_plainly_do_not_fix_these",
@@ -46100,7 +46121,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L233",
+      "source_location": "L243",
       "weight": 1.0,
       "source": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "target": "legacy_handoff_5_5_still_open_design_questions_unchanged_by_phases_1_2",
@@ -46110,7 +46131,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "legacy handoff.md",
-      "source_location": "L243",
+      "source_location": "L253",
       "weight": 1.0,
       "source": "legacy_handoff_5_context_from_early_production_survival_of_the_retired_handoff_md",
       "target": "legacy_handoff_5_6_early_production_timeline_compressed_full_narratives_retired",
@@ -46173,5 +46194,5 @@
       "source_file": "docs/STRATEGY_NOTES.md"
     }
   ],
-  "built_at_commit": "30f11eee40fbd0fadfe70b086cf57b6ebc08dc59"
+  "built_at_commit": "66e9157cbea7b3b3933501fee3dfd3178d9baf2a"
 }

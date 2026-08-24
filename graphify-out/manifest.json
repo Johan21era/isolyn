@@ -555,8 +555,8 @@
     "semantic_hash": "222682783080f6c7f8bbdfae57308d4f"
   },
   "tree.md": {
-    "mtime": 1787608839.8000348,
-    "ast_hash": "9b7d1e3fb0045bdc87dd5c38689c0577",
+    "mtime": 1787609758.1697397,
+    "ast_hash": "a3b95abb5037c3c69d23dc036635a38b",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Engine/MatchCoordinator.swift": {
@@ -595,8 +595,8 @@
     "semantic_hash": "a48915eda56b3fd12b5a25c7103d1a59"
   },
   "fix-log.md": {
-    "mtime": 1787609745.0545073,
-    "ast_hash": "63dd258e101f3221760f127382405974",
+    "mtime": 1787613021.5199268,
+    "ast_hash": "f038f87df4287981c62baa6bad847b21",
     "semantic_hash": ""
   },
   "isolyn roadmap.md": {
@@ -605,8 +605,8 @@
     "semantic_hash": "0c29fcebaee039072f2888c815ca3873"
   },
   "legacy handoff.md": {
-    "mtime": 1787608870.5099735,
-    "ast_hash": "52f2270dc6daf0e35b74ec70c7e0bc6d",
+    "mtime": 1787613021.5588238,
+    "ast_hash": "8d31ef652102f60a650db821dbcab191",
     "semantic_hash": ""
   },
   "isolyn current audit.pdf": {

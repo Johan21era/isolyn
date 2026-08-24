@@ -555,9 +555,9 @@
     "semantic_hash": "222682783080f6c7f8bbdfae57308d4f"
   },
   "tree.md": {
-    "mtime": 1787556907.3307889,
-    "ast_hash": "c9dce996215552ba2d4a3d03319e19f3",
-    "semantic_hash": "c9dce996215552ba2d4a3d03319e19f3"
+    "mtime": 1787608839.8000348,
+    "ast_hash": "9b7d1e3fb0045bdc87dd5c38689c0577",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Engine/MatchCoordinator.swift": {
     "mtime": 1787560360.6158676,
@@ -565,13 +565,13 @@
     "semantic_hash": "48f7d62f2726e09a2fc5542489d744a3"
   },
   "Sources/IsolynApp/Game/GameViewModel.swift": {
-    "mtime": 1787606569.114974,
-    "ast_hash": "5657bc5e95b8ffd4cc6d318c7ee70547",
+    "mtime": 1787609440.7204044,
+    "ast_hash": "8b6f714f682e5eabb923e53934ffb8ce",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/HandRackView.swift": {
-    "mtime": 1787562463.7843919,
-    "ast_hash": "1110eb99945ea02f881bc724868adfc3",
+    "mtime": 1787609462.6615365,
+    "ast_hash": "b25f551f43d5df600cdc17499026edbe",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/RoundEndOverlay.swift": {
@@ -595,8 +595,8 @@
     "semantic_hash": "a48915eda56b3fd12b5a25c7103d1a59"
   },
   "fix-log.md": {
-    "mtime": 1787608522.8935034,
-    "ast_hash": "48fc1aee39bc63f8649422c27ccddf32",
+    "mtime": 1787609745.0545073,
+    "ast_hash": "63dd258e101f3221760f127382405974",
     "semantic_hash": ""
   },
   "isolyn roadmap.md": {
@@ -605,8 +605,8 @@
     "semantic_hash": "0c29fcebaee039072f2888c815ca3873"
   },
   "legacy handoff.md": {
-    "mtime": 1787607891.2650003,
-    "ast_hash": "e5fd8b878976db304859b53d569d84e8",
+    "mtime": 1787608870.5099735,
+    "ast_hash": "52f2270dc6daf0e35b74ec70c7e0bc6d",
     "semantic_hash": ""
   },
   "isolyn current audit.pdf": {
@@ -625,8 +625,8 @@
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/Appearance/SettingsDrawer.swift": {
-    "mtime": 1787607473.0641494,
-    "ast_hash": "61890f2e0c369bec52440893d9771279",
+    "mtime": 1787609440.7209625,
+    "ast_hash": "576c6bd96dee6e648edb0b38dbc4c46e",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/Camera/BoardCamera.swift": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/ChainAndZonesView.swift": {
-    "mtime": 1787607724.0456226,
-    "ast_hash": "cdfcdd18ef2c6fea64827384df634f5d",
+    "mtime": 1787609701.1050768,
+    "ast_hash": "8142ec32f080bff772d9e14af86a9484",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/HoverChain/HoverChainController.swift": {
@@ -665,13 +665,13 @@
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/InteractiveGameBoardView.swift": {
-    "mtime": 1787607619.6513114,
-    "ast_hash": "d68610850b42c31cc46159fefb8de6f4",
+    "mtime": 1787609537.9589078,
+    "ast_hash": "3656e4847e450f6a6e33899f70f147e4",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/IsolynDominoTile.swift": {
-    "mtime": 1787607619.6507576,
-    "ast_hash": "f2d57d6c7f2bb4a5cf5e375e4beec3de",
+    "mtime": 1787609222.8359582,
+    "ast_hash": "295fb40058ca5af80ac4238da9d1fd0d",
     "semantic_hash": ""
   },
   "Tests/IsolynAppTests/ColorMathTests.swift": {
@@ -712,6 +712,11 @@
   "isolyn current audit.md": {
     "mtime": 1787607907.0141442,
     "ast_hash": "54dc96d1b496a2a029e0d83fe2cb2278",
+    "semantic_hash": ""
+  },
+  "dominoes_ui_fix_non_negotiable.md": {
+    "mtime": 1787567203.2969005,
+    "ast_hash": "527fa289a9cbfca0b0e654d2149dffbc",
     "semantic_hash": ""
   }
 }

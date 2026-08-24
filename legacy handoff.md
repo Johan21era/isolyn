@@ -124,6 +124,16 @@ Cmd+F, paste, land on the exact lines.
 | H8 | Appearance drawer honesty + small truths (N-2/F-09/N-4/N-6) | edge controls decorative; formatter rebuilt each tick; 7-tile rack rendered blank; Info.plist warning | edge rendering wired under semanticEdge precedence; formatter cache; truthful digit for counts ≥7; plist excluded | `IsolynDominoTile.swift` → `FIX-22` |
 | H9 | Hover-chain overlay finally dismissible (N-3); dead code decided | comments promised exit logic that never existed | grace-period dismissal + close button + dismiss-on-play; EnvironmentSettingsView now in ⌘, Settings scene | `HoverChainController.swift` → `FIX-26` |
 
+**UI-rebuild session (owner mandate `dominoes_ui_fix_non_negotiable.md`, executed in its own §29 order):**
+
+| # | WHAT was done | WHY | HOW | WHERE (anchor) |
+|---|---|---|---|---|
+| U1 | Canonical single-rectangle renderer | mandate §2/§3 law: exact 2:1 both orientations, 1pt divider @50%, chrome-less halves, native vertical | full rewrite preserving appearance-edge wiring + semanticEdge precedence | `IsolynDominoTile.swift` → `NON-NEGOTIABLE GEOMETRY LAW` |
+| U2 | Snake-chain board | §4–§8: connected runs, perpendicular doubles, clean turns, ends marked ON board only where legal | `SnakeChainBoard` deterministic `.position` layout; corner end-caps w/ guaranteed 4pt clearance; `EndMarker` rings gated on real legality | `ChainAndZonesView.swift` → `SnakeChainBoard` |
+| U3 | Real hand + §28 chrome | hand must read as dominoes, lift without reflow; header/actions/status hierarchy is law | identical canonical tiles in rack; compact header `[P1]SCORE[P2]`; capsule action controls; status strip | `HandRackView.swift`, `InteractiveGameBoardView.swift` |
+| U4 | Step-7 QA catch fixed pre-exposure | first corner design overlapped next-row tiles by 11pt | corner re-specified as perpendicular row-end cap; markers ride row center-lines | commit `30f11ee` |
+| U5 | Owner visual sign-off | §30's only owner-eye checkbox | live app review passed ("looks amazing") — all acceptance sections green | fix-log → `UI-QA` |
+
 **Deliberate deviation, disclosed:** roadmap said drag-and-drop placement.
 Shipped: tap-tile-then-tap-end instead. Same result, far fewer platform
 risks, works with screen readers. Dragging = future polish, tracked.

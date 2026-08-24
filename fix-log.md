@@ -286,3 +286,14 @@ steady state per rule 7.
 place/invalid/draw/analyze/pass paths all resolve through hardened VM+bridge
 paths unchanged) · visual QA vs reference composition pending owner's eyes
 (headless session cannot screenshot a running GUI — flagged honestly).
+
+## UI‑QA — OWNER VISUAL SIGN-OFF
+The one acceptance checkbox a headless session could not tick (§30 visual QA
+against the reference composition) is now closed: **owner reviewed the running
+app and confirmed the rebuild** ("looks amazing"). All §30 acceptance sections
+— domino construction, board, hand, layout, quality — are green with live
+verification. The mandate is fully satisfied, not partially.
+
+Post-sign-off directive executed: push all commits (verified none pending),
+refresh fix-log/tree.md/graphify to exact state (this entry), erase build
+residue per house rule 7.

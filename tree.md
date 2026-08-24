@@ -204,7 +204,7 @@
 ├── run.sh
 └── tree.md
 
-39 directories, 354 files
+39 directories, 357 files
 ```
 
-**36 directories, 165 files** excluding the regenerable graphify AST cache (collapsed above) — regenerated 2026-08-24 after the UI rebuild per `dominoes_ui_fix_non_negotiable.md` (UI-01…03). Build dirs omitted per house rule #7.
+**36 directories, 165 files** excluding the regenerable graphify AST cache (collapsed above) — regenerated 2026-08-24 after owner visual sign-off closed the UI mandate (UI-01…03 + UI-QA). Build dirs omitted per house rule #7.
