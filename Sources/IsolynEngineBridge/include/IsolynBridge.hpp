@@ -133,6 +133,12 @@ enum class BridgeStatus : int32_t {
     BoneyardEmpty = 7,    // e.g. bridge_voluntary_draw called with drawableCount() == 0
     EngineFailure = 8,    // a genuine engine-thrown exception was caught (EntropySource CSPRNG failure)
     BridgeFailure = 9,    // an internal invariant the shim itself expected did not hold -- see IsolynBridge.cpp
+    RoundAlreadyOver = 10,// a mutating command arrived after this session's round reached DominoVictory or Closed.
+                          // Audit F-03: without this, a fresh-version command against a finished round would keep
+                          // mutating state (a Closed position naturally rejects via legality, but a DOMINO VICTORY
+                          // leaves other players holding legal moves -- play could continue past the round's end).
+                          // Checked after the stale-version gate so an accidental duplicate tap still reports
+                          // StaleRequest (idempotent), while a genuinely fresh command reports this.
 };
 
 // ---------------------------------------------------------------------------

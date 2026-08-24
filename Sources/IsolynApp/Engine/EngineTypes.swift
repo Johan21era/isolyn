@@ -236,6 +236,7 @@ struct GameSnapshot: Sendable {
 enum BridgeError: Error, Sendable, Equatable {
     case invalidRequest
     case invalidMove
+    case roundAlreadyOver
     case sessionClosed
     case staleRequest
     case notYourTurn
@@ -253,6 +254,7 @@ enum BridgeError: Error, Sendable, Equatable {
         case .NotYourTurn: self = .notYourTurn
         case .NoLegalMove: self = .noLegalMove
         case .BoneyardEmpty: self = .boneyardEmpty
+        case .RoundAlreadyOver: self = .roundAlreadyOver
         case .EngineFailure: self = .engineFailure(diagnostic: diagnostic)
         case .BridgeFailure: self = .bridgeFailure(diagnostic: diagnostic)
         case .Ok:

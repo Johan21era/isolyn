@@ -260,6 +260,52 @@ int main() {
         bridge_session_close(s);
     }
 
+    std::printf("== terminal-state guard: mutators refuse a finished round (audit F-03 regression) ==\n");
+    {
+        SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        bool finished = false;
+        for (int op = 0; op < 400 && !finished; ++op) {
+            int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+            SnapshotDTO snap = bridge_get_snapshot(s, current);
+            if (snap.status != BridgeStatus::Ok) break;
+            if (snap.roundOutcome != RoundOutcomeDTO::InProgress) { finished = true; break; }
+            if (snap.legalMovesForRequestingPlayer.count > 0) {
+                bridge_submit_move(s, snap.stateVersion, snap.legalMovesForRequestingPlayer.moves[0]);
+            } else if (snap.boneyardDrawableCount > 0) {
+                CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+                if (r.status != BridgeStatus::Ok) bridge_end_turn_with_no_play(s, snap.stateVersion);
+            } else {
+                bridge_end_turn_with_no_play(s, snap.stateVersion);
+            }
+        }
+        CHECK(finished, "random legal play drove the round to a real outcome (DominoVictory or Closed)");
+
+        SnapshotDTO termSnap = bridge_get_snapshot(s, 0);
+        CHECK(termSnap.roundOutcome != RoundOutcomeDTO::InProgress, "session is genuinely terminal");
+        int cur = termSnap.currentPlayerIndex;
+        SnapshotDTO curSnap = bridge_get_snapshot(s, cur);
+
+        MoveDTO anyMove = curSnap.legalMovesForRequestingPlayer.count > 0
+            ? curSnap.legalMovesForRequestingPlayer.moves[0]
+            : MoveDTO{TileDTO{6, 6}, ChainSideDTO::Left};
+
+        // Fresh state version on purpose: these must clear the STALE gate and
+        // land squarely on the new ROUND gate.
+        CommandResultDTO r1 = bridge_submit_move(s, termSnap.stateVersion, anyMove);
+        CHECK(r1.status == BridgeStatus::RoundAlreadyOver, "submit_move refuses a finished round");
+        CommandResultDTO r2 = bridge_voluntary_draw(s, termSnap.stateVersion);
+        CHECK(r2.status == BridgeStatus::RoundAlreadyOver, "voluntary_draw refuses a finished round");
+        CommandResultDTO r3 = bridge_resolve_forced_draw(s, termSnap.stateVersion);
+        CHECK(r3.status == BridgeStatus::RoundAlreadyOver, "resolve_forced_draw refuses a finished round");
+        CommandResultDTO r4 = bridge_end_turn_with_no_play(s, termSnap.stateVersion);
+        CHECK(r4.status == BridgeStatus::RoundAlreadyOver, "end_turn_with_no_play refuses a finished round");
+
+        SnapshotDTO after = bridge_get_snapshot(s, 0);
+        CHECK(after.stateVersion == termSnap.stateVersion,
+              "state version UNCHANGED after all four refused mutations -- fails closed, mutates nothing");
+        bridge_session_close(s);
+    }
+
     if (g_failures == 0) {
         std::printf("\nBridge smoke test: all checks passed\n");
     } else {

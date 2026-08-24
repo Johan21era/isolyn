@@ -328,6 +328,8 @@ CommandResultDTO bridge_submit_move(SessionHandle session, uint64_t expectedStat
         if (!impl) return failedCommand(BridgeStatus::SessionClosed, "session is closed or unknown");
         std::lock_guard<std::mutex> lock(impl->mutex);
         if (expectedStateVersion != impl->stateVersion) return failedCommand(BridgeStatus::StaleRequest, "expectedStateVersion mismatch");
+        if (impl->cachedRoundOutcome != RoundOutcomeDTO::InProgress) return failedCommand(BridgeStatus::RoundAlreadyOver, "round has already ended -- record it / deal the next round instead");
+
         if (!isValidTileDTO(move.tile) || !isValidSide(move.side)) return failedCommand(BridgeStatus::InvalidRequest, "invalid tile or side");
         if (!canAdvanceStateVersion(impl->stateVersion)) return failedCommand(BridgeStatus::BridgeFailure, "state version exhausted");
 
@@ -348,6 +350,8 @@ CommandResultDTO bridge_voluntary_draw(SessionHandle session, uint64_t expectedS
         if (!impl) return failedCommand(BridgeStatus::SessionClosed, "session closed");
         std::lock_guard<std::mutex> lock(impl->mutex);
         if (expectedStateVersion != impl->stateVersion) return failedCommand(BridgeStatus::StaleRequest, "stale version");
+        if (impl->cachedRoundOutcome != RoundOutcomeDTO::InProgress) return failedCommand(BridgeStatus::RoundAlreadyOver, "round has already ended -- record it / deal the next round instead");
+
         if (!canAdvanceStateVersion(impl->stateVersion)) return failedCommand(BridgeStatus::BridgeFailure, "version exhausted");
         if (impl->controller.state().boneyard().drawableCount() == 0) return failedCommand(BridgeStatus::BoneyardEmpty, "boneyard empty");
 
@@ -363,6 +367,8 @@ CommandResultDTO bridge_resolve_forced_draw(SessionHandle session, uint64_t expe
         if (!impl) return failedCommand(BridgeStatus::SessionClosed, "session closed");
         std::lock_guard<std::mutex> lock(impl->mutex);
         if (expectedStateVersion != impl->stateVersion) return failedCommand(BridgeStatus::StaleRequest, "stale version");
+        if (impl->cachedRoundOutcome != RoundOutcomeDTO::InProgress) return failedCommand(BridgeStatus::RoundAlreadyOver, "round has already ended -- record it / deal the next round instead");
+
         if (!canAdvanceStateVersion(impl->stateVersion)) return failedCommand(BridgeStatus::BridgeFailure, "version exhausted");
         if (impl->controller.currentPlayerHasLegalMove()) return failedCommand(BridgeStatus::NoLegalMove, "legal move exists");
 
@@ -378,6 +384,8 @@ CommandResultDTO bridge_end_turn_with_no_play(SessionHandle session, uint64_t ex
         if (!impl) return failedCommand(BridgeStatus::SessionClosed, "session closed");
         std::lock_guard<std::mutex> lock(impl->mutex);
         if (expectedStateVersion != impl->stateVersion) return failedCommand(BridgeStatus::StaleRequest, "stale version");
+        if (impl->cachedRoundOutcome != RoundOutcomeDTO::InProgress) return failedCommand(BridgeStatus::RoundAlreadyOver, "round has already ended -- record it / deal the next round instead");
+
         if (!canAdvanceStateVersion(impl->stateVersion)) return failedCommand(BridgeStatus::BridgeFailure, "version exhausted");
         if (impl->controller.currentPlayerHasLegalMove()) return failedCommand(BridgeStatus::InvalidRequest, "legal move exists");
 
