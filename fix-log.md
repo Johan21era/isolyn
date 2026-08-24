@@ -227,3 +227,18 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
   only `.build/`, `build/`, `.DS_Store`; sources/tests/docs/git untouchable by
   construction. Standing rule for every future session: run it before handing
   the machine back.
+
+## OPS‑08 — Two new standing house rules (owner directive)
+1. **Unlimited testing, zero residue.** Builds/tests/sanitizers/scripts are
+   unrestricted DURING work; every generated artifact must be erased when the
+   session or phase ends (`./clean.sh`). Codified as handoff §7 rule 7.
+2. **Docs must match reality at every session/phase boundary:** fix-log.md
+   (protocol entries), tree.md (fresh `tree` regeneration), and graphify-out
+   (`graphify update . --force`) refreshed to the exact project state.
+   Codified as handoff §7 rule 8.
+
+**Executed immediately for this session:** graphify rebuilt → **1,383 nodes /
+2,684 edges / 112 communities** (was 1,077/2,172/80 — reflects the hardening
+code + docs); tree.md regenerated (36 dirs / 163 files excl. regenerable
+cache); handoff folder map + rules updated; folder size verified at ~10 MB
+steady state per rule 7.

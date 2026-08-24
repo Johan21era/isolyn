@@ -1,11 +1,11 @@
 {
   "Package.swift": {
-    "mtime": 1787556864.4333189,
-    "ast_hash": "21a15223d997d58f77af328250c25fda",
-    "semantic_hash": "21a15223d997d58f77af328250c25fda"
+    "mtime": 1787607619.651477,
+    "ast_hash": "3a3c1bc939f8f3700cff85b2c8f4bd1e",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/AppState.swift": {
-    "mtime": 1787552967.324448,
+    "mtime": 1787560431.027195,
     "ast_hash": "1db21bb0fea8ce96f0b74968fba13c0c",
     "semantic_hash": "1db21bb0fea8ce96f0b74968fba13c0c"
   },
@@ -20,14 +20,14 @@
     "semantic_hash": "7cf850bd4c947262fb0005d7ef6c35fb"
   },
   "Sources/IsolynApp/Components/EnvironmentTimeLabel.swift": {
-    "mtime": 1787552967.325615,
-    "ast_hash": "a4434e1d49e75546818014a8945e65df",
-    "semantic_hash": "a4434e1d49e75546818014a8945e65df"
+    "mtime": 1787607619.650978,
+    "ast_hash": "b607165feec93861ba728cbc4a204fd0",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Components/EnvironmentView.swift": {
-    "mtime": 1787552967.3257632,
-    "ast_hash": "4acde0efbc011d00c8ac484f1a1b7c99",
-    "semantic_hash": "4acde0efbc011d00c8ac484f1a1b7c99"
+    "mtime": 1787606513.3369217,
+    "ast_hash": "665df09cb62ab432920584a10e5ac799",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Components/ModeCard.swift": {
     "mtime": 1787552967.32591,
@@ -35,9 +35,9 @@
     "semantic_hash": "48eae12f72aeb53ad1a1cc06ab26374c"
   },
   "Sources/IsolynApp/Components/PipGlyph.swift": {
-    "mtime": 1787552967.326054,
-    "ast_hash": "8df0eb049aa7e5361164c12da5a5b01e",
-    "semantic_hash": "8df0eb049aa7e5361164c12da5a5b01e"
+    "mtime": 1787607619.6511269,
+    "ast_hash": "ee8bbf356e5453e38b4294742860235c",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Components/PrimaryCapsuleButtonStyle.swift": {
     "mtime": 1787552967.326194,
@@ -55,14 +55,14 @@
     "semantic_hash": "71bc9d1a2d04a740af6905bdadde0d80"
   },
   "Sources/IsolynApp/Engine/EngineSession.swift": {
-    "mtime": 1787552967.3939223,
-    "ast_hash": "0b90a435320569ff6f7566cf0a3392e9",
-    "semantic_hash": "0b90a435320569ff6f7566cf0a3392e9"
+    "mtime": 1787606569.1147249,
+    "ast_hash": "0f469b31a314ec5b43c48350e9434e7d",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Engine/EngineTypes.swift": {
-    "mtime": 1787556783.467775,
-    "ast_hash": "603689eac58ca07182862a9c4d20ad89",
-    "semantic_hash": "603689eac58ca07182862a9c4d20ad89"
+    "mtime": 1787606997.095627,
+    "ast_hash": "dcce69c9a5c2f20ad6c44e3de0091ca0",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Environment/EnvironmentClock.swift": {
     "mtime": 1787552967.3276782,
@@ -70,9 +70,9 @@
     "semantic_hash": "ae82b3e5ec3f3af2377bb85ce1a64984"
   },
   "Sources/IsolynApp/Environment/EnvironmentManager.swift": {
-    "mtime": 1787552967.3279207,
-    "ast_hash": "b166af08048ae6b25275ff8dee8842b4",
-    "semantic_hash": "b166af08048ae6b25275ff8dee8842b4"
+    "mtime": 1787606435.7901502,
+    "ast_hash": "40dd7f7cedfa2d474c0259c8c0a2b9dd",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Environment/EnvironmentState.swift": {
     "mtime": 1787552967.328064,
@@ -85,9 +85,9 @@
     "semantic_hash": "b8a5204e2ba78eb23d41c76fb35411b1"
   },
   "Sources/IsolynApp/Environment/LiveWeatherService.swift": {
-    "mtime": 1787552967.3284004,
-    "ast_hash": "943f5f4a1f944044e916d46396beb970",
-    "semantic_hash": "943f5f4a1f944044e916d46396beb970"
+    "mtime": 1787606480.6404724,
+    "ast_hash": "a516386409fdf102baa6b50bfb720d13",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Environment/RandomWeatherService.swift": {
     "mtime": 1787552967.3285396,
@@ -120,17 +120,17 @@
     "semantic_hash": "4f0628926a8e01089fd1b0a82f83de92"
   },
   "Sources/IsolynApp/IsolynApp.swift": {
-    "mtime": 1787552967.3299503,
-    "ast_hash": "07dbc1eb047948d2cdfc91eb54e6a1e4",
-    "semantic_hash": "07dbc1eb047948d2cdfc91eb54e6a1e4"
+    "mtime": 1787607752.6390426,
+    "ast_hash": "a19a8ed44b76df062b80b13237126384",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/RootView.swift": {
-    "mtime": 1787554536.7576325,
-    "ast_hash": "86f73b667282b9d0bf3021de2f51d68a",
-    "semantic_hash": "86f73b667282b9d0bf3021de2f51d68a"
+    "mtime": 1787560431.027396,
+    "ast_hash": "6804da6ce82834adbbb24352dc634ce8",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Theme/IsolynTheme.swift": {
-    "mtime": 1787552967.3302977,
+    "mtime": 1787560431.0275302,
     "ast_hash": "a4965456ad556c55b30ea46df8eb36a0",
     "semantic_hash": "a4965456ad556c55b30ea46df8eb36a0"
   },
@@ -150,9 +150,9 @@
     "semantic_hash": "3151bbc82e6d323f1bf947b4d787f581"
   },
   "Sources/IsolynEngine/BeliefState.cpp": {
-    "mtime": 1787552967.3312092,
-    "ast_hash": "8a1207e80581d519b3127162a62d35f2",
-    "semantic_hash": "8a1207e80581d519b3127162a62d35f2"
+    "mtime": 1787606682.9845765,
+    "ast_hash": "0a5dd0bd358cb6d40020ad543ebb6b17",
+    "semantic_hash": ""
   },
   "Sources/IsolynEngine/BlockingHeuristic.cpp": {
     "mtime": 1787552967.331385,
@@ -270,9 +270,9 @@
     "semantic_hash": "977c8605c6c57dc865daf97b3cfe35a0"
   },
   "Sources/IsolynEngine/include/BeliefState.hpp": {
-    "mtime": 1787552967.3358676,
-    "ast_hash": "d9dd75cd113c1f73b3a711befe187b26",
-    "semantic_hash": "d9dd75cd113c1f73b3a711befe187b26"
+    "mtime": 1787606697.2807832,
+    "ast_hash": "c7ff309ff681257c7c984c601c1ac205",
+    "semantic_hash": ""
   },
   "Sources/IsolynEngine/include/BlockingHeuristic.hpp": {
     "mtime": 1787552967.3360481,
@@ -395,19 +395,19 @@
     "semantic_hash": "48b25f871722f96dfa14efac5700e5b7"
   },
   "Sources/IsolynEngineBridge/IsolynBridge.cpp": {
-    "mtime": 1787552967.3948913,
-    "ast_hash": "2d2634667303781c383c68d8b988ea2b",
-    "semantic_hash": "2d2634667303781c383c68d8b988ea2b"
+    "mtime": 1787606997.0951927,
+    "ast_hash": "dcd876f596a19d636c5ab3ca8b51b709",
+    "semantic_hash": ""
   },
   "Sources/IsolynEngineBridge/include/IsolynBridge.hpp": {
-    "mtime": 1787556783.4682567,
-    "ast_hash": "0763e64af525c008fde445100ff85c7e",
-    "semantic_hash": "0763e64af525c008fde445100ff85c7e"
+    "mtime": 1787606929.6230948,
+    "ast_hash": "7d29c94df4f77997dbbe62077ad6e8a8",
+    "semantic_hash": ""
   },
   "Tests/IsolynAppTests/EnvironmentTests.swift": {
-    "mtime": 1787552967.3408194,
-    "ast_hash": "185ead6e77ac754a26221ca8794212eb",
-    "semantic_hash": "185ead6e77ac754a26221ca8794212eb"
+    "mtime": 1787606490.9258904,
+    "ast_hash": "8cb077d3fdd2de36a6d9f0749f1c978d",
+    "semantic_hash": ""
   },
   "Tests/IsolynEngineBridgeTests/FuzzBridge.cpp": {
     "mtime": 1787552967.3410394,
@@ -415,9 +415,9 @@
     "semantic_hash": "46c470f4915ea133fc94d110ea5112b1"
   },
   "Tests/IsolynEngineBridgeTests/SmokeTest.cpp": {
-    "mtime": 1787552967.395362,
-    "ast_hash": "476b1fd78d2df9974e5714de4b387e3b",
-    "semantic_hash": "476b1fd78d2df9974e5714de4b387e3b"
+    "mtime": 1787606929.6233068,
+    "ast_hash": "669242f12c0d5f061af08820e7a99766",
+    "semantic_hash": ""
   },
   "Tests/IsolynEngineBridgeTests/SoakTest.cpp": {
     "mtime": 1787552967.3416264,
@@ -425,9 +425,9 @@
     "semantic_hash": "a3b42e4a899b822198215a24f4f0f2ee"
   },
   "Tests/IsolynEngineTests/BeliefStateTests.cpp": {
-    "mtime": 1787552967.3418677,
-    "ast_hash": "d00246f996d499572390e4d779fac9f0",
-    "semantic_hash": "d00246f996d499572390e4d779fac9f0"
+    "mtime": 1787606682.9841342,
+    "ast_hash": "bbadf6f3bd02e2178e42c93c2a7269aa",
+    "semantic_hash": ""
   },
   "Tests/IsolynEngineTests/BoneyardTests.cpp": {
     "mtime": 1787552967.3420427,
@@ -560,42 +560,27 @@
     "semantic_hash": "c9dce996215552ba2d4a3d03319e19f3"
   },
   "Sources/IsolynApp/Engine/MatchCoordinator.swift": {
-    "mtime": 1787554854.953434,
+    "mtime": 1787560360.6158676,
     "ast_hash": "48f7d62f2726e09a2fc5542489d744a3",
     "semantic_hash": "48f7d62f2726e09a2fc5542489d744a3"
   },
-  "Sources/IsolynApp/Game/ChainView.swift": {
-    "mtime": 1787554667.515256,
-    "ast_hash": "2601e1d5f5eccaba3cf2f701f5597098",
-    "semantic_hash": "2601e1d5f5eccaba3cf2f701f5597098"
-  },
-  "Sources/IsolynApp/Game/GameBoardView.swift": {
-    "mtime": 1787554667.5148518,
-    "ast_hash": "92c9835bb7a76627fa876fab832b8be2",
-    "semantic_hash": "92c9835bb7a76627fa876fab832b8be2"
-  },
   "Sources/IsolynApp/Game/GameViewModel.swift": {
-    "mtime": 1787554960.7442744,
-    "ast_hash": "b30b3d6b1300d49da3f00e599615f11a",
-    "semantic_hash": "b30b3d6b1300d49da3f00e599615f11a"
+    "mtime": 1787606569.114974,
+    "ast_hash": "5657bc5e95b8ffd4cc6d318c7ee70547",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/HandRackView.swift": {
-    "mtime": 1787554350.1430771,
-    "ast_hash": "59cb961c18715f7e38618b8e7e19764b",
-    "semantic_hash": "59cb961c18715f7e38618b8e7e19764b"
+    "mtime": 1787562463.7843919,
+    "ast_hash": "1110eb99945ea02f881bc724868adfc3",
+    "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/RoundEndOverlay.swift": {
-    "mtime": 1787554790.997278,
-    "ast_hash": "9f9b15eadf66487b7875a9e71f9affd1",
-    "semantic_hash": "9f9b15eadf66487b7875a9e71f9affd1"
-  },
-  "Sources/IsolynApp/Game/TileView.swift": {
-    "mtime": 1787554312.410037,
-    "ast_hash": "d4dec2177b1ad5b34a294c2cba6ccd85",
-    "semantic_hash": "d4dec2177b1ad5b34a294c2cba6ccd85"
+    "mtime": 1787607738.283335,
+    "ast_hash": "0a4c90fcc51a493153ec42cdb3ba4bbb",
+    "semantic_hash": ""
   },
   "Tests/IsolynAppTests/GameViewModelTests.swift": {
-    "mtime": 1787554568.593795,
+    "mtime": 1787560360.6159968,
     "ast_hash": "72746a8f62c1e691ea1fc7d52fa7aad3",
     "semantic_hash": "72746a8f62c1e691ea1fc7d52fa7aad3"
   },
@@ -610,9 +595,9 @@
     "semantic_hash": "a48915eda56b3fd12b5a25c7103d1a59"
   },
   "fix-log.md": {
-    "mtime": 1787556783.4696043,
-    "ast_hash": "726a1d5589ec045a5710d01c75f652a5",
-    "semantic_hash": "726a1d5589ec045a5710d01c75f652a5"
+    "mtime": 1787608522.8935034,
+    "ast_hash": "48fc1aee39bc63f8649422c27ccddf32",
+    "semantic_hash": ""
   },
   "isolyn roadmap.md": {
     "mtime": 1787547884.3846836,
@@ -620,13 +605,113 @@
     "semantic_hash": "0c29fcebaee039072f2888c815ca3873"
   },
   "legacy handoff.md": {
-    "mtime": 1787556761.2675767,
-    "ast_hash": "8dfc4ec3ce227ac641f9111174c171da",
-    "semantic_hash": "8dfc4ec3ce227ac641f9111174c171da"
+    "mtime": 1787607891.2650003,
+    "ast_hash": "e5fd8b878976db304859b53d569d84e8",
+    "semantic_hash": ""
   },
   "isolyn current audit.pdf": {
     "mtime": 1787547405.4469945,
     "ast_hash": "812bdb96348ed5c2bf70ea520ca88dec",
     "semantic_hash": "812bdb96348ed5c2bf70ea520ca88dec"
+  },
+  "Sources/IsolynApp/Game/Appearance/AppearanceManager.swift": {
+    "mtime": 1787607473.0639763,
+    "ast_hash": "36bd3732f1b35ee05bf205e8778032e0",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/Appearance/DominoAppearance.swift": {
+    "mtime": 1787607473.0637455,
+    "ast_hash": "28f6ee8768f4e7d692ae715c7f0068ba",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/Appearance/SettingsDrawer.swift": {
+    "mtime": 1787607473.0641494,
+    "ast_hash": "61890f2e0c369bec52440893d9771279",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/Camera/BoardCamera.swift": {
+    "mtime": 1787558053.5852265,
+    "ast_hash": "dc5c6012c49ae6cbacc34ecbc83f454e",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/Camera/GestureArbiter.swift": {
+    "mtime": 1787558076.800249,
+    "ast_hash": "42f9845aeaa91326db0ae0188647b552",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/ChainAndZonesView.swift": {
+    "mtime": 1787607724.0456226,
+    "ast_hash": "cdfcdd18ef2c6fea64827384df634f5d",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/HoverChain/HoverChainController.swift": {
+    "mtime": 1787607710.7354891,
+    "ast_hash": "39a5cd8d1c8a150ff8f4490d3de506b6",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/HoverChain/HoverChainModel.swift": {
+    "mtime": 1787560360.61259,
+    "ast_hash": "b4321a1f8add88698ad5b98bab24a2be",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/HoverChain/HoverChainOverlay.swift": {
+    "mtime": 1787607738.2828443,
+    "ast_hash": "c853414f265ef439b0b8632b64a949ea",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/HoverChain/TileKnowledgeResolver.swift": {
+    "mtime": 1787560900.2322967,
+    "ast_hash": "195e7b9f67cfb940307c00fa034d4d5c",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/InteractiveGameBoardView.swift": {
+    "mtime": 1787607619.6513114,
+    "ast_hash": "d68610850b42c31cc46159fefb8de6f4",
+    "semantic_hash": ""
+  },
+  "Sources/IsolynApp/Game/IsolynDominoTile.swift": {
+    "mtime": 1787607619.6507576,
+    "ast_hash": "f2d57d6c7f2bb4a5cf5e375e4beec3de",
+    "semantic_hash": ""
+  },
+  "Tests/IsolynAppTests/ColorMathTests.swift": {
+    "mtime": 1787607564.1735873,
+    "ast_hash": "b07d712e91ec5dc14be6d72bfc32b044",
+    "semantic_hash": ""
+  },
+  "clean.sh": {
+    "mtime": 1787608507.0738645,
+    "ast_hash": "3576d11ff9f27f101968708b860ec178",
+    "semantic_hash": ""
+  },
+  "run.sh": {
+    "mtime": 1787560460.2700586,
+    "ast_hash": "feb85b34b3b44474492486061e1f86c6",
+    "semantic_hash": ""
+  },
+  "run_sanitize.sh": {
+    "mtime": 1787607294.7844093,
+    "ast_hash": "abd06accab5f6d64d168aad570c2ff8c",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1787607368.7782836,
+    "ast_hash": "59106950774fde7cdba6a1d7c1382f1d",
+    "semantic_hash": ""
+  },
+  "core hardening roadmap.md": {
+    "mtime": 1787605896.650671,
+    "ast_hash": "e8ebbca5960df5ec1ef2060700c955a5",
+    "semantic_hash": ""
+  },
+  "docs/RELEASE_CHECKLIST.md": {
+    "mtime": 1787607402.5703144,
+    "ast_hash": "fd4500ee0abe572881e570284a168cfd",
+    "semantic_hash": ""
+  },
+  "isolyn current audit.md": {
+    "mtime": 1787607907.0141442,
+    "ast_hash": "54dc96d1b496a2a029e0d83fe2cb2278",
+    "semantic_hash": ""
   }
 }

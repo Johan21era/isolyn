@@ -72,10 +72,16 @@ items, not bugs.
 | `Tests/IsolynEngineBridgeTests/` | SmokeTest (57 checks), SoakTest (memory), FuzzBridge + StandaloneFuzzDriver (garbage-input attacks). |
 | `Tests/IsolynAppTests/` | Swift tests (28). Time-of-day logic + headless game-flow tests. |
 | `run_tests.sh` | One command: build+run all engine tests. |
-| `run_bridge_tests.sh` | One command: build+run bridge suite. |
+| `run_bridge_tests.sh` | One command: build+run the bridge suite. |
 | `run_bridge_fuzz.sh` | Garbage-input attack runner (auto-falls back if libFuzzer missing). |
-| `docs/` | Four design docs. Read STRATEGY_NOTES.md before touching AI/heuristics. |
-| `graphify-out/` | Knowledge graph of the codebase (HTML map + report). Owner says keep. |
+| `run_sanitize.sh` | Sanitizer battery: `address` (ASan+UBSan everywhere) / `thread` (TSan on threaded parts). |
+| `clean.sh` | House-rule #7 enforcement: erases build residue, restores ~10 MB steady state. |
+| `.github/workflows/ci.yml` | CI: all suites on push/PR, weekly fuzz job. |
+| `core hardening roadmap.md` | Plan of record for the pre-UI-revival hardening session. |
+| `isolyn current audit.md` | Live-platform audit (F-01…F-12 findings + resolution ledger in Appendix D). |
+| `tree.md` | Regenerated file listing — must match reality (house rule #8). |
+| `graphify-out/` | Code knowledge graph (HTML map + report). Owner says keep. Refresh via `graphify update . --force` (rule #8). |
+| `docs/` | Five design docs (BRIDGE_*, FEATURE_SPECS, STRATEGY_NOTES, RELEASE_CHECKLIST). Read STRATEGY_NOTES.md before touching AI/heuristics. |
 | `fix-log.md` | Every bug fixed recently, with proof anchors. |
 | `Package.swift` | Build recipe for the whole package. |
 | *(HANDOFF.md)* | Retired — its surviving content lives in §5. |
@@ -376,6 +382,17 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
 6. NEW (this session): **engine stays the only place game truth is computed.**
    Swift may display, never decide. If you feel tempted to add scoring math
    to Swift — stop; extend the bridge instead.
+7. NEW (owner directive, core-hardening session): **test and script freely,
+   but erase every artifact when the session or phase ends.** Run as many
+   builds, tests, sanitizers, and Unix scripts as the work needs — then leave
+   ZERO generated weight behind. `./clean.sh` removes `.build/`, `build/`,
+   `.DS_Store` and nothing else; steady-state folder ≈ 10 MB. This rule exists
+   because residue hit 597 MB twice (OPS-03) before being caught (OPS-07).
+8. NEW (owner directive, same session): **fix-log.md, tree.md, and graphify
+   must always match the exact project state at the end of every session or
+   phase.** Concretely: append protocol-format entries to fix-log.md;
+   regenerate tree.md from a fresh `tree` listing; run `graphify update . --force`
+   so the code graph reflects reality. A stale map is a false map.
 
 ---
 
