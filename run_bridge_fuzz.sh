@@ -14,6 +14,7 @@ mkdir -p "$BUILD_DIR/corpus"
 echo "== building fuzz harness (clang++, ASan+UBSan+libFuzzer) =="
 if ! clang++ -std=c++20 -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
     -ISources/IsolynEngine/include -ISources/IsolynEngineBridge/include \
+    $( [ "$(uname)" = "Darwin" ] && echo "-framework Security" ) \
     -o "$BUILD_DIR/fuzz_bridge" \
     Tests/IsolynEngineBridgeTests/FuzzBridge.cpp Sources/IsolynEngineBridge/IsolynBridge.cpp Sources/IsolynEngine/*.cpp \
     2> "$BUILD_DIR/compile.log"; then

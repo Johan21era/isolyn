@@ -2,6 +2,13 @@
 # Compiles every *Tests.cpp against the full engine source set, using the
 # exact flags HANDOFF.md specifies, then runs each resulting executable and
 # aggregates pass/fail counts across all of them.
+#
+# FIX (audit F-02): EntropySource calls SecRandomCopyBytes on Apple platforms,
+# which requires linking Security.framework. Package.swift carries that
+# linkerSetting for SPM consumers, but these raw toolchain invocations never
+# did -- so on macOS every executable failed at link with undefined
+# _SecRandomCopyBytes/_kSecRandomDefault. Flag is applied conditionally so the
+# Linux sandbox workflow this script was originally written for still works.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,6 +17,11 @@ mkdir -p build
 
 ENGINE_SOURCES=(Sources/IsolynEngine/*.cpp)
 INCLUDE_DIR="Sources/IsolynEngine/include"
+
+PLATFORM_FLAGS=""
+if [ "$(uname)" = "Darwin" ]; then
+    PLATFORM_FLAGS="-framework Security"
+fi
 
 TOTAL_PASS=0
 TOTAL_FAIL=0
@@ -20,7 +32,7 @@ EXECUTABLES_RUN=0
 for test_file in Tests/IsolynEngineTests/*Tests.cpp; do
     name="$(basename "$test_file" .cpp)"
     echo "=== Compiling $name ==="
-    if g++ -std=c++20 -Wall -Wextra -Wpedantic -I"$INCLUDE_DIR" -o "build/$name" "$test_file" "${ENGINE_SOURCES[@]}" 2> "build/$name.compile.log"; then
+    if g++ -std=c++20 -Wall -Wextra -Wpedantic $PLATFORM_FLAGS -I"$INCLUDE_DIR" -o "build/$name" "$test_file" "${ENGINE_SOURCES[@]}" 2> "build/$name.compile.log"; then
         if [ -s "build/$name.compile.log" ]; then
             echo "  --- compiled, but with warnings: ---"
             cat "build/$name.compile.log"
@@ -63,3 +75,8 @@ else
     echo "Runtime failures: ${RUNTIME_FAILURES[*]}"
 fi
 echo "================================================"
+
+if [ ${#COMPILE_FAILURES[@]} -eq 0 ] && [ ${#RUNTIME_FAILURES[@]} -eq 0 ]; then
+    exit 0
+fi
+exit 1

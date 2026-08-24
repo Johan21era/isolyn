@@ -8,6 +8,23 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 CXX="${CXX:-g++}"
 STD_FLAGS="-std=c++20 -Wall -Wextra -Wpedantic"
+# Portable timeout: macOS lacks GNU coreutils' timeout(1); fall back to an
+# unguarded direct run there so local dev still works (CI images can install
+# coreutils to regain the hang guard).
+run_with_timeout() {
+    local secs="$1"; shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$secs" "$@"
+    else
+        "$@"
+    fi
+}
+
+PLATFORM_FLAGS=""
+if [ "$(uname)" = "Darwin" ]; then
+    # FIX (audit F-02): SecRandomCopyBytes requires Security.framework at link time on Apple platforms.
+    PLATFORM_FLAGS="-framework Security"
+fi
 INCLUDES="-ISources/IsolynEngine/include -ISources/IsolynEngineBridge/include"
 BUILD_DIR="build/bridge"
 mkdir -p "$BUILD_DIR/obj"
@@ -47,14 +64,14 @@ for test_file in Tests/IsolynEngineBridgeTests/*.cpp; do
     name="$(basename "$test_file" .cpp)"
     exe="$BUILD_DIR/$name"
     echo "--- $name ---"
-    if ! $CXX $STD_FLAGS $INCLUDES -pthread -o "$exe" "$test_file" "${OBJS[@]}" 2> "$BUILD_DIR/$name.compile.log"; then
+    if ! $CXX $STD_FLAGS $INCLUDES -pthread $PLATFORM_FLAGS -o "$exe" "$test_file" "${OBJS[@]}" 2> "$BUILD_DIR/$name.compile.log"; then
         echo "  *** COMPILE FAILED ***"
         cat "$BUILD_DIR/$name.compile.log"
         COMPILE_FAILURES=$((COMPILE_FAILURES+1))
         continue
     fi
     EXECUTABLES=$((EXECUTABLES+1))
-    if ! out=$(timeout 60 "$exe" 2>&1); then
+    if ! out=$(run_with_timeout 60 "$exe" 2>&1); then
         echo "$out"
         echo "  *** RUNTIME FAILURE (nonzero exit or timeout) ***"
         RUNTIME_FAILURES="$RUNTIME_FAILURES $name"

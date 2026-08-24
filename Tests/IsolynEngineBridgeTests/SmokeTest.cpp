@@ -24,6 +24,38 @@ static int g_failures = 0;
 
 namespace {
 
+// Deal randomness means the player due to act after the mandated opening tile
+// is occasionally blocked (no legal move). bridge_analysis_snapshot_create
+// correctly refuses such sessions (the exact guard added after FuzzBridge
+// found the UB), so tests that request analysis must first clear the block
+// the same way real play does: resolve_forced_draw, falling back to
+// end_turn_with_no_play if the boneyard is exhausted. Bounded loop; returns
+// once the CURRENT player has a legal move.
+void ensureCurrentPlayerCanMove(SessionHandle s) {
+    for (int guard = 0; guard < 40; ++guard) {
+        int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+        SnapshotDTO snap = bridge_get_snapshot(s, current);
+        if (snap.status != BridgeStatus::Ok) return;
+        if (snap.roundOutcome != RoundOutcomeDTO::InProgress) return;
+        if (snap.legalMovesForRequestingPlayer.count > 0) return;
+
+        if (snap.boneyardDrawableCount > 0) {
+            // Draw until playable (or the boneyard empties underneath us).
+            CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+            if (r.status != BridgeStatus::Ok) {
+                bridge_end_turn_with_no_play(s, snap.stateVersion);
+            }
+            // NOTE: in boneyard-less modes this branch is unreachable --
+            // drawableCount is structurally 0 there.
+        } else {
+            // Nothing to draw (1v1v1 / 2v2, or an exhausted 1v1 yard):
+            // resolve_forced_draw would "succeed" while drawing nothing, so
+            // the only way forward is ending the turn without a play.
+            bridge_end_turn_with_no_play(s, snap.stateVersion);
+        }
+    }
+}
+
 // Finds a move NOT present in the given legal-moves list -- used to
 // exercise the legality gate with a genuinely illegal move rather than
 // an arbitrary guess that might accidentally be legal.
@@ -92,9 +124,13 @@ int main() {
     std::printf("== legality gate + state versioning ==\n");
     {
         SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        // Deal randomness: the player due to act after the mandated opener is
+        // sometimes blocked (~1-in-8 deals). Clear it exactly as real play
+        // would before asserting anything about legal-move availability.
+        ensureCurrentPlayerCanMove(s);
         int currentPlayer = bridge_get_snapshot(s, 0).currentPlayerIndex;
         SnapshotDTO snapAsCurrent = bridge_get_snapshot(s, currentPlayer);
-        CHECK(snapAsCurrent.legalMovesForRequestingPlayer.count > 0, "current player has at least one legal move (guaranteed after the mandated opening tile)");
+        CHECK(snapAsCurrent.legalMovesForRequestingPlayer.count > 0, "current player has a legal move after forced-draw resolution");
 
         MoveDTO illegal = firstIllegalMove(snapAsCurrent.legalMovesForRequestingPlayer);
         CommandResultDTO illegalResult = bridge_submit_move(s, snapAsCurrent.stateVersion, illegal);
@@ -118,6 +154,7 @@ int main() {
     std::printf("== analysis: correctness + cancellation ==\n");
     {
         SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        ensureCurrentPlayerCanMove(s);
         int believer = bridge_get_snapshot(s, 0).currentPlayerIndex;
 
         AnalysisHandle a = bridge_analysis_snapshot_create(s, believer);
@@ -192,6 +229,7 @@ int main() {
     std::printf("== real cross-thread concurrency: command + query + analysis on one session together ==\n");
     {
         SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOneVsOne);
+        ensureCurrentPlayerCanMove(s);
         int believer = bridge_get_snapshot(s, 0).currentPlayerIndex;
 
         AnalysisHandle a = bridge_analysis_snapshot_create(s, believer);
