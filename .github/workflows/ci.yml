@@ -1,0 +1,46 @@
+name: CI
+
+# Core-hardening roadmap Phase 3a (OPS-04).
+# Purpose: make F-02-class drift structurally impossible -- every layer of
+# the project's own verification tooling runs on every push and PR, so a
+# script/link/interop regression shows up as red CI within minutes instead
+# of being rediscovered by an audit months later.
+#
+# The weekly scheduled job additionally re-runs the bridge fuzzer so
+# adversarial-input coverage stays fresh without slowing everyday merges.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+jobs:
+  macos-suite:
+    name: macOS build + full test suites
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift package build
+        run: swift build
+
+      - name: Swift test suite (environment + headless game flow)
+        run: swift test
+
+      - name: Engine suite (18 executables, 360+ checks)
+        run: ./run_tests.sh
+
+      - name: Bridge suite (SmokeTest + SoakTest, 58 checks)
+        run: ./run_bridge_tests.sh
+
+  weekly-fuzz:
+    name: Weekly adversarial-input fuzz
+    if: github.event_name == 'schedule'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bridge fuzz (auto-falls back to standalone driver when libFuzzer is absent)
+        run: ./run_bridge_fuzz.sh 15
