@@ -40,7 +40,7 @@ struct HandRackView: View {
         return Button {
             handleTap(tile, sides: playableSides)
         } label: {
-            IsolynDominoTile(tile: tile, height: 24, state: state)
+            IsolynDominoTile(leftPips: tile.low, rightPips: tile.high, height: 24, state: state)
         }
         .buttonStyle(.plain)
         .disabled(!interactive || playableSides.isEmpty)
