@@ -26,9 +26,20 @@ struct TileKnowledgeResolver {
     /// All 7 dominoes containing the target pip value. Pure set logic —
     /// zero game-state dependency, so safe to call during camera drag.
     static func numberFamily(for pip: Int) -> [(low: Int, high: Int)] {
-        guard pip >= 0, pip <= 6 else { return [] }
-        return (0...pip).map { (low: $0, high: pip) }
-                + ((pip + 1)...6).map { (low: pip, high: $0) }
+        var result: [(low: Int, high: Int)] = []
+        // Tiles where pip is the HIGH value: x-pip for x = 0...pip
+        // Always valid: pip >= 0 so 0...pip never has lower > upper.
+        for low in 0...max(pip, 0) {
+            result.append((low: low, high: max(pip, 0)))
+        }
+        // Tiles where pip is the LOW value: pip-x for x = pip+1...6
+        // Only valid when pip < 6; skipped entirely for pip == 6.
+        if pip >= 0 && pip < 6 {
+            for high in (pip + 1)...6 {
+                result.append((low: pip, high: high))
+            }
+        }
+        return result
     }
 
     // MARK: - Classification
