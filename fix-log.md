@@ -213,3 +213,17 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 
 ## OPS‑06 — Session closeout
 - All proof gates re-run at end-of-session (see legacy handoff.md §6 for expected outputs, updated this session). Tagged `core-hardened-1`.
+
+## OPS‑07 — Build-residue recurrence + guardrail (OPS-03 lesson re-learned)
+- **What happened:** the core-hardening session's builds (SwiftPM cache + 18
+  engine binaries + ASan/TSan instrumented objects) regrew the folder to
+  **500 MB** (.build 362 MB, build/ 128 MB). Owner flagged it; OPS-03 already
+  documented this exact failure mode and should have been applied proactively
+  after the sanitizer sweep.
+- **Resolution:** deleted both dirs on the spot — folder back to **9.7 MB**
+  steady-state in under a minute. Git unaffected (both paths gitignored from
+  day one; .git = 2.6 MB). Nothing tracked was touched.
+- **Guardrail:** new `clean.sh` — one command restores steady state; deletes
+  only `.build/`, `build/`, `.DS_Store`; sources/tests/docs/git untouchable by
+  construction. Standing rule for every future session: run it before handing
+  the machine back.
