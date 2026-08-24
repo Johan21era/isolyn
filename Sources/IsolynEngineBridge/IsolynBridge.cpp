@@ -8,6 +8,8 @@
 #include "ProbabilityEngine.hpp"
 #include "SearchEngine.hpp"
 
+#include "ScoreSystem.hpp"
+
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -16,6 +18,7 @@
 #include <mutex>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <optional>
 
@@ -192,6 +195,20 @@ private:
 HandleTable<EngineSessionImpl>& sessionTable() { static HandleTable<EngineSessionImpl> t; return t; }
 HandleTable<AnalysisSnapshotImpl>& analysisTable() { static HandleTable<AnalysisSnapshotImpl> t; return t; }
 
+// One running ScoreSystem for one mode. Guarded by its own mutex; whenever a
+// call must take BOTH this and a session's mutex, the session mutex is taken
+// FIRST everywhere (single global ordering => no deadlock).
+struct MatchStateImpl {
+    GameMode mode;
+    ScoreSystem scores;
+    std::unordered_set<uint64_t> recordedSessions; // session handles already applied
+    bool matchEnded = false;
+    int winnerParticipantIndex = -1;
+    std::mutex mutex;
+    MatchStateImpl(GameMode m) : mode(m), scores(m, Dealer::playerCountForMode(m)) {}
+};
+HandleTable<MatchStateImpl>& matchTable() { static HandleTable<MatchStateImpl> t; return t; }
+
 } // namespace -- was missing in the original; see review notes
 
 // ============================================================================
@@ -235,6 +252,18 @@ SnapshotDTO buildSnapshot(EngineSessionImpl& impl, int requestingPlayerIndex) {
     for (std::size_t i = 0; i < chainCopied; ++i) out.chain.tiles[i] = fromEngine(orderedChain[i]);
     out.chain.leftEnd = state.chain().isEmpty() ? -1 : state.chain().leftEnd();
     out.chain.rightEnd = state.chain().isEmpty() ? -1 : state.chain().rightEnd();
+
+    // Reveal-on-end: per-player remaining hand value, populated ONLY once the
+    // round has actually finished. During play every entry stays 0 -- hidden
+    // information is not leaked mid-round (see SnapshotDTO comment).
+    for (int p = 0; p < kMaxPlayers; ++p) out.finalHandValues[p] = 0;
+    if (impl.cachedRoundOutcome != RoundOutcomeDTO::InProgress) {
+        for (int p = 0; p < playerCount; ++p) {
+            int v = 0;
+            for (const auto& tile : state.hand(p)) v += tile.value();
+            if (p < kMaxPlayers) out.finalHandValues[p] = static_cast<int32_t>(v);
+        }
+    }
 
     // Boneyard
     out.boneyardDrawableCount = static_cast<int32_t>(state.boneyard().drawableCount());
@@ -394,6 +423,111 @@ CommandResultDTO bridge_end_turn_with_no_play(SessionHandle session, uint64_t ex
         return okResult(*impl, fromEngine(outcome.kind), outcome.decidingPlayerIndex);
     } catch (...) { return failedCommand(BridgeStatus::EngineFailure, "engine exception"); }
 }
+
+// ============================================================================
+// Match orchestration
+// ============================================================================
+namespace {
+
+int participantCountForMode(GameMode m) {
+    // 2v2 scores per TEAM (ScoreSystem's own documented participant semantics);
+    // every other mode scores per player.
+    return m == GameMode::TwoVsTwo ? 2 : Dealer::playerCountForMode(m);
+}
+
+MatchResultDTO failedMatch(BridgeStatus status) noexcept {
+    MatchResultDTO r{};
+    r.status = status;
+    r.participantCount = 0;
+    for (int p = 0; p < kMaxPlayers; ++p) r.scoresPerParticipant[p] = 0;
+    r.matchEnded = false;
+    r.winnerParticipantIndex = -1;
+    r.nextRoundStarterIndex = -1;
+    return r;
+}
+
+} // namespace
+
+MatchHandle bridge_match_begin(GameModeDTO mode) {
+    if (!isValidMode(mode)) return kInvalidMatchHandle;
+    try {
+        const GameMode engineMode = toEngine(mode);
+        auto impl = std::make_unique<MatchStateImpl>(engineMode);
+        return matchTable().insert(std::move(impl));
+    } catch (...) { return kInvalidMatchHandle; }
+}
+
+MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finishedRound) {
+    try {
+        auto m = matchTable().find(match);
+        if (!m) return failedMatch(BridgeStatus::SessionClosed);
+        auto sess = sessionTable().find(finishedRound);
+        if (!sess) return failedMatch(BridgeStatus::SessionClosed);
+
+        // Lock ordering: SESSION first, then MATCH -- the single global order.
+        std::lock_guard<std::mutex> sLock(sess->mutex);
+        std::lock_guard<std::mutex> mMLock(m->mutex);
+
+        if (m->matchEnded)
+            return failedMatch(BridgeStatus::InvalidRequest); // match over; no further rounds may be recorded
+        if (m->recordedSessions.count(finishedRound))
+            return failedMatch(BridgeStatus::InvalidRequest); // duplicate record of the same round
+        if (sess->cachedRoundOutcome == RoundOutcomeDTO::InProgress)
+            return failedMatch(BridgeStatus::InvalidRequest); // round not finished yet
+
+        const GameState& state = sess->controller.state();
+        const int players = state.playerCount();
+
+        // Participant values: raw per-player hands, team-combined for 2v2.
+        std::vector<int> participantValues;
+        if (m->mode == GameMode::TwoVsTwo) {
+            auto t0 = RulesEngine::playersOnTeam(0);
+            auto t1 = RulesEngine::playersOnTeam(1);
+            auto handValue = [&state](int p) {
+                int v = 0;
+                for (const auto& tile : state.hand(p)) v += tile.value();
+                return v;
+            };
+            participantValues.push_back(RulesEngine::combineTeamValue(handValue(t0.first), handValue(t0.second)));
+            participantValues.push_back(RulesEngine::combineTeamValue(handValue(t1.first), handValue(t1.second)));
+        } else {
+            for (int p = 0; p < players; ++p) {
+                int v = 0;
+                for (const auto& tile : state.hand(p)) v += tile.value();
+                participantValues.push_back(v);
+            }
+        }
+
+        const std::vector<int> roundScores = RulesEngine::computeRoundScores(participantValues);
+        m->scores.applyRoundScores(roundScores);
+
+        // Next starter: whoever won by Domino or was credited with the Close --
+        // exactly the decidingPlayerIndex cached when that outcome occurred.
+        int nextStarter = -1;
+        if (sess->cachedDecidingPlayer >= 0 && sess->cachedDecidingPlayer < players) {
+            nextStarter = RulesEngine::determineNextRoundStarter(sess->cachedDecidingPlayer);
+        }
+
+        m->recordedSessions.insert(finishedRound);
+        m->matchEnded = m->scores.hasMatchEnded();
+        if (m->matchEnded) {
+            m->winnerParticipantIndex = m->scores.winningParticipant();
+        }
+
+        MatchResultDTO r{};
+        r.status = BridgeStatus::Ok;
+        r.participantCount = static_cast<int32_t>(participantCountForMode(m->mode));
+        for (std::size_t i = 0; i < m->scores.participantCount(); ++i) {
+            if (static_cast<int>(i) < kMaxPlayers) r.scoresPerParticipant[i] = m->scores.score(static_cast<int>(i));
+        }
+        r.matchEnded = m->matchEnded;
+        r.winnerParticipantIndex = m->matchEnded ? m->winnerParticipantIndex : -1;
+        r.nextRoundStarterIndex = nextStarter;
+        return r;
+    } catch (...) { return failedMatch(BridgeStatus::EngineFailure); }
+}
+
+void bridge_match_close(MatchHandle match) { matchTable().erase(match); }
 
 // ============================================================================
 // Analysis

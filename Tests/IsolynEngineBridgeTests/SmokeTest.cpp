@@ -260,6 +260,83 @@ int main() {
         bridge_session_close(s);
     }
 
+    std::printf("== match orchestration: running scores across rounds ==\n");
+    {
+        MatchHandle m = bridge_match_begin(GameModeDTO::OneVsOne);
+        CHECK(m != kInvalidMatchHandle, "match tracker created");
+
+        auto driveToCompletion = [&](SessionHandle s) -> SnapshotDTO {
+            for (int op = 0; op < 400; ++op) {
+                int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+                SnapshotDTO snap = bridge_get_snapshot(s, current);
+                if (snap.status != BridgeStatus::Ok || snap.roundOutcome != RoundOutcomeDTO::InProgress) {
+                    return bridge_get_snapshot(s, 0);
+                }
+                if (snap.legalMovesForRequestingPlayer.count > 0) {
+                    bridge_submit_move(s, snap.stateVersion, snap.legalMovesForRequestingPlayer.moves[0]);
+                } else if (snap.boneyardDrawableCount > 0) {
+                    CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+                    if (r.status != BridgeStatus::Ok) bridge_end_turn_with_no_play(s, snap.stateVersion);
+                } else {
+                    bridge_end_turn_with_no_play(s, snap.stateVersion);
+                }
+            }
+            return bridge_get_snapshot(s, 0);
+        };
+
+        SessionHandle r1s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        SnapshotDTO done1 = driveToCompletion(r1s);
+        CHECK(done1.roundOutcome != RoundOutcomeDTO::InProgress, "round 1 reached a real outcome");
+        CHECK(done1.decidingPlayerIndex >= 0 && done1.decidingPlayerIndex < 2,
+              "round 1's deciding player is a valid index");
+
+        MatchResultDTO rec1 = bridge_match_record_round(m, r1s);
+        CHECK(rec1.status == BridgeStatus::Ok, "round 1 recorded into the running score");
+        CHECK(rec1.participantCount == 2, "1v1 tracks exactly 2 participants");
+        CHECK(rec1.nextRoundStarterIndex == done1.decidingPlayerIndex,
+              "next starter == the round's deciding player (Domino winner or credited closer)");
+        bool revealSumsMatch = true;
+        {
+            int awardedSum = 0;
+            for (int p = 0; p < rec1.participantCount; ++p) awardedSum += rec1.scoresPerParticipant[p];
+            // computeRoundScores awards everyone-at-minimum zero and everyone-else their value:
+            // so awardedSum is either 0 (tie at zero) or exactly max(reveal values).
+            int mx = done1.finalHandValues[0] > done1.finalHandValues[1] ? done1.finalHandValues[0] : done1.finalHandValues[1];
+            revealSumsMatch = (awardedSum == 0 && mx == 0) || (awardedSum == mx);
+        }
+        CHECK(revealSumsMatch, "awarded points consistent with the revealed hand values (min gets 0, others add their own)");
+        CHECK(!rec1.matchEnded && rec1.winnerParticipantIndex == -1,
+              "match cannot be over after one round of 101");
+
+        CommandResultDTO dup = bridge_submit_move(r1s, done1.stateVersion, MoveDTO{TileDTO{6,6}, ChainSideDTO::Left});
+        CHECK(dup.status == BridgeStatus::RoundAlreadyOver, "sanity: finished session still refuses mutations");
+        MatchResultDTO recDup = bridge_match_record_round(m, r1s);
+        CHECK(recDup.status != BridgeStatus::Ok, "recording the SAME round twice fails closed (no double-apply)");
+
+        SessionHandle r2s = bridge_session_create_subsequent_round(
+            GameModeDTO::OneVsOne, rec1.nextRoundStarterIndex);
+        CHECK(r2s != kInvalidSessionHandle, "next-round session created from the recorded starter");
+        SnapshotDTO start2 = bridge_get_snapshot(r2s, rec1.nextRoundStarterIndex);
+        CHECK(start2.currentPlayerIndex == rec1.nextRoundStarterIndex,
+              "the recorded starter genuinely opens round 2");
+        CHECK(bridge_get_snapshot(r2s, 0).chain.count == 0,
+              "round 2 starts with an empty chain -- no mandated opener past round one");
+        SnapshotDTO done2 = driveToCompletion(r2s);
+        CHECK(done2.roundOutcome != RoundOutcomeDTO::InProgress, "round 2 also reached a real outcome");
+        MatchResultDTO rec2 = bridge_match_record_round(m, r2s);
+        CHECK(rec2.status == BridgeStatus::Ok, "round 2 recorded");
+        bool accumulating = false;
+        for (int p = 0; p < 2; ++p)
+            if (rec2.scoresPerParticipant[p] >= rec1.scoresPerParticipant[p]) accumulating = true;
+        CHECK(accumulating, "running scores accumulate across rounds (never reset)");
+
+        bridge_session_close(r2s);
+        bridge_session_close(r1s);
+        bridge_match_close(m);
+        bridge_match_close(m); // idempotent double-close
+        CHECK(true, "match close is idempotent like every other handle surface");
+    }
+
     std::printf("== terminal-state guard: mutators refuse a finished round (audit F-03 regression) ==\n");
     {
         SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);

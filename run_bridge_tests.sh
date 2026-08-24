@@ -60,6 +60,7 @@ for test_file in Tests/IsolynEngineBridgeTests/*.cpp; do
     [ -e "$test_file" ] || continue
     case "$(basename "$test_file")" in
         Fuzz*.cpp) continue ;; # libFuzzer harnesses have their own main() via -fsanitize=fuzzer -- see run_bridge_fuzz.sh
+        Standalone*Driver.cpp) continue ;; # fallback fuzz driver -- built only by run_bridge_fuzz.sh (needs FuzzBridge.o)
     esac
     name="$(basename "$test_file" .cpp)"
     exe="$BUILD_DIR/$name"

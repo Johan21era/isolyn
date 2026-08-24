@@ -141,6 +141,20 @@ actor EngineSession {
         return try CommandOutcome.fromDtoOrThrow(dto)
     }
 
+    // MARK: - Match recording
+
+    /// Records THIS session's completed round into the given running match.
+    /// Deliberately an actor method: it takes the bridge call synchronously in
+    /// here so it serializes against every other command/query on the same
+    /// session -- the same discipline all session surface follows. The bridge
+    /// fails closed (BridgeError.invalidRequest) if this round is still in
+    /// progress, was already recorded into this match, or the match has ended.
+    func recordRoundInto(matchHandle: isolyn.bridge.MatchHandle) throws -> MatchOutcome {
+        guard let h = handle else { throw BridgeError.sessionClosed }
+        let dto = isolyn.bridge.bridge_match_record_round(matchHandle, h)
+        return try MatchOutcome.fromDtoOrThrow(dto)
+    }
+
     // MARK: - Analysis
 
     /// Starts a full analysis (snapshot creation + the expensive search)

@@ -79,3 +79,36 @@ Said plainly rather than silently dropped, matching this project's own establish
 - **Sandbox Mode's arbitrary starting positions.** No bridge entry point accepts a caller-constructed `GameState` — `docs/FEATURE_SPECS.md` calls for a `PositionConstructor` on the engine side that doesn't exist yet. Nothing to bridge to until that's built.
 - **A `bridge_analysis_run` pinned against a concurrent `bridge_analysis_snapshot_destroy`.** `find()` on the analysis handle table only guarantees the snapshot was valid at that instant, not for the whole (potentially long) remainder of a run call. In practice this is safe under the documented discipline (destroy only after run returns; use `bridge_analysis_request_cancel` to ask an in-flight run to stop, never destroy underneath it) — but it's a caller-discipline guarantee, not a structurally-enforced one, unlike the shared_ptr fix that closed the equivalent gap for session handles. A generation-checked handle or reference count on the analysis side would close this properly; it's real, scoped, undone work, not something to improvise under this pass's time constraints.
 - **Everything Swift-compiler-dependent.** SwiftUI integration, actual Xcode builds, on-device performance characteristics of the search — all explicitly the next owner's territory, per this project's own long-standing arrangement (no session that has worked on this codebase has ever had a Swift toolchain available).
+
+---
+
+## Match orchestration (added Phase 1)
+
+The bridge now carries a running-score surface, closing the largest item in
+this file's original "explicitly out of scope" list. The design split decided
+there held: **scoring math stays in the engine** (ScoreSystem /
+RulesEngine::computeRoundScores / combineTeamValue / thresholds -- single
+source of truth), and this surface is data plumbing only:
+
+- `bridge_match_begin(mode)` -> `MatchHandle` wrapping one running ScoreSystem
+  (same HandleTable pattern: shared_ptr entries, monotonic IDs, idempotent
+  close).
+- `SnapshotDTO.finalHandValues[kMaxPlayers]` -- per-player remaining pip value,
+  populated ONLY when roundOutcome != InProgress (reveal-on-end; zero during
+  play, so no hidden information leaks mid-round).
+- `bridge_match_record_round(match, finishedSession)` -- team-combines for 2v2,
+  computes participant scores, applies them, derives nextRoundStarterIndex from
+  that round's cachedDecidingPlayer via RulesEngine::determineNextRoundStarter.
+  Fails closed on: round still in progress, session already recorded into this
+  match (no double-apply, ever), or match already ended. Lock ordering when
+  touching both surfaces is SESSION->MATCH everywhere (single global order).
+- `bridge_match_close(handle)` -- idempotent like every other close.
+
+Policy lives Swift-side in `MatchCoordinator` (@MainActor @Observable): owns
+the handle, publishes scores/winner/next-starter, drives
+`EngineSession.recordRoundInto(matchHandle:)` through the actor so recording
+serializes with the session's own command stream.
+
+Verified: SmokeTest match section (record/duplicate-reject/starter/
+accumulation/idempotent close) -- suite at 57/57; ASan+UBSan clean over the
+new paths; swift build clean, swift test 25/25.

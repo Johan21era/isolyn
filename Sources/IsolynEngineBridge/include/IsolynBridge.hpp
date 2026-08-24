@@ -95,8 +95,10 @@ namespace isolyn::bridge {
 
 using SessionHandle = uint64_t;
 using AnalysisHandle = uint64_t;
+using MatchHandle = uint64_t;
 inline constexpr SessionHandle kInvalidSessionHandle = 0;
 inline constexpr AnalysisHandle kInvalidAnalysisHandle = 0;
+inline constexpr MatchHandle kInvalidMatchHandle = 0;
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -213,6 +215,15 @@ struct SnapshotDTO {
     TileDTO boneyardLockedTiles[2]; // {-1,-1} sentinel for a slot not yet revealed
     int32_t boneyardLockedCount;    // 0, 1 (never in practice, but not disallowed), or 2
 
+    // REVEAL-ON-END (Phase 1 match orchestration): remaining pip value of EVERY
+    // player's hand, populated ONLY when roundOutcome != InProgress -- i.e. at
+    // the moment physical dominoes would be turned face up for scoring. During
+    // play every entry is 0, so this leaks no hidden information mid-round;
+    // scoring needs all hands precisely because real scoring happens at the
+    // reveal. Per-PLAYER values -- 2v2 team combination is the match layer's
+    // job (see MatchResultDTO / RulesEngine::combineTeamValue).
+    int32_t finalHandValues[kMaxPlayers];
+
     // Deliberately NO running match score field here. An EngineSession
     // wraps exactly one ROUND -- the same scope MatchController itself
     // has (see MatchController.hpp: "construct a fresh GameState for
@@ -255,6 +266,51 @@ struct AnalysisResultDTO {
     double expectedValuePerPlayer[kMaxPlayers];
     int32_t playerCount;
 };
+
+// ---------------------------------------------------------------------------
+// Match orchestration (Phase 1) -- running score across rounds
+// ---------------------------------------------------------------------------
+//
+// Design split (see roadmap / BRIDGE_ARCHITECTURE.md): scoring MATH stays in
+// the tested engine (ScoreSystem / RulesEngine::computeRoundScores /
+// combineTeamValue / thresholds are the single source of truth); this surface
+// is data plumbing only. A MatchHandle wraps one running ScoreSystem for one
+// mode. The flow per round is:
+//   play a SessionHandle to completion (roundOutcome != InProgress)
+//   -> bridge_match_record_round(match, finishedSession):
+//        combines partner hands for 2v2 (RulesEngine::combineTeamValue),
+//        computes participant scores (RulesEngine::computeRoundScores),
+//        applies them (ScoreSystem::applyRoundScores),
+//        derives the next starter (RulesEngine::determineNextRoundStarter on
+//        that round's deciding player),
+//        reports matchEnded/winner once any participant crosses the threshold.
+//   -> start the NEXT round with bridge_session_create_subsequent_round using
+//      MatchResultDTO.nextRoundStarterIndex.
+// Each session may be recorded at most once (re-recording fails closed), so a
+// retried or duplicated call can never double-apply a round's points.
+
+struct MatchResultDTO {
+    BridgeStatus status;
+    int32_t participantCount;                     // players (1v1/1v1v1) or TEAMS (2v2)
+    int32_t scoresPerParticipant[kMaxPlayers];    // meaningful up to participantCount
+    bool matchEnded;                              // true iff any participant reached the mode's loss threshold
+    int32_t winnerParticipantIndex;               // valid only when matchEnded; -1 otherwise
+    int32_t nextRoundStarterIndex;                // valid only if the recorded round was finished; -1 on failure
+};
+
+// Creates an empty running-score tracker for the given mode. Returns
+// kInvalidMatchHandle on an invalid mode.
+MatchHandle bridge_match_begin(GameModeDTO mode);
+
+// Records ONE completed round into the running score. Fails closed (mutating
+// nothing) with InvalidRequest if the session's round is still InProgress,
+// if THIS session was already recorded against this match, or if the match
+// has already ended. Lock ordering is session->match, consistent everywhere.
+MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finishedRound);
+
+// Idempotent (same HandleTable guarantees as the other surfaces): unknown,
+// zero, or already-closed match handles are safe no-ops.
+void bridge_match_close(MatchHandle match);
 
 // ---------------------------------------------------------------------------
 // Lifecycle

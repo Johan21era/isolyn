@@ -14,6 +14,11 @@ class ScoreSystem {
 public:
     explicit ScoreSystem(GameMode mode, int participantCount);
 
+    // How many participants this tracker holds (players for 1v1/1v1v1, teams
+    // for 2v2) -- exposed so callers copying scores out can size correctly
+    // without being handed the constructor arguments again.
+    int participantCount() const { return static_cast<int>(m_scores.size()); }
+
     int score(int participantIndex) const;
 
     // Adds `roundScores` (as returned by RulesEngine::computeRoundScores)

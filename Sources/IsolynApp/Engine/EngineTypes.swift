@@ -231,6 +231,42 @@ struct GameSnapshot: Sendable {
     }
 }
 
+// MARK: - Match orchestration
+
+/// The running state of a multi-round match after one completed round was
+/// recorded. Scores are per PARTICIPANT (players for 1v1/1v1v1, teams for 2v2)
+/// -- the same semantics ScoreSystem itself uses.
+struct MatchOutcome: Sendable, Equatable {
+    let participantCount: Int
+    let scoresPerParticipant: [Int]
+    /// True once any participant has reached the mode's loss threshold.
+    let matchEnded: Bool
+    /// Valid only when matchEnded; nil otherwise.
+    let winnerParticipantIndex: Int?
+    /// Who opens the NEXT round -- always present on a successful record.
+    let nextRoundStarterIndex: Int
+
+    static func fromDtoOrThrow(_ dto: isolyn.bridge.MatchResultDTO) throws -> MatchOutcome {
+        guard dto.status == .Ok else {
+            throw BridgeError(status: dto.status, diagnostic: "match record failed")
+        }
+        var mutableDto = dto
+        let scores: [Int32] = withTupleAsArray(
+            &mutableDto.scoresPerParticipant,
+            capacity: Int(isolyn.bridge.kMaxPlayers),
+            count: Int(dto.participantCount),
+            as: Int32.self
+        ).map { $0 }
+        return MatchOutcome(
+            participantCount: Int(dto.participantCount),
+            scoresPerParticipant: scores.map { Int($0) },
+            matchEnded: dto.matchEnded,
+            winnerParticipantIndex: dto.matchEnded ? Int(dto.winnerParticipantIndex) : nil,
+            nextRoundStarterIndex: Int(dto.nextRoundStarterIndex)
+        )
+    }
+}
+
 // MARK: - Errors
 
 enum BridgeError: Error, Sendable, Equatable {
