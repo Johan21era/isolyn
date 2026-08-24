@@ -257,7 +257,9 @@ struct CommandResultDTO {
 };
 
 struct AnalysisResultDTO {
-    BridgeStatus status;             // BridgeFailure/EngineFailure only -- analysis has no InvalidMove/NotYourTurn/etc failure modes of its own
+    BridgeStatus status;             // BridgeFailure/EngineFailure only -- analysis has no InvalidMove/NotYourTurn/etc failure modes of its own.
+                                     // FIX-18 (audit F-07): an unknown or expired ANALYSIS handle reports BridgeFailure ("unknown snapshot"),
+                                     // NEVER SessionClosed -- that status describes session handles and is outside this DTO's declared set.
     uint64_t stateVersionAnalyzed;   // the session state version this snapshot was taken from -- compare against the session's CURRENT version yourself; a match does not by itself guarantee freshness if analysis ran a long time, only that nothing has mutated the session since
     bool completed;                  // false if cancellation cut this short -- see SearchEngine::chooseBestMove's own cancelRequested contract, which this passes through unchanged
     int32_t samplesCompleted;

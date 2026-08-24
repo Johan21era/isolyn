@@ -572,7 +572,15 @@ AnalysisHandle bridge_analysis_snapshot_create(SessionHandle session, int32_t be
 AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthPlies, int32_t determinizationCount, uint64_t rngSeed) {
     try {
         auto snap = analysisTable().find(snapshot);
-        if (!snap) return failedAnalysis(BridgeStatus::SessionClosed);
+        // FIX-18 (audit F-07): an unknown/expired ANALYSIS handle is a
+        // BridgeFailure -- "unknown snapshot" semantics. It used to
+        // return SessionClosed, which describes SESSION handles; this
+        // DTO's own contract (see IsolynBridge.hpp) permits only
+        // BridgeFailure/EngineFailure here, so the old value violated
+        // the header's declared status set. AnalysisResultDTO has no
+        // diagnostic buffer; the meaning is carried by this comment and
+        // the header note.
+        if (!snap) return failedAnalysis(BridgeStatus::BridgeFailure);
         if (maxDepthPlies < 1 || determinizationCount < 1) return failedAnalysis(BridgeStatus::InvalidRequest);
 
         SearchEngine::Config config;

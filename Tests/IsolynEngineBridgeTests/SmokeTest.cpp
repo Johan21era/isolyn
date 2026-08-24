@@ -175,6 +175,14 @@ int main() {
         bridge_analysis_snapshot_destroy(a2);
         bridge_analysis_snapshot_destroy(a2); // double-destroy must be safe too
 
+        // FIX-18 (audit F-07): an unknown analysis handle must fail with
+        // BridgeFailure -- one of the only two failure classes this
+        // result DTO's contract permits -- never SessionClosed, which
+        // describes sessions, not snapshots.
+        AnalysisResultDTO bogus = bridge_analysis_run(kInvalidAnalysisHandle, 2, 5, 1);
+        CHECK(bogus.status == BridgeStatus::BridgeFailure,
+              "analysis run on an unknown handle reports BridgeFailure, not SessionClosed");
+
         bridge_session_close(s);
     }
 
