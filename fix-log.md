@@ -134,3 +134,82 @@ Keychain PAT lacked repo-create + push scopes (403s documented). Resolution: loc
 
 ## OPS‑03 — Weight remediation
 Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB). Nuked twice per owner directive; steady-state folder = ~7 MB. Remote repo unaffected (gitignore held from commit #1).
+
+---
+
+# SESSION: CORE HARDENING (2026-08, post-audit roadmap execution)
+
+> Executed from `core hardening roadmap.md` with owner authorization.
+> Baseline at session start: engine 356/356 · bridge 57/57 · swift 28/0 ·
+> build clean-with-one-SPM-warning. Every entry below verified by actual
+> command output shown in-session.
+
+## FIX‑15 — EnvironmentManager weather race (audit F‑04)
+- **Severity:** MEDIUM · **Confidence:** High (repro'd warning, fix applied, suite green)
+- **Files:** `EnvironmentManager.swift`, `LiveWeatherService.swift`, `EnvironmentTests.swift` (@MainActor test class), `EnvironmentView.swift` (@MainActor preview helper)
+- **Root cause:** `weatherSource`/`weatherMode`/`currentSkyCondition` mixed MainActor writes (UI) with arbitrary-executor reads/writes (Tasks, foreground observer); `LiveWeatherService.lastKnownGood` mutated on any caller's executor under a bare `@unchecked Sendable`.
+- **Failure scenario:** `.live` mode-switch or foreground event landing mid-fetch corrupts cached condition (narrow-window race).
+- **Finality:** *"Confining the manager to @MainActor and capturing the source before any await removes every unsynchronized cross-thread access."* → compiler-enforced after conversion; sole prior concurrency warning (`EnvironmentManager.swift:146`) gone.
+- **Fix:** whole-class `@MainActor`; unstructured Tasks inherit isolation; `refreshWeather` captures source into a local pre-await; `lastKnownGood` behind NSLock so Sendable is earned not asserted.
+- **Verification:** zero-warning build; swift test green; manual toggle path unchanged behaviorally.
+
+## FIX‑16 — Cancel-on-abandon for analyses (audit F‑10)
+- **Severity:** LOW→MEDIUM (CPU/handle waste) · **Confidence:** High
+- **Files:** `InteractiveGameBoardView.swift`, `EngineSession.swift`, `GameViewModel.swift`
+- **Fix:** `.onDisappear { viewModel.shutdown() }`; lifecycle contract documented on `AnalysisTask` (await OR cancel before dropping); `invalidateAnalysis()` documented as the single funnel every discard routes through.
+- **Verification:** build+test green; teardown path now cancels within one determinization sample.
+
+## FIX‑17 — BeliefState.applyOpponentDraw totality (audit F‑11)
+- **Severity:** LOW (latent) · **Confidence:** High · **ENGINE CHANGE — test-first per house rule #5**
+- **Files:** `BeliefState.cpp/.hpp`, `BeliefStateTests.cpp`
+- **Root cause:** debug-only assert guarded boneyard-mass precondition; under NDEBUG division by zero mass (and worse: FP-drift NEGATIVE mass silently corrupts every distribution).
+- **Honesty note:** the new test cannot be red-first for exact-zero (old code no-op'd safely there); its value is pinning the contract + the guard's protection is the negative-drift case. Stated in-test.
+- **Fix:** early-return guard replaces assert; header documents totality ("no-op is safety netting, not license").
+- **Verification:** `run_tests.sh` **356 → 362**, zero warnings.
+
+## FIX‑18 — Unknown analysis handle reports truthfully (audit F‑07)
+- **Severity:** LOW · **Confidence:** High
+- **Files:** `IsolynBridge.cpp`, `IsolynBridge.hpp`, `SmokeTest.cpp`
+- **Root cause:** table-miss returned `SessionClosed` — a SESSION word — violating AnalysisResultDTO's own declared status set (BridgeFailure/EngineFailure only).
+- **Fix:** returns `BridgeFailure`; header comment names the mapping explicitly.
+- **Verification:** new SmokeTest check asserts BridgeFailure for `kInvalidAnalysisHandle`. Bridge suite **57 → 58**, all green.
+
+## FIX‑19 — Observable enum divergence + HandleTable truthing (audits F‑08/F‑12)
+- **Severity:** LOW · **Confidence:** High
+- **Files:** `EngineTypes.swift`, `IsolynBridge.cpp`
+- **Fix:** all three `@unknown default` DTO fallbacks now emit `os_log` faults (subsystem `com.isolyn.app`, category `bridge-dto`) instead of silently presenting finished rounds as `.inProgress`; deleted the no-op `if (m_nextId == 0) m_nextId = 0;` "clamp" and replaced with a truthful comment (the entry guard IS the exhaustion story).
+- **Verification:** build clean; bridge suite green (no behavior change intended or observed).
+
+## FIX‑20 — CI pipeline (roadmap P3a / audit remediation-plan item 10)
+- **OPS severity** · **Files:** new `.github/workflows/ci.yml`
+- Push/PR: swift build + swift test + run_tests.sh + run_bridge_tests.sh. Weekly scheduled fuzz job keeps adversarial coverage fresh. Makes F-02-class drift structurally impossible to reintroduce unnoticed.
+
+## OPS‑05 — Sanitizer baseline harness + recorded results (roadmap P3b)
+- **Files:** new `run_sanitize.sh` (address|thread modes; compile-once/link-many; `-fno-sanitize-recover=all`; bash-3.2-safe array expansion)
+- **Results this session, verbatim:** address mode = 20 executables, **420 checks, ZERO findings**; thread mode = SmokeTest + SearchEngineCancellationTests, **73 checks, ZERO findings**.
+- One script bug found-and-fixed during its own shakedown (empty-array expansion under `set -u`).
+
+## FIX‑21 — Hue slider black-tile bug (NEW finding N-1)
+- **Severity:** HIGH (visible correctness failure in shipped UI) · **Confidence:** High (regression test written)
+- **Files:** `DominoAppearance.swift`, `AppearanceManager.swift`, `SettingsDrawer.swift`, new `ColorMathTests.swift`
+- **Root cause:** hue math routed through a static `_hexCache` keyed on SwiftUI Color that `Color.init(hex:)` never populated → S/B read as (0,0) → every hue drag snapped tile body to BLACK; slider thumb pinned at hue 0; unsynchronized global mutable state besides.
+- **Fix:** cache deleted entirely; conversions are pure functions over hex strings (`hsb(fromHex:)` / `hexString(fromHue:saturation:brightness:)`); both consumers read via them.
+- **Verification:** 7 new tests incl. ivory hex round-trip stability and the exact regression (hue drag never collapses to black). swift test **28 → 35**.
+
+## FIX‑22..25 — Appearance honesty + mechanical sweep (roadmap P4)
+- **FIX‑22 (N-2):** settings drawer's Edge Highlight section was decorative; now renders (mode gates on/off, intensity drives opacity+width). Analytical `semanticEdge` always wins precedence. File: `IsolynDominoTile.swift`.
+- **FIX‑23 (F-09):** DateFormatter cached per timezone (was allocated every tick). File: `EnvironmentTimeLabel.swift`.
+- **FIX‑24 (N-4):** PipGlyph counts ≥7 render a truthful monospaced digit (a full 1v1/2v2 rack used to show BLANK); opponent counts pass through unclamped. Never fabricate pip arrangements real dominoes don't have. Files: `PipGlyph.swift`, `InteractiveGameBoardView.swift`.
+- **FIX‑25 (N-6):** Package.swift excludes Info.plist → swift build is now ZERO-warning.
+- **Verification:** swift test 35/0; zero warnings.
+
+## FIX‑26 — Hover-chain exit logic + wire-or-remove executed (roadmap P5 / N-3 + audit limbo item)
+- **Severity:** MEDIUM UX-integrity · **Confidence:** High
+- **Files:** `HoverChainController.swift`, `ChainAndZonesView.swift`, `HoverChainOverlay.swift`, `RoundEndOverlay.swift`, `IsolynApp.swift`
+- **Root cause:** comments promised overlay "exit logic" that was never built — once hovered, the panel stuck forever.
+- **Fix:** grace-period dismissal (250ms) scheduled on hover-out of zone AND overlay, cancelled on re-entry; explicit ✕ close button; auto-dismiss when a tile plays (stale analysis worse than none); camera-drag suspend preserved; deleted no-op `handleHover` stub, unused `displayLeft/displayRight`, unused `RulesOfDisplay`.
+- **Limbo ended:** `EnvironmentSettingsView` (compiled-but-unreachable since batch 5) is now hosted in the platform Settings scene (⌘,) — the audit's recommended resolution, chosen over removal.
+- **Verification:** zero-warning build; swift test 35/0; bridge 58/58.
+
+## OPS‑06 — Session closeout
+- All proof gates re-run at end-of-session (see legacy handoff.md §6 for expected outputs, updated this session). Tagged `core-hardened-1`.

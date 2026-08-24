@@ -197,3 +197,29 @@ Because Training Mode and DifficultyModel both terminate at `SearchEngine.cpp` w
 ### C.3 Method note
 
 Traces executed against `graphify-out/graph.json` (1,077 nodes / 2,172 edges / 80 labeled communities) via BFS depth-2 neighborhood confirmation plus targeted shortest-path queries. BFS context pool: 223 nodes spanning Bridge Analysis Pipeline, Move Legality Gate, Snapshot DTO Contract, and Future Work communities — consistent with the community structure reported in GRAPH_REPORT.md.
+
+---
+
+## APPENDIX D — CORE-HARDENING SESSION RESOLUTION LEDGER
+
+*Appended after the owner-directed core-hardening roadmap session (see
+`core hardening roadmap.md` and `fix-log.md` FIX-15…FIX-26). History
+above is preserved verbatim; this ledger records what happened to each
+finding afterward. Every resolution cites its fix-log entry.*
+
+| Finding | Status | Resolution |
+|---|---|---|
+| F-04 weather race | **RESOLVED** | FIX-15 — @MainActor manager + local source capture + NSLock cache; the :146 warning this audit surfaced is gone |
+| F-05 packaging substrate | **GROUNDED, NOT CLOSED** | docs/RELEASE_CHECKLIST.md written (P3c); actual app-shell work deliberately deferred per roadmap scope |
+| F-07 analysis-handle status | **RESOLVED** | FIX-18 — BridgeFailure + header contract note + SmokeTest regression (57→58) |
+| F-08 silent enum fallbacks | **RESOLVED** | FIX-19a — os_log faults on every @unknown default |
+| F-09 DateFormatter churn | **RESOLVED** | FIX-23 — per-timezone cache |
+| F-10 abandoned analyses | **RESOLVED** | FIX-16 — teardown cancel + documented await-or-cancel contract |
+| F-11 BeliefState division hazard | **RESOLVED** | FIX-17 — totality guard replacing debug assert; engine suite 356→362 test-first |
+| F-12 HandleTable fake clamp | **RESOLVED** | FIX-19b — no-op line removed, comment tells the truth |
+| EnvironmentSettingsView limbo | **RESOLVED (wired)** | FIX-26b — hosted in ⌘, Settings scene per this audit's recommendation |
+
+**New findings discovered during hardening (N-series), all resolved:**
+N-1 hue-slider black-tile bug (FIX-21, HIGH) · N-2 decorative edge controls (FIX-22) · N-3 hover overlay with no exit path (FIX-26) · N-4 blank 7-tile rack glyph (FIX-24) · N-6 Info.plist SPM warning (FIX-25) · N-7 untracked audit file (Step 0).
+
+**Verification state at ledger time:** engine 362/362 · bridge 58/58 · swift 35/0-failures · ASan+UBSan 420 checks zero findings · TSan 73 checks zero findings · CI wired (.github/workflows/ci.yml) · zero-warning builds across all three layers.

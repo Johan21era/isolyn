@@ -40,12 +40,13 @@ it only asks the engine and displays answers.
 
 | Layer | Check | Result |
 |---|---|---|
-| C++ engine | 18 test programs | **356/356 checks pass**, zero warnings |
-| Bridge | smoke suite | **57/57 checks pass** |
-| Swift app | `swift test` | **28 tests: 0 failures, 1 honest skip** |
-| Memory safety | AddressSanitizer + UBSan on everything | zero findings |
-| Thread safety | ThreadSanitizer on threaded parts | zero findings |
+| C++ engine | 18 test programs | **362/362 checks pass**, zero warnings |
+| Bridge | smoke suite | **58/58 checks pass** |
+| Swift app | `swift test` | **35 tests: 0 failures, 1 honest skip** |
+| Memory safety | AddressSanitizer + UBSan on everything (`./run_sanitize.sh address`) | **420 checks, zero findings** |
+| Thread safety | ThreadSanitizer on threaded parts (`./run_sanitize.sh thread`) | **73 checks, zero findings** |
 | Adversarial input | fuzz harness | 50,000 garbage-input runs, zero crashes |
+| CI | GitHub Actions macOS runner (push/PR suites + weekly fuzz) | wired — `.github/workflows/ci.yml` |
 | Version control | git → GitHub | private repo `Johan21era/isolyn`, branch `main`, clean |
 
 **What you can DO with it right now:** open the app, pick 1v1 / 1v1v1 / 2v2,
@@ -102,6 +103,20 @@ Cmd+F, paste, land on the exact lines.
 | 10 | Chain renders honestly | Tile orientations aren't stored anywhere (engine derives them); display now derives them the same way, so drawn pips always physically touch | walk from left end flipping each tile to match neighbor | `ChainView.swift` → `displayTiles` |
 | 11 | Wrote headless gameplay tests | UI can't be auto-tested here, but the brain can: tests deal REAL random games through the same code the screen uses | 3 XCTest cases incl. hunting rare blocked deals across 24 fresh games | `Tests/IsolynAppTests/GameViewModelTests.swift` |
 | 12 | Slimmed folder 597 MB → 7 MB | Compiled leftovers (482 MB Swift cache + 108 MB sanitizer binaries) are junk, not project | deleted both dirs; they regenerate on demand | n/a (ops) |
+
+**Core-hardening session (post-Phase-2, owner-directed pre-UI-revival):** full detail per fix in `fix-log.md` FIX-15…FIX-26 + OPS-04…06; plan of record in `core hardening roadmap.md`.
+
+| # | WHAT was done | WHY | HOW | WHERE (anchor) |
+|---|---|---|---|---|
+| H1 | Closed the weather race (F-04) | UI writes raced loop reads on weatherSource/mode/cache | @MainActor manager + local source capture pre-await + NSLock-guarded LiveWeatherService cache | `EnvironmentManager.swift` → `FIX-15`; `LiveWeatherService.swift` → `cacheLock` |
+| H2 | Analyses can no longer be abandoned mid-burn (F-10) | dropped searches ran to completion detached | .onDisappear teardown + documented await-or-cancel contract + single-funnel invalidate | `InteractiveGameBoardView.swift` → `FIX-16` |
+| H3 | applyOpponentDraw made total (F-11) | NDEBUG divide-by-zero / negative-drift corruption | early-return guard replacing debug assert, test-first | `BeliefState.cpp` → `FIX-17` |
+| H4 | Unknown analysis handle fails truthfully (F-07) | SessionClosed violated AnalysisResultDTO's own status set | BridgeFailure + header contract note + SmokeTest check (57→58) | `IsolynBridge.cpp` → `FIX-18` |
+| H5 | Enum divergence observable; HandleTable comment true (F-08/F-12) | silent fallbacks masked future C++ enum evolution; fake clamp line misled | os_log faults in every @unknown default; no-op clamp removed | `EngineTypes.swift` → `bridgeDTOLogger` |
+| H6 | CI + recorded sanitizer baseline | make drift structurally impossible; pin memory-safety post-fixes | ci.yml push/PR+weekly fuzz; run_sanitize.sh (420 ASan/UBSan checks + 73 TSan checks, zero findings) | `.github/workflows/ci.yml`, `run_sanitize.sh` |
+| H7 | Hue slider fixed — tiles no longer snap to black (N-1) | Color-keyed hex cache never populated; S/B read as zero | cache deleted; pure hex↔HSB functions; 7 new tests (swift 28→35) | `DominoAppearance.swift` → `FIX-21` |
+| H8 | Appearance drawer honesty + small truths (N-2/F-09/N-4/N-6) | edge controls decorative; formatter rebuilt each tick; 7-tile rack rendered blank; Info.plist warning | edge rendering wired under semanticEdge precedence; formatter cache; truthful digit for counts ≥7; plist excluded | `IsolynDominoTile.swift` → `FIX-22` |
+| H9 | Hover-chain overlay finally dismissible (N-3); dead code decided | comments promised exit logic that never existed | grace-period dismissal + close button + dismiss-on-play; EnvironmentSettingsView now in ⌘, Settings scene | `HoverChainController.swift` → `FIX-26` |
 
 **Deliberate deviation, disclosed:** roadmap said drag-and-drop placement.
 Shipped: tap-tile-then-tap-end instead. Same result, far fewer platform
@@ -254,12 +269,12 @@ temporarily; that's normal, see §4#12).
 ```
 Last lines MUST read exactly:
 ```
-TOTAL CHECKS PASSED: 356
+TOTAL CHECKS PASSED: 362
 TOTAL CHECKS FAILED: 0
 Compile failures: none
 Runtime failures: none
 ```
-*Proves:* every rules-of-dominoes behavior claimed in docs is machine-checked.
+*Proves:* every rules-of-dominoes behavior claimed in docs is machine-checked. (Was 356 before the core-hardening session added F-11 regression checks.)
 
 **PROOF 2 — Bridge really passes 57**
 ```
@@ -268,7 +283,7 @@ Runtime failures: none
 Must end:
 ```
 Executables run: 2
-TOTAL CHECKS PASSED: 57
+TOTAL CHECKS PASSED: 58
 ```
 *Proves:* safety wall works — illegal moves rejected, hidden hands hidden,
 finished rounds refuse further play, scores accumulate correctly.
@@ -279,9 +294,9 @@ swift test
 ```
 Must contain a line like:
 ```
-Executed 28 tests, with 1 skipped and 0 failures
+Executed 35 tests, with 1 skipped and 0 failures
 ```
-(older toolchains word it slightly differently; key = **0 failures**).
+(older toolchains word it slightly differently; key = **0 failures**). Was 28 tests before core hardening added the color-math suite.
 *Proves:* time-of-day engine + headless game flow behave.
 
 **PROOF 4 — Fuzzing works here**
