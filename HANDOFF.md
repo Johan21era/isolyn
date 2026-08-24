@@ -1,3 +1,8 @@
+<!-- ⚠️ STATUS SUPERSEDED: the sections below describe eras BEFORE the
+2026-08 audit + Phase 1 + Phase 2 sessions. Rules in §6 and the ambiguity/
+strategy knowledge remain BINDING. For CURRENT state, verification proofs,
+and onboarding, read `legacy handoff.md` FIRST — it defers to this file for
+rules but wins on status. -->
 # STATUS UPDATE — Real Xcode build attempt: missing `import IsolynEngineBridge` found and fixed (41 reported issues, effectively 1 root cause)
 
 The person opened `Isolyn-current_3` in actual Xcode and sent screenshots of a failed build: 41 issues, all under `EngineSession.swift`/`EngineTypes.swift`. Diagnosed from the screenshots alone (no Xcode access here, same as always): **`EngineTypes.swift` and `EngineSession.swift` never had `import IsolynEngineBridge`** — a real, avoidable miss, not an environment limitation. Every reported error was a direct or cascading consequence of that one omission:
