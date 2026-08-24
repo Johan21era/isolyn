@@ -53,6 +53,12 @@ let package = Package(
             name: "IsolynApp",
             dependencies: ["IsolynEngineBridge"],
             path: "Sources/IsolynApp",
+            exclude: [
+                // FIX-25 (roadmap N-6): present but unused under SPM (it
+                // exists for the eventual Xcode app shell); without an
+                // explicit exclude SPM warns about it on every build.
+                "Info.plist"
+            ],
             swiftSettings: [
                 .interoperabilityMode(.Cxx)
             ]

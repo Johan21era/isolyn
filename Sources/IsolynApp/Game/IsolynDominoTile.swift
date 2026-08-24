@@ -87,6 +87,17 @@ public struct IsolynDominoTile: View {
             if let sem = semanticEdge {
                 RoundedRectangle(cornerRadius: r, style: .continuous)
                     .strokeBorder(sem, lineWidth: 2)
+            } else if let appearance, appearance.edgeMode != .none {
+                // FIX-22 (roadmap N-2): the settings drawer's Edge
+                // Highlight section is no longer decorative -- mode gates
+                // on/off and the user's intensity slider drives opacity
+                // + a subtly scaled stroke width. Analytical semantic
+                // edges ALWAYS win precedence above: engine-derived
+                // signal must never be drowned out by decoration.
+                let intensity = max(0, min(1, appearance.edgeIntensity))
+                RoundedRectangle(cornerRadius: r, style: .continuous)
+                    .strokeBorder(appearance.edgeColor.opacity(intensity),
+                                  lineWidth: 0.75 + intensity * 1.25)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: r, style: .continuous))

@@ -18,10 +18,27 @@ struct EnvironmentTimeLabel: View {
     }
 
     private var formattedTime: String {
-        let formatter = DateFormatter()
-        formatter.timeZone = TimeZone(identifier: environmentManager.state.timeZoneIdentifier)
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: environmentManager.state.resolvedAt)
+        Self.formatter(for: environmentManager.state.timeZoneIdentifier)
+            .string(from: environmentManager.state.resolvedAt)
+    }
+
+    /// FIX-23 (audit F-09): DateFormatter construction is notoriously
+    /// expensive and this label re-evaluates every refresh tick. One
+    /// cached formatter per timezone identifier; the label body is
+    /// MainActor-confined so dictionary access is serialized by
+    /// isolation. Cache grows only with distinct timezones encountered
+    /// (one for virtually every user).
+    @MainActor
+    private static var formatterCache: [String: DateFormatter] = [:]
+
+    @MainActor
+    private static func formatter(for timeZoneIdentifier: String) -> DateFormatter {
+        if let cached = formatterCache[timeZoneIdentifier] { return cached }
+        let f = DateFormatter()
+        f.timeZone = TimeZone(identifier: timeZoneIdentifier)
+        f.dateFormat = "h:mm a"
+        formatterCache[timeZoneIdentifier] = f
+        return f
     }
 }
 

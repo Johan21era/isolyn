@@ -148,7 +148,7 @@ struct InteractiveGameBoardView: View {
         HStack(spacing: 12) {
             ForEach(viewModel.opponentCounts, id: \.player) { entry in
                 VStack(spacing: 2) {
-                    PipGlyph(count: min(max(entry.tiles, 0), 6), color: IsolynTheme.ivoryMuted)
+                    PipGlyph(count: entry.tiles, color: IsolynTheme.ivoryMuted)
                         .frame(width: 18, height: 18)
                     Text("P\(entry.player+1): \(entry.tiles)")
                         .font(IsolynTheme.caption(11)).foregroundStyle(IsolynTheme.ivoryMuted)
