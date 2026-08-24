@@ -373,6 +373,11 @@ final class GameViewModel {
         analysisTask?.cancel()
     }
 
+    /// Single funnel for discarding analysis state (FIX-16 / audit
+    /// F-10). Every path that replaces, finishes, or abandons an
+    /// AnalysisTask routes through here -- play(), dealNextRound(),
+    /// newMatch(), shutdown() -- which is what guarantees no task is
+    /// ever dropped without cancel().
     private func invalidateAnalysis() {
         analysisTask?.cancel()
         analysisTask = nil

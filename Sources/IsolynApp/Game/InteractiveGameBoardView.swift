@@ -53,6 +53,12 @@ struct InteractiveGameBoardView: View {
         .animation(.easeInOut(duration: 0.3), value: viewModel.phase)
         .animation(.easeInOut(duration: 0.25), value: settingsOpen)
         .task { await viewModel.refresh() }
+        // FIX-16 (audit F-10): teardown ALWAYS cancels any in-flight
+        // analysis and closes bridge handles. Previously an abandoned
+        // search ran to completion on its detached task, burning CPU
+        // (and holding a snapshot handle) for seconds after the screen
+        // left the hierarchy.
+        .onDisappear { viewModel.shutdown() }
         .alert(alertTitle, isPresented: Binding(
             get: { viewModel.alertError != nil || viewModel.setupError != nil },
             set: { if !$0 { viewModel.dismissAlert() } }

@@ -214,7 +214,18 @@ actor EngineSession {
     }
 }
 
-/// A single in-flight (or already-finished) analysis request. Holding
+/// A single in-flight (or already-finished) analysis request.
+///
+/// LIFECYCLE CONTRACT (FIX-16 / audit F-10): every holder MUST either
+/// await `result` or call `cancel()` before dropping this value.
+/// Dropping without either lets phase 2 run to completion on its
+/// detached task -- wasted CPU plus a live snapshot handle for the
+/// whole search duration. Production call sites satisfy this by
+/// routing every discard/replacement through GameViewModel's
+/// invalidateAnalysis()/shutdown(), and the game board cancels from
+/// .onDisappear.
+///
+/// Holding
 /// this rather than a bare Task is what makes cancel() possible --
 /// bridge_analysis_request_cancel needs the AnalysisHandle, which a Task
 /// alone doesn't carry. Sendable: safe to hand to any thread/actor (e.g.
