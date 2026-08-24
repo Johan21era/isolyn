@@ -244,9 +244,14 @@ private struct SnakeChainBoard: View {
             let needsTurn = remainingAfter > 0 && ((dir > 0 && col == cols - 1) || (dir < 0 && col == 0))
 
             if needsTurn {
-                // CORNER: this tile turns the run. Rendered vertical,
-                // pinned at the run-end column straddling the row break.
-                placed.append(Placed(x: centerX, y: rowY(row) + Self.rowPitch / 2,
+                // CORNER: this tile turns the run. Rendered VERTICAL as a
+                // perpendicular end-cap IN its own row cell (the classic
+                // table look). The next row starts in this same column, so
+                // the corner's lower face visually feeds the return run:
+                // row pitch (56) clears its long axis (52) with 4pt air,
+                // guaranteeing zero shape overlap while edges read as
+                // physically joined (§7).
+                placed.append(Placed(x: centerX, y: rowY(row),
                                      tile: t, vertical: true))
                 row += 1
                 dir *= -1
@@ -267,14 +272,14 @@ private struct SnakeChainBoard: View {
             return ([], nil, nil, nil, nil, 1, 1)
         }
         let headDirIn: CGFloat = 1
-        // Head marker sits just before the first tile along the initial
-        // run direction; tail marker just after the last tile along the
-        // final direction (opposite of entry if the last tile was a corner).
+        // Markers sit just beyond each open end along its run direction,
+        // always on the row center-line (a perpendicular cap's exposed
+        // face is still reached horizontally from outside the run).
         let tailDir = dir
-        let headPos = CGPoint(x: first.x - headDirIn * (Self.tileShortAxis + 20),
-                              y: first.vertical ? first.y - Self.tileShortAxis : first.y)
-        let tailOffset: CGFloat = last.vertical ? Self.tileShortAxis : (Self.tileShortAxis + 20)
-        let tailPos = CGPoint(x: last.x + tailDir * tailOffset, y: last.y)
+        let headPos = CGPoint(x: first.x - headDirIn * (Self.tileShortAxis + 22),
+                              y: first.y)
+        let tailPos = CGPoint(x: last.x + tailDir * (Self.tileShortAxis + 22),
+                              y: last.y)
 
         return (placed, headPos, tailPos, first.y, last.y, headDirIn, tailDir)
     }
@@ -290,7 +295,7 @@ private struct SnakeChainBoard: View {
         }
         if snapshot.chain.isEmpty {
             if canPlay && (handHasMoveOn(.left) || handHasMoveOn(.right)) {
-                EndMarker(pip: nil, active: true, size: Self.markerDiameter) {
+                EndMarker(pip: nil, active: canPlay && selectedTile != nil, size: Self.markerDiameter) {
                     // Any selected tile opens the chain.
                     if let tile = selectedTile,
                        let move = Set(snapshot.legalMoves).first(where: { $0.tile == tile }) {
