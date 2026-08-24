@@ -8,7 +8,7 @@ let package = Package(
     ],
     products: [
         .library(name: "IsolynEngine", targets: ["IsolynEngine"]),
-        .executable(name: "IsolynApp", targets: ["IsolynApp"])
+        .executable(name: "IsolynApp", targets: ["IsolynApp"]),
     ],
     targets: [
         .target(
@@ -57,7 +57,7 @@ let package = Package(
                 .interoperabilityMode(.Cxx)
             ]
         ),
-        // Deterministic, compiler-verifiable tests for the Swift/UI
+                // Deterministic, compiler-verifiable tests for the Swift/UI
         // layer -- the environment/time-phase engine specifically.
         // @testable-imports IsolynApp, so internal types are reachable.
         // NOTE: this target has NOT been re-verified against the

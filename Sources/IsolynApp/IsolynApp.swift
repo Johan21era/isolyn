@@ -5,7 +5,9 @@ struct IsolynApp: App {
     @State private var appState = AppState()
     @State private var environmentManager = EnvironmentManager()
 
-    var body: some Scene {
+    public init() {}
+
+    public var body: some Scene {
         WindowGroup("Isolyn") {
             RootView()
                 .environment(appState)
