@@ -341,7 +341,7 @@ final class GameViewModel {
             analysisOutcome = nil
 
             Task { [weak self] in
-                defer { Task { await self?.finishAnalysisRun() } }
+                defer { Task { self?.finishAnalysisRun() } }   // sync; no await needed
                 do {
                     let outcome = try await task.result
                     guard let self else { return }

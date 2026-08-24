@@ -164,7 +164,7 @@ private struct ColorEditorRow: View {
             }
         }
         .onAppear { textInput = hex }
-        .onChange(of: hex) { newValue in textInput = newValue }
+        .onChange(of: hex) { _, newValue in textInput = newValue }
     }
 
     private func commitHex() {
