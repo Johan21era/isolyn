@@ -13,6 +13,15 @@ final class HoverChainController {
     private(set) var isVisible = false
     private(set) var isSuspended = false // true during camera drag
 
+    /// Pending hover-out dismissal (FIX-26 / roadmap N-3). The overlay
+    /// used to have NO exit path: once an end-zone was hovered the panel
+    /// stuck forever, because every dismiss site was commented out on
+    /// the theory that "the overlay has its own exit logic" -- which was
+    /// never built. Now: leaving both zone and overlay schedules a
+    /// grace-period dismissal; re-entering either cancels it; playing a
+    /// tile or the explicit close button dismisses immediately.
+    @ObservationIgnored private var dismissalTask: Task<Void, Never>?
+
     /// Cache key to avoid re-resolution when nothing relevant changed.
     private var lastResolvedVersion: UInt64 = 0
     private var lastResolvedTarget: Int = -1
@@ -45,7 +54,27 @@ final class HoverChainController {
         setTarget(target, snapshot: snapshot)
     }
 
+    /// Schedules dismissal after a short grace period (default 250ms) --
+    /// long enough that moving from an end-zone across the small gap
+    /// onto the overlay doesn't blink the panel away.
+    func scheduleDismissal(afterNanoseconds: UInt64 = 250_000_000) {
+        dismissalTask?.cancel()
+        dismissalTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: afterNanoseconds)
+            guard !Task.isCancelled else { return }
+            self?.dismiss()
+        }
+    }
+
+    /// Pointer came back over the zone or the overlay -- keep it open.
+    func cancelScheduledDismissal() {
+        dismissalTask?.cancel()
+        dismissalTask = nil
+    }
+
     func dismiss() {
+        dismissalTask?.cancel()
+        dismissalTask = nil
         isVisible = false
         activeTarget = nil
         entries = []

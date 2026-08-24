@@ -9,6 +9,9 @@ import IsolynEngineBridge
 struct HoverChainOverlay: View {
     let chain: HoverChain
     let appearance: DominoAppearance
+    /// FIX-26 (N-3): explicit user-facing exit. The overlay previously
+    /// had no way to leave the screen at all.
+    var onClose: (() -> Void)? = nil
 
     // Semantic colors — centralized, distinct from user-customizable colors
     private static let semanticColors: [TileKnowledge: Color] = [
@@ -48,6 +51,15 @@ struct HoverChainOverlay: View {
             Text("\(chain.activeNodeKind.label) — \(chain.activeNodeKind.rawValue + 1) / \(HoverChainNodeKind.allCases.count)")
                 .font(IsolynTheme.caption(11))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
+            if let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close number family analysis")
+            }
         }
     }
 
@@ -75,11 +87,6 @@ struct HoverChainOverlay: View {
         .accessibilityLabel("\(entry.label) — \(knowledgeLabel(entry.knowledge))")
     }
 
-    /// In the base-uninformed node, ALL tiles render as canonical low|high.
-    /// In informed nodes, tiles still show their identity but the EDGE carries
-    /// the classification signal (never the body/pip colors).
-    private func displayLeft(_ entry: HoverChainEntry) -> Int { entry.low }
-    private func displayRight(_ entry: HoverChainEntry) -> Int { entry.high }
 
     // MARK: Node indicator
 

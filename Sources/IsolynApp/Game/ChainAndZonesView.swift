@@ -33,8 +33,17 @@ struct ChainAndZonesView: View {
             if let chain = hoverController.builtChain, !camera.isDragging {
                 VStack {
                     HStack { Spacer()
-                        HoverChainOverlay(chain: chain, appearance: appearance)
-                            .padding(.trailing, 20)
+                        HoverChainOverlay(
+                            chain: chain,
+                            appearance: appearance,
+                            onClose: { hoverController.dismiss() }
+                        )
+                        .padding(.trailing, 20)
+                        // Hovering the panel itself keeps it open.
+                        .onHover { over in
+                            if over { hoverController.cancelScheduledDismissal() }
+                            else { hoverController.scheduleDismissal() }
+                        }
                     }
                     Spacer()
                 }.allowsHitTesting(true).zIndex(50).transition(.opacity)
@@ -44,7 +53,6 @@ struct ChainAndZonesView: View {
         .onContinuousHover { phase in
             switch phase {
             case .active(let location):
-                handleHover(at: location)
                 lastMouseLocation = location
             case .ended:
                 // Don't dismiss immediately — allow pointer to enter overlay
@@ -93,11 +101,15 @@ struct ChainAndZonesView: View {
                 playable ? IsolynTheme.brass : IsolynTheme.ebonyElevated))
         }.buttonStyle(.plain).disabled(!playable)
         .onHover { hovering in
-            // Endpoint hover triggers the number-family analysis
             if hovering && !arbiter.isDragging {
+                // Endpoint hover triggers the number-family analysis and
+                // cancels any pending dismissal (pointer is back).
+                hoverController.cancelScheduledDismissal()
                 hoverController.setTarget(pip, snapshot: snapshot)
             } else if !hovering {
-                // Don't dismiss — overlay may be hovered; it has its own exit logic
+                // FIX-26 (N-3): leaving the zone starts the grace-period
+                // countdown; hovering the overlay itself cancels it.
+                hoverController.scheduleDismissal()
             }
         }
     }
@@ -159,6 +171,7 @@ struct ChainAndZonesView: View {
         guard let tile = selectedTile, let snap = snapshot,
               let move = Set(snap.legalMoves).first(where: { $0.tile == tile && $0.side == side }) else { return }
         selectedTile = nil
+        hoverController.dismiss()   // FIX-26: board changed; analysis is stale
         onPlay(move)
     }
 
@@ -166,17 +179,16 @@ struct ChainAndZonesView: View {
         guard let tile = selectedTile, let snap = snapshot,
               let move = Set(snap.legalMoves).first(where: { $0.tile == tile }) else { return }
         selectedTile = nil
+        hoverController.dismiss()   // FIX-26: board changed; analysis is stale
         onPlay(move)
     }
 
     // MARK: - Hover resolution
 
-    private func handleHover(at location: CGPoint) {
-        guard !arbiter.isDragging, !hoverController.isSuspended else { return }
-        // In a real implementation this would hit-test world-space geometry.
-        // For now, endpoint hover is handled by the .onHover on each endZone.
-        // Whole-tile hover resolves to nearest endpoint's pip value.
-    }
+    // FIX-26 note: whole-tile world-space hover was never built; the only
+    // real entry points are the per-end-zone .onHover handlers above. The
+    // old no-op handleHover(at:) stub that pretended otherwise is deleted
+    // -- comments must not promise behavior that does not exist.
 
     private var hoverTargetAtLastLocation: Int? {
         // Re-resolve from last known position after drag settles.

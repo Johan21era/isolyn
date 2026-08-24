@@ -165,9 +165,3 @@ private struct RevealRow: View {
         }
     }
 }
-
-/// Pure display-side rules mirror (team indexing only, for labels) -- never
-/// used for decisions; all real math lives engine-side.
-private enum RulesOfDisplay {
-    static func teamIndex(forPlayer p: Int) -> Int { p % 2 }
-}
