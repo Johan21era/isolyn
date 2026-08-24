@@ -66,17 +66,11 @@ struct HoverChainOverlay: View {
         let edgeColor = edgeColor(for: entry.knowledge)
         let showEdge = shouldShowEdge(for: entry.knowledge)
 
-        TileView(
-            displayingLeft: displayLeft(entry),
-            right: displayRight(entry),
+        IsolynDominoTile(
+            displayingLeft: entry.low, right: entry.high,
             isDouble: entry.isDouble,
-            tileSize: 22,
-            state: .idle
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                .strokeBorder(edgeColor, lineWidth: showEdge ? 2 : 0)
-                .opacity(showEdge ? 1 : 0)
+            height: 18,
+            semanticEdge: showEdge ? edgeColor : nil
         )
         .accessibilityLabel("\(entry.label) — \(knowledgeLabel(entry.knowledge))")
     }

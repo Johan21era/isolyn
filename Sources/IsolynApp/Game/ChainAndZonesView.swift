@@ -195,8 +195,9 @@ struct ChainTilesView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 5) {
                 ForEach(Array(orientedTiles.enumerated()), id: \.offset) { _, dt in
-                    AppearanceChainTile(leftPips: dt.left, rightPips: dt.right,
-                                        isDouble: dt.isDouble, appearance: appearance)
+                    IsolynDominoTile(displayingLeft: dt.left, right: dt.right,
+                                     isDouble: dt.isDouble,
+                                     height: 22, appearance: appearance)
                 }
             }
             .padding(.horizontal, 24)
@@ -219,50 +220,5 @@ struct ChainTilesView: View {
             touching = other
         }
         return result
-    }
-}
-
-// MARK: - Appearance-aware chain tile
-
-struct AppearanceChainTile: View {
-    let leftPips: Int
-    let rightPips: Int
-    let isDouble: Bool
-    let appearance: DominoAppearance
-
-    var body: some View {
-        let faceHStack = HStack(spacing: 1.5) {
-            face(pips: leftPips)
-            Rectangle().fill(IsolynTheme.ebonyLine).frame(width: 1.5)
-            face(pips: rightPips)
-        }
-        Group {
-            if isDouble { faceHStack.rotationEffect(.degrees(-90)).frame(width: 60, height: 30) }
-            else { faceHStack }
-        }
-        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-    }
-
-    @ViewBuilder private func face(pips: Int) -> some View {
-        let side: CGFloat = 28
-        let cell = side / 3
-        let pipSize = cell * 0.52
-        let layouts: [Int: [(CGFloat, CGFloat)]] = [
-            0: [], 1: [(1,1)], 2: [(0,0),(2,2)], 3: [(0,0),(1,1),(2,2)],
-            4: [(0,0),(0,2),(2,0),(2,2)], 5: [(0,0),(0,2),(1,1),(2,0),(2,2)],
-            6: [(0,0),(0,1),(0,2),(2,0),(2,1),(2,2)],
-        ]
-        ZStack {
-            RoundedRectangle(cornerRadius: side*0.14).fill(appearance.bodyColor)
-            ForEach(Array((layouts[pips] ?? []).enumerated()), id:\.offset) { _, pos in
-                Circle().fill(appearance.pipColor)
-                    .frame(width:pipSize,height:pipSize)
-                    .position(x:cell*(pos.0+0.5), y:cell*(pos.1+0.5))
-            }
-        }.frame(width:side,height:side)
-    }
-
-    private var edgeStroke: Color {
-        appearance.edgeMode == .none ? Color.clear : appearance.edgeColor.opacity(appearance.edgeIntensity + 0.15)
     }
 }

@@ -212,7 +212,7 @@ struct InteractiveGameBoardView: View {
     private var analysisSummary: some View {
         if let outcome = viewModel.analysisOutcome {
             HStack(spacing: 8) {
-                TileView(tile: outcome.recommendedMove.tile, tileSize: 18, state: .playable)
+                IsolynDominoTile(tile: outcome.recommendedMove.tile, height: 14, state: .playable)
                 Text(outcome.completed ? "engine suggests" : "partial (\(outcome.samplesCompleted)/\(outcome.samplesConfigured))")
                     .font(IsolynTheme.caption(11)).foregroundStyle(IsolynTheme.ivoryMuted)
             }

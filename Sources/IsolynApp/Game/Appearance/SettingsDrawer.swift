@@ -131,7 +131,7 @@ private struct DominoAppearanceSection: View {
     private var previewTile: some View {
         HStack(spacing: 8) {
             Text("Preview").font(IsolynTheme.caption(11)).foregroundStyle(IsolynTheme.ivoryMuted)
-            AppearanceTilePreview(appearance: manager.appearance)
+            IsolynDominoTile(leftPips: 3, rightPips: 5, height: 20, appearance: manager.appearance)
         }
     }
 }
@@ -225,47 +225,3 @@ private struct HueSlider: View {
 
 // MARK: - Preview Tile
 
-/// Renders a sample domino using the same visual pipeline as the board.
-struct AppearanceTilePreview: View {
-    let appearance: DominoAppearance
-
-    var body: some View {
-        HStack(spacing: 1.5) {
-            face(pips: 3)
-            Rectangle().fill(IsolynTheme.ebonyLine).frame(width: 1.5)
-            face(pips: 5)
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .strokeBorder(edgeStroke, lineWidth: edgeWidth)
-        )
-    }
-
-    @ViewBuilder
-    private func face(pips: Int) -> some View {
-        let side: CGFloat = 26
-        let cell = side / 3
-        let pipSize = cell * 0.52
-        let layouts: [Int: [(CGFloat, CGFloat)]] = [
-            3: [(0, 0), (1, 1), (2, 2)],
-            5: [(0, 0), (0, 2), (1, 1), (2, 0), (2, 2)],
-        ]
-        ZStack {
-            RoundedRectangle(cornerRadius: side * 0.14)
-                .fill(appearance.bodyColor)
-            ForEach(Array((layouts[pips] ?? []).enumerated()), id: \.offset) { _, pos in
-                Circle().fill(appearance.pipColor)
-                    .frame(width: pipSize, height: pipSize)
-                    .position(x: cell * (pos.0 + 0.5), y: cell * (pos.1 + 0.5))
-            }
-        }
-        .frame(width: side, height: side)
-    }
-
-    private var edgeStroke: Color {
-        appearance.edgeMode == .none ? Color.clear : appearance.edgeColor.opacity(appearance.edgeIntensity + 0.15)
-    }
-    private var edgeWidth: CGFloat {
-        appearance.edgeMode == .none ? 0 : 1.5
-    }
-}
