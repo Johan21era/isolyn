@@ -77,6 +77,19 @@ struct Tile: Sendable, Equatable, Hashable {
     let low: Int
     let high: Int
 
+    /// Internal init for constructing tiles from resolved values
+    /// (hover-chain resolver, tests). Does NOT bypass bridge validation —
+    /// those paths construct from DTOs which are already validated.
+    init(low: Int, high: Int) {
+        self.low = low
+        self.high = high
+    }
+
+    func hasFace(_ pip: Int) -> Bool { low == pip || high == pip }
+    func otherFace(_ pip: Int) -> Int { low == pip ? high : low }
+    /// Canonical dense index in [0, 27] matching C++ DominoTile::index().
+    func index() -> Int { high * (high + 1) / 2 + low }
+
     fileprivate init(dto: isolyn.bridge.TileDTO) {
         low = Int(dto.low)
         high = Int(dto.high)

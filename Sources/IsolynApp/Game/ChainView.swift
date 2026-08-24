@@ -70,7 +70,5 @@ struct ChainView: View {
 }
 
 private extension Tile {
-    func hasFace(_ pip: Int) -> Bool { low == pip || high == pip }
-    func otherFace(_ pip: Int) -> Int { low == pip ? high : low }
     var isDoubleTile: Bool { low == high }
 }
