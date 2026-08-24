@@ -242,3 +242,47 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 code + docs); tree.md regenerated (36 dirs / 163 files excl. regenerable
 cache); handoff folder map + rules updated; folder size verified at ~10 MB
 steady state per rule 7.
+
+---
+
+# UI REBUILD — dominoes_ui_fix_non_negotiable.md EXECUTED
+
+> Owner mandate rejected the previous presentation layer outright and
+> specified structure/geometry/hierarchy as law. Executed in the doc's
+> mandated order (§29 steps 1→8). Two commits: renderer+board+hand,
+> then screen chrome; plus this QA-fix commit.
+
+## UI‑01 — Canonical single-rectangle renderer (§2/§3 — THE core law)
+- `IsolynDominoTile` rewritten: EXACT 2:1 ratio in both orientations;
+  1pt divider centered at 50% inset from edges; halves reduced to pure
+  chrome-less pip regions (no bg/border/radius/shadow); native vertical
+  construction replacing rotationEffect; radius clamped 4–6px; canonical
+  pip grid 0–6 shared by every tile instance. Appearance edge wiring and
+  semanticEdge precedence preserved from FIX-22.
+- Anchor: `IsolynDominoTile.swift` → `NON-NEGOTIABLE GEOMETRY LAW`.
+
+## UI‑02 — Snake-chain board (§4–§8)
+- `ChainAndZonesView` rebuilt around `SnakeChainBoard`: serpentine runs,
+  doubles perpendicular, corner tiles as perpendicular row-end caps with
+  mathematically guaranteed clearance (pitch 56 vs axis 52). Deterministic
+  `.position` layout — nothing but dominoes and end markers ever renders.
+- Playable ends marked ON BOARD (`EndMarker` brass rings) ONLY where ≥1
+  legal move exists for that side; pulse reserved for selected-tile fits;
+  invalid ends never appear. Camera pan restored around the plane.
+- QA catch fixed: initial corner straddle design overlapped next-row tiles
+  by 11pt → replaced with end-cap scheme before any runtime exposure.
+
+## UI‑03 — Real hand + screen chrome (§9–§14, §28)
+- Hand: prominent identical canonical tiles, lift-on-select via render-only
+  offset (zero reflow), tap-tap quick-play retained.
+- Screen recomposed to §28 exactly: compact header (mode · turn ·
+  [P1]SCORE[P2] chips w/ acting highlight) / board owns main region /
+  action bar of coherent capsule controls (Draw · Analyze · Reset View ·
+  conditional Pass) / hand / status strip (opponents · centered muted
+  instruction). All spacing on the 4px scale; type per §22.
+
+**Verification:** swift build ZERO warnings · swift test 35/0 · bridge 58/58
+· interaction trace §29-step-7 performed code-level (select/deselect/marker/
+place/invalid/draw/analyze/pass paths all resolve through hardened VM+bridge
+paths unchanged) · visual QA vs reference composition pending owner's eyes
+(headless session cannot screenshot a running GUI — flagged honestly).

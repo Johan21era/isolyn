@@ -39,6 +39,7 @@
 │   ├── .graphify_python
 │   ├── .graphify_root
 │   ├── cost.json
+│   ├── graph 2.json
 │   ├── GRAPH_REPORT.md
 │   ├── graph.html
 │   ├── graph.json
@@ -188,6 +189,7 @@
 ├── .gitignore
 ├── clean.sh
 ├── core hardening roadmap.md
+├── dominoes_ui_fix_non_negotiable.md
 ├── fix-log.md
 ├── isolyn current audit.md
 ├── isolyn current audit.pdf
@@ -202,7 +204,7 @@
 ├── run.sh
 └── tree.md
 
-39 directories, 342 files
+39 directories, 354 files
 ```
 
-**36 directories, 163 files** excluding the regenerable graphify AST cache (collapsed above) — regenerated 2026-08-24 after the core-hardening session (FIX-15…FIX-26, OPS-04…07). Build dirs (.build/, build/) omitted entirely: regenerable compiler output, erased per house rule #7.
+**36 directories, 165 files** excluding the regenerable graphify AST cache (collapsed above) — regenerated 2026-08-24 after the UI rebuild per `dominoes_ui_fix_non_negotiable.md` (UI-01…03). Build dirs omitted per house rule #7.
