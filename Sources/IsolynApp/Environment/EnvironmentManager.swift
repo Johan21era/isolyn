@@ -9,6 +9,20 @@ import AppKit
 /// batch, weather. Keeps both current automatically: time on a
 /// lightweight timer plus immediately on a system timezone change;
 /// weather on its own, much slower timer.
+///
+/// FIX-15 (audit F-04): the whole class is now @MainActor. Previously
+/// `weatherSource`, `weatherMode`, and the refresh loops mixed
+/// MainActor writes (UI calls like `setWeatherMode`) with arbitrary-
+/// executor reads/writes (detached-style Tasks, foreground observer),
+/// a narrow-window data race the compiler stayed silent about because
+/// nothing here was Sendable-checked. Confinement closes that race at
+/// the type level; unstructured Tasks spawned inside this class
+/// inherit MainActor isolation from their creating context, so every
+/// loop tick and observer callback now lands on the same executor as
+/// the state they mutate. `deinit` remains nonisolated by Swift rule;
+/// it only cancels tasks and removes observers, both of which are
+/// thread-safe operations on their own.
+@MainActor
 @Observable
 final class EnvironmentManager {
     /// The fully-resolved current time/phase state. Views should read
@@ -61,6 +75,9 @@ final class EnvironmentManager {
     }
 
     deinit {
+        // Nonisolated by Swift rule; safe anyway: Task.cancel() and
+        // NotificationCenter.removeObserver are thread-safe, and no
+        // isolated method is called from here.
         refreshTask?.cancel()
         weatherTask?.cancel()
         if let timeZoneObserver {
@@ -102,10 +119,18 @@ final class EnvironmentManager {
     /// deliberately leaves it at its last value -- a stale-but-plausible
     /// condition reads better than the sky flickering to "clear" every
     /// time one fetch fails.
+    ///
+    /// FIX-15 (audit F-04): the source reference is captured into a
+    /// local BEFORE any await, so a mid-flight `setWeatherMode` swap can
+    /// never make one fetch start against the old source and finish
+    /// against the new one -- the fetch completes against whichever
+    /// source was current when it began. With the class now
+    /// MainActor-confined, the post-await write needs no hop back.
     func refreshWeather() async {
         guard weatherMode != .off else { return }
-        guard let condition = await weatherSource.currentCondition() else { return }
-        await MainActor.run { self.currentSkyCondition = condition }
+        let source = weatherSource
+        guard let condition = await source.currentCondition() else { return }
+        currentSkyCondition = condition
     }
 
     private static func makeWeatherSource(for mode: WeatherMode, clock: EnvironmentClock) -> any WeatherSource {
@@ -139,11 +164,14 @@ final class EnvironmentManager {
 
     private func scheduleRefreshLoop(intervalSeconds: Int) {
         guard intervalSeconds > 0 else { return }
+        // Created inside a MainActor-isolated method, so this task (and
+        // every iteration below) inherits MainActor isolation -- no
+        // explicit hop needed before touching `state`.
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: UInt64(intervalSeconds) * 1_000_000_000)
                 if Task.isCancelled { return }
-                await MainActor.run { self?.refresh() }
+                self?.refresh()
             }
         }
     }
@@ -180,4 +208,3 @@ final class EnvironmentManager {
         }
     }
 }
-

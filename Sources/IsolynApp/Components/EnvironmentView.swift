@@ -49,7 +49,7 @@ private struct LegibilityScrim: View {
     }
 }
 
-private func previewManager(hour: Int, minute: Int = 0, condition: SkyCondition?) -> EnvironmentManager {
+@MainActor private func previewManager(hour: Int, minute: Int = 0, condition: SkyCondition?) -> EnvironmentManager {
     EnvironmentManager(
         clock: FixedEnvironmentClock(
             fixedNow: Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: .now) ?? .now,

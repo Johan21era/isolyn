@@ -139,7 +139,7 @@ final class TimePhaseTests: XCTestCase {
 /// correctly at construction time -- the pure-function tests above
 /// cover the classification logic exhaustively, so this stays
 /// intentionally small.
-final class EnvironmentManagerTests: XCTestCase {
+@MainActor final class EnvironmentManagerTests: XCTestCase {
 
     private func clock(hour: Int, minute: Int,
                         timeZoneIdentifier: String = "America/New_York") -> FixedEnvironmentClock {
