@@ -58,11 +58,17 @@ final class AppearanceManager {
     }
 
     /// Sets body color from a hue slider position, preserving saturation/brightness.
+    /// FIX-21 (N-1): reads S/B purely from the stored hex string via the
+    /// pure conversion helpers -- the old path went through a Color-keyed
+    /// cache that was never populated, so S/B resolved to zero and any
+    /// hue drag snapped the tile body to black.
     func setBodyHue(_ hue: Double) {
-        let current = Color(hex: appearance.bodyColorHex) ?? .white
-        let hsB = current.hsB
-        let c = Color(hue: hue, saturation: hsB.saturation, brightness: hsB.brightness)
-        appearance.bodyColorHex = c.hexString
+        let hsB = Color.hsb(fromHex: appearance.bodyColorHex)
+        appearance.bodyColorHex = Color.hexString(
+            fromHue: hue,
+            saturation: hsB.saturation,
+            brightness: hsB.brightness
+        )
         persist()
     }
 

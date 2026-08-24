@@ -216,8 +216,10 @@ private struct HueSlider: View {
     }
 
     private func thumbOffset(in width: CGFloat) -> CGFloat {
-        guard let color = Color(hex: currentHex) else { return 0 }
-        return CGFloat(color.hsB.hue / 360) * width - 7
+        // FIX-21 (N-1): pure hex->HSB lookup; the old Color-cache path
+        // always returned hue 0, pinning the thumb to the left edge.
+        let hue = Color.hsb(fromHex: currentHex).hue
+        return CGFloat(hue / 360) * width - 7
     }
 }
 

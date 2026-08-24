@@ -59,6 +59,15 @@ struct DominoAppearance: Codable, Equatable, Sendable {
 }
 
 // MARK: - Hex Color Utilities
+//
+// FIX-21 (roadmap N-1): this section used to route hue math through a
+// static `_hexCache` dictionary keyed on SwiftUI `Color` values -- but
+// `Color.init(hex:)` never registered anything in it, so every lookup
+// missed: `setBodyHue` read saturation/brightness as (0,0) and snapped
+// tiles to BLACK, the slider thumb always sat at hue 0, and the cache
+// was unsynchronized global mutable state besides. All conversions are
+// now PURE FUNCTIONS over hex strings. No caches, no hidden state,
+// nothing to desynchronize.
 
 extension Color {
     /// Parses `#RRGGBB` or `RRGGBB`. Returns nil on malformed input.
@@ -73,49 +82,7 @@ extension Color {
         )
     }
 
-    /// Converts to `#RRGGBB` uppercase hex string — pure Swift, no UIKit.
-    /// Resolves via a temporary `ShapeStyle` rendering context is overkill;
-    /// instead we extract from the hex source if available, else use a
-    /// Canvas-free resolution through the color's description.
-    /// For colors created by `init(hex:)` we already have the hex string.
-    /// For derived colors (hue slider), we go through HSB→RGB→hex.
-    var hexString: String {
-        // SwiftUI Color doesn't expose RGB directly without UIKit/AppKit,
-        // so we round-trip through an OpacityResolver trick that works
-        // cross-platform: create a known-color overlay and compare.
-        // This is the pragmatic approach for SPM targets without AppKit import.
-        // In practice, all our colors originate from hex strings, so we cache
-        // the last-known conversion.
-        Self._hexCache[self] ?? "#000000"
-    }
-
-    private static var _hexCache: [Color: String] = [:]
-
-    /// Registers a hex string for a Color so `hexString` can resolve later.
-    static func registerHex(_ hex: String, for color: Color) {
-        _hexCache[color] = hex
-    }
-
-    /// Pure-Swift HSB extraction using the same hex-cache strategy.
-    var hsB: (hue: Double, saturation: Double, brightness: Double) {
-        guard let hex = Self._hexCache[self], let resolved = Self.resolveHex(hex) else {
-            return (0, 0, 0)
-        }
-        return Self.rgbToHsb(resolved)
-    }
-
-    /// Creates from HSB components and auto-registers the hex cache.
-    init(hue: Double, saturation: Double, brightness: Double) {
-        let rgb = Self.hsbToRgb(hue: hue, saturation: saturation, brightness: brightness)
-        self.init(
-            red: rgb.r,
-            green: rgb.g,
-            blue: rgb.b
-        )
-        Self.registerHex(Self.rgbToHexString(rgb), for: self)
-    }
-
-    // MARK: Pure-Swift color math
+    // MARK: Pure-Swift color math (hex <-> HSB; no stored state anywhere)
 
     static func resolveHex(_ hex: String) -> (r: Double, g: Double, b: Double)? {
         var str = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -126,6 +93,19 @@ extension Color {
             g: Double((val >> 8) & 0xFF) / 255.0,
             b: Double(val & 0xFF) / 255.0
         )
+    }
+
+    /// HSB extracted directly from a hex string. Malformed input yields
+    /// (0, 0, 0); callers that care should validate with init?(hex:)
+    /// first (the appearance manager always stores validated hex).
+    static func hsb(fromHex hex: String) -> (hue: Double, saturation: Double, brightness: Double) {
+        guard let rgb = resolveHex(hex) else { return (0, 0, 0) }
+        return rgbToHsb(rgb)
+    }
+
+    /// Pure HSB -> #RRGGBB uppercase hex.
+    static func hexString(fromHue hue: Double, saturation: Double, brightness: Double) -> String {
+        rgbToHexString(hsbToRgb(hue: hue, saturation: saturation, brightness: brightness))
     }
 
     static func rgbToHexString(_ rgb: (r: Double, g: Double, b: Double)) -> String {
