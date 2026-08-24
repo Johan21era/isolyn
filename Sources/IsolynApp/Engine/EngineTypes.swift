@@ -108,7 +108,7 @@ enum ChainSide: Sendable {
     }
 }
 
-struct Move: Sendable, Equatable {
+struct Move: Sendable, Equatable, Hashable {
     let tile: Tile
     let side: ChainSide
 
@@ -171,6 +171,9 @@ struct GameSnapshot: Sendable {
     let chainLeftEnd: Int?
     let chainRightEnd: Int?
     let boneyardDrawableCount: Int
+    /// Reveal-on-end: per-player remaining pip values, ALL ZERO while the
+    /// round is live -- mirrors SnapshotDTO's reveal semantics exactly.
+    let finalHandValues: [Int]
     let roundOutcome: RoundOutcome
     /// Populated only when currentPlayerIndex == requestingPlayerIndex --
     /// empty otherwise, matching SnapshotDTO (there's no legitimate
@@ -212,6 +215,15 @@ struct GameSnapshot: Sendable {
         chainRightEnd = dto.chain.count > 0 ? Int(dto.chain.rightEnd) : nil
 
         boneyardDrawableCount = Int(dto.boneyardDrawableCount)
+
+        var mutableReveal = dto
+        finalHandValues = withTupleAsArray(
+            &mutableReveal.finalHandValues,
+            capacity: Int(isolyn.bridge.kMaxPlayers),
+            count: Int(isolyn.bridge.kMaxPlayers),
+            as: Int32.self
+        ).map { Int($0) }
+
         roundOutcome = RoundOutcome(dto: dto.roundOutcome, decidingPlayerIndex: dto.decidingPlayerIndex)
 
         var mutableLegal = dto.legalMovesForRequestingPlayer

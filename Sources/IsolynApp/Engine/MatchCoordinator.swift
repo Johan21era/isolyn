@@ -1,5 +1,4 @@
-import SwiftUI
-import Observation
+import Foundation
 import IsolynEngineBridge
 
 /// Owns the running score across rounds of one match -- the Swift-side half
@@ -9,13 +8,15 @@ import IsolynEngineBridge
 /// when a round is recorded, who deals the next round, and when the match is
 /// over.
 ///
-/// MainActor by annotation: every field it publishes is UI state, and every
-/// bridge call it makes is fast (score bookkeeping, never search). Round
-/// recording goes THROUGH the finished round's EngineSession actor
-/// (recordRoundInto), so it serializes against that session's other work --
-/// no new synchronization concepts, just composition of existing ones.
+/// MainActor by annotation; deliberately NOT @Observable -- views read
+/// scores/winner/starter through GameViewModel's published passthroughs, so
+/// observability here was dead weight and blocked the nonisolated handle
+/// storage Swift 6 requires for deinit-safe teardown. Every bridge call it
+/// makes is fast (score bookkeeping, never search). Round recording goes
+/// THROUGH the finished round's EngineSession actor (recordRoundInto), so it
+/// serializes against that session's other work -- composition, not new
+/// synchronization concepts.
 @MainActor
-@Observable
 final class MatchCoordinator {
     /// Participant scores (players for 1v1/1v1v1, teams for 2v2). Empty until
     /// the first round has been recorded.
@@ -32,12 +33,12 @@ final class MatchCoordinator {
     /// True after close() -- guards double-recording into a dead match handle.
     private(set) var isClosed = false
 
-    /// Set exactly once in init, never mutated. `nonisolated(unsafe)` exists
-    /// only so deinit (which is nonisolated under Swift 6 rules) can reach it;
-    /// safety holds by construction: the value is immutable, and
-    /// bridge_match_close is genuinely idempotent (a table miss), so even an
-    /// explicit close() followed by deinit's close is a harmless no-op.
-    nonisolated(unsafe) private let matchHandle: isolyn.bridge.MatchHandle
+    /// All mutations happen on @MainActor methods; `nonisolated(unsafe)`
+    /// exists only so deinit (nonisolated under Swift 6 rules) can reach the
+    /// value for its safety-net close. bridge_match_close is genuinely
+    /// idempotent (a table miss), so any close/close/deinit interleaving is
+    /// harmless by construction.
+    nonisolated(unsafe) private var matchHandle: isolyn.bridge.MatchHandle
     private let mode: MatchFormat
 
     init(mode: MatchFormat) throws {
@@ -78,11 +79,29 @@ final class MatchCoordinator {
     /// Deals the next round from the most recently recorded starter. Chain
     /// starts empty; there is no mandated opening tile past round one (the
     /// engine enforces all of this via dealSubsequentRound).
-    func dealNextRound() throws -> EngineSession? {
+    /// Non-throwing by proof: the only underlying call returns an optional
+    /// rather than throwing, so callers get nil-on-failure with no try-tax.
+    func dealNextRound() -> EngineSession? {
         guard !isClosed else { return nil }
         guard let starter = lastNextStarter else { return nil }
-        return try EngineSession.createSubsequentRound(mode: mode, startingPlayerIndex: starter)
+        return EngineSession.createSubsequentRound(mode: mode, startingPlayerIndex: starter)
     }
 
     var hasBegunRecording: Bool { !scores.isEmpty }
+
+    /// Phase 2 seam -- GameViewModel.newMatch() is the only intended caller.
+    /// Closes the current bridge-side tracker and begins a fresh one for the
+    /// SAME mode: running scores zero out, winner clears. If bridge_match_begin
+    /// somehow returned invalid, every later record call fails closed with
+    /// SessionClosed -- honest degradation, never fabricated state.
+    func reset() {
+        if !isClosed {
+            isolyn.bridge.bridge_match_close(matchHandle)
+        }
+        matchHandle = isolyn.bridge.bridge_match_begin(mode.bridgeMode)
+        scores = []
+        lastNextStarter = nil
+        matchWinner = nil
+        isClosed = false
+    }
 }
