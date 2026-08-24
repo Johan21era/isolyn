@@ -1,6 +1,17 @@
 import Foundation
 import IsolynEngineBridge
 
+// FIX-19a (audit F-08): every @unknown default below previously fell
+// back SILENTLY -- a future C++ enum evolution would have presented a
+// finished round as .inProgress (or mislabeled a mode) with zero trace.
+// Each fallback now emits an os_log fault so divergence between the C++
+// bridge surface and this Swift mapping is observable in Console the
+// moment it happens, instead of being discovered as mysterious gameplay
+// weirdness months later.
+import os
+
+private let bridgeDTOLogger = Logger(subsystem: "com.isolyn.app", category: "bridge-dto")
+
 // MARK: - Cxx interop notes (read this first if anything below fails to build)
 //
 // This file and EngineSession.swift have NEVER been compiled -- no
@@ -158,7 +169,9 @@ enum RoundOutcome: Sendable, Equatable {
         case .InProgress: self = .inProgress
         case .DominoVictory: self = .dominoVictory(decidingPlayerIndex: Int(decidingPlayerIndex))
         case .Closed: self = .closed(decidingPlayerIndex: Int(decidingPlayerIndex))
-        @unknown default: self = .inProgress
+        @unknown default:
+            bridgeDTOLogger.fault("Unknown RoundOutcomeDTO raw value from bridge -- treating as inProgress; Swift/C++ enum surfaces have diverged")
+            self = .inProgress
         }
     }
 }
@@ -202,7 +215,9 @@ struct GameSnapshot: Sendable {
             case .OneVsOne: return .oneVOne
             case .OneVsOneVsOne: return .oneVOneVOne
             case .TwoVsTwo: return .twoVTwo
-            @unknown default: return .oneVOne
+            @unknown default:
+                bridgeDTOLogger.fault("Unknown GameModeDTO raw value from bridge -- defaulting to oneVOne; Swift/C++ enum surfaces have diverged")
+                return .oneVOne
             }
         }()
         playerCount = Int(dto.playerCount)
@@ -321,6 +336,7 @@ enum BridgeError: Error, Sendable, Equatable {
         case .Ok:
             self = .bridgeFailure(diagnostic: "BridgeError constructed from a BridgeStatus.Ok result -- caller bug in this Swift layer, not a real bridge failure")
         @unknown default:
+            bridgeDTOLogger.fault("Unrecognized BridgeStatus from bridge -- surfacing as generic bridgeFailure; Swift/C++ enum surfaces have diverged")
             self = .bridgeFailure(diagnostic: "unrecognized BridgeStatus")
         }
     }

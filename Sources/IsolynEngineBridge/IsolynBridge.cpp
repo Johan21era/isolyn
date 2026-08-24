@@ -171,8 +171,12 @@ public:
         // FIX: Exhaustion logic. If m_nextId == 0, space is permanently exhausted.
         // No wrap-around, no "one last ID" edge case.
         if (m_nextId == 0) return 0;
+        // FIX-19b (audit F-12): the old post-increment line read
+        // `if (m_nextId == 0) m_nextId = 0;` -- a no-op dressed as a
+        // clamp. The entry guard above IS the whole exhaustion story:
+        // once the counter wraps to 0 it stays there and every future
+        // insert returns 0. Say exactly that, nothing more.
         uint64_t id = m_nextId++;
-        if (m_nextId == 0) m_nextId = 0; // Clamp on wrap.
         m_entries.emplace(id, std::shared_ptr<Impl>(std::move(value)));
         return id;
     }
