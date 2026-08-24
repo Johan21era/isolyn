@@ -103,6 +103,40 @@ int main() {
               "this tile's full distribution still sums to exactly 1 after the update");
     }
 
+    section("BeliefState: applyOpponentDraw with an EMPTY boneyard is a defined no-op -- never NaN (FIX-17 / audit F-11)");
+    {
+        // All unseen mass sits with the opponent; locationCounts has NO
+        // boneyard entry at all, so the boneyard's aggregate mass is
+        // exactly 0. The class used to assert this precondition away in
+        // debug builds and divide by the zero mass in release ones;
+        // since FIX-17 the call is a total function: a documented,
+        // harmless no-op in EVERY build configuration. This test pins
+        // that contract (it cannot be red-first for the exact-zero case
+        // -- the old code already no-op'd there safely; what the guard
+        // adds is protection against tiny-negative FP-drift mass, where
+        // share/(negative-epsilon) would silently corrupt beliefs).
+        std::vector<DominoTile> myKnown;
+        for (int i = 0; i < 26; ++i) myKnown.push_back(DominoTile::fromIndex(i));
+        std::map<int, int> locationCounts = { {1, 2} };
+        BeliefState belief(myKnown, {}, locationCounts);
+
+        check(approxEqual(belief.totalProbabilityMass(BeliefState::kBoneyardLocation), 0.0),
+              "precondition pinned: boneyard aggregate mass is exactly zero");
+
+        belief.applyOpponentDraw(1);   // must not abort, NaN, or move any mass
+
+        DominoTile t = DominoTile::fromIndex(26);
+        double pOpp = belief.probability(t, 1);
+        double pBon = belief.probability(t, BeliefState::kBoneyardLocation);
+        check(std::isfinite(pOpp) && std::isfinite(pBon),
+              "per-tile probabilities remain finite after an empty-boneyard draw (no divide-by-zero propagation)");
+        check(approxEqual(pOpp, 1.0), "opponent share unchanged by the empty-boneyard draw");
+        check(pBon == 0.0, "boneyard share remains exactly zero");
+        check(approxEqual(pOpp + pBon, 1.0), "per-tile normalization preserved through the no-op");
+        check(approxEqual(belief.totalProbabilityMass(1), 2.0),
+              "aggregate opponent mass untouched by the empty-boneyard draw");
+    }
+
     section("BeliefState: markTileKnown removes tracking; remaining mass moves in the documented, approximate way");
     {
         // 24 known (0-23), 4 unseen (24-27), split opponent=2, boneyard=2.

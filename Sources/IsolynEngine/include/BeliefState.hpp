@@ -110,6 +110,12 @@ public:
     // preserve both per-tile normalization and per-location
     // count-consistency exactly -- no approximation, unlike
     // markTileKnown.
+    //
+    // FIX-17 (audit F-11): a TOTAL function. Drawing with zero (or
+    // FP-drift negative) boneyard mass is a defined no-op in every
+    // build configuration -- the old debug assert vanished under NDEBUG
+    // and left the division undefined. Callers should still never draw
+    // from an empty yard; the no-op is safety netting, not license.
     void applyOpponentDraw(int drawingPlayer);
 
 private:

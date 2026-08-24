@@ -120,8 +120,20 @@ void BeliefState::applyOpponentDraw(int drawingPlayer) {
     //     sum(p(t,boneyard))/B = B/B = 1, exactly the one tile that
     //     moved.
     double boneyardMassBefore = totalProbabilityMass(kBoneyardLocation);
-    assert(boneyardMassBefore > 0.0 &&
-           "applyOpponentDraw requires the boneyard to have had at least one unit of probability mass before the draw");
+
+    // FIX-17 (audit F-11): this precondition used to be a bare assert --
+    // a debug-only tripwire that vanished under NDEBUG, leaving
+    // share/mass division undefined for zero (and, worse, for a tiny
+    // NEGATIVE mass accumulated as floating-point drift across many
+    // markTileKnown calls, which would silently corrupt every tracked
+    // distribution). The guard below makes applyOpponentDraw a TOTAL
+    // function: an empty-boneyard draw is a defined no-op in every
+    // configuration. Nothing can legitimately move when there is no
+    // boneyard mass to move, so no-op is the mathematically correct
+    // answer here, not an error swallow -- but callers drawing from an
+    // empty yard are almost certainly missequencing their observation
+    // stream, so keep that in mind if beliefs ever look stale.
+    if (boneyardMassBefore <= 0.0) return;
 
     for (int i = 0; i < DominoTile::kTileCount; ++i) {
         if (!m_tracked[static_cast<std::size_t>(i)]) continue;
