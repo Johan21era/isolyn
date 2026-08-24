@@ -1,0 +1,15 @@
+# macOS noise
+.DS_Store
+
+# Build artifacts
+.build/
+build/
+*.o
+*.dSYM
+
+# Xcode user state (if project ever opened via Xcode)
+.swiftpm/xcode/xcuserdata/
+xcuserdata/
+
+# Graphify derived caches (keep graph.json / reports / manifest, drop regenerable cache)
+graphify-out/cache/
