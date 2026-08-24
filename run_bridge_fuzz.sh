@@ -3,7 +3,7 @@
 # clang++ -fsanitize=fuzzer,address,undefined against the real engine +
 # bridge, then runs it for SECONDS (default 120) of real wall-clock fuzzing.
 # See docs/BRIDGE_TESTING.md for how to read the output and for the
-# specific run this project's HANDOFF.md cites results from.
+# specific run `docs/BRIDGE_TESTING.md` cites results from.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 

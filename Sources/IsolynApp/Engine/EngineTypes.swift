@@ -5,7 +5,7 @@ import IsolynEngineBridge
 //
 // This file and EngineSession.swift have NEVER been compiled -- no
 // session that has worked on this codebase has ever had a Swift
-// toolchain available (see HANDOFF.md). Everything on the C++ side
+// toolchain available (see legacy handoff.md §5). Everything on the C++ side
 // (Sources/IsolynEngineBridge/IsolynBridge.cpp) has been compiled,
 // hand-tested, fuzzed for 75000+ real executions, and run clean under
 // AddressSanitizer/UndefinedBehaviorSanitizer/ThreadSanitizer completely

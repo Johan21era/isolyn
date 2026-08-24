@@ -4,12 +4,11 @@
 small, weak, and has no memory of anything. Both should be able to do useful,
 safe work after reading only this file.
 
-**Relationship to `HANDOFF.md`:** that older file is the project's history
-book and rulebook — its RULES still apply 100%. But every STATUS claim in it
-is outdated. This file is the current truth (written after an independent
-audit, a knowledge-graph build, Phase 1, and Phase 2 all landed). If old
-HANDOFF says "not started" and this file says "done", **this file wins on
-status; old HANDOFF wins on rules.**
+**Relationship to history:** the original `HANDOFF.md` was retired (deleted)
+after every load-bearing fact inside it was extracted into §5 below, code
+comments, `fix-log.md`, or `docs/`. Nothing important was lost — §5 is the
+condensed survival of its rules, ambiguities, and hard-won lessons. This file
+is now the SINGLE source of truth for status AND rules.
 
 ---
 
@@ -37,7 +36,7 @@ it only asks the engine and displays answers.
 
 ---
 
-## 2. CURRENT STATE — SCOREBOARD (all verified, see §5 to re-prove)
+## 2. CURRENT STATE — SCOREBOARD (all verified — §6 re-proves everything)
 
 | Layer | Check | Result |
 |---|---|---|
@@ -78,7 +77,7 @@ items, not bugs.
 | `graphify-out/` | Knowledge graph of the codebase (HTML map + report). Owner says keep. |
 | `fix-log.md` | Every bug fixed recently, with proof anchors. |
 | `Package.swift` | Build recipe for the whole package. |
-| `HANDOFF.md` | LEGACY history + permanent house rules (rules still binding). |
+| *(HANDOFF.md)* | Retired — its surviving content lives in §5. |
 | `.gitignore` | Keeps machine junk out of git. Never delete. |
 
 ---
@@ -110,7 +109,138 @@ risks, works with screen readers. Dragging = future polish, tracked.
 
 ---
 
-## 5. ✅ CHECK MY WORK — copy, paste, compare
+## 5. CONTEXT FROM EARLY PRODUCTION (survival of the retired HANDOFF.md)
+
+Everything below was scraped from the original handoff before deletion.
+Code comments across the engine cite the ambiguity resolutions **by
+number** — that numbering is preserved exactly, so "see ambiguity #7"
+still resolves.
+
+### 5.1 Governing documents (authority order — still binding)
+
+1. **Master Prompt** — process/methodology document (phased approach).
+2. **Rules Spec** — the LITERAL, FINISHED ruleset. Wins every conflict. Always.
+3. **Concept Spec** — vision/philosophy. Authoritative ONLY where Rules Spec is silent.
+
+**Explicit non-goals (binding):** no neural networks, no reinforcement
+learning, no LLM training, no human-game-database training. Monte Carlo /
+sampling is permitted ONLY as mathematically-justified hidden-information
+handling (determinization sampling) — never as a replacement for
+deterministic search with a real evaluation function. Never fabricate a
+probability. Everything must be explainable.
+
+### 5.2 The sandbox-loss lesson (why "commit often" is house law)
+
+A prior era lost ALL unexported work when its temporary Linux sandbox reset
+mid-session, without warning. The only survivor was a zip already handed to
+the owner. Hence: commit after every meaningful batch; treat any workspace
+as hostile. Git now makes this mechanical — the rule's spirit is "no
+meaningful work may exist in only one place."
+
+### 5.3 The twelve ambiguity resolutions (numbering = load-bearing)
+
+1. **Opening fallback when no double held:** highest-value plain tile opens
+   (Rules Spec explicit; Concept Spec's "no exceptions" loses to the literal
+   finished ruleset).
+2. **That fallback's tiebreak:** implemented SUM-based (so 5-4 beats 6-1).
+   Every Spec example shares one high side, so sum-vs-high-side-first is
+   genuinely unproven; flagged, isolated to one comparison, trivial to flip
+   if the owner rules otherwise.
+3. **1v1 one-domino ritual, third exit:** if the single mandated draw isn't
+   playable, the ritual ends for that player and ordinary Forced Drawing
+   takes over.
+4. **Boneyard exists ONLY in 1v1.** 1v1v1 deals 9×3=27 plus removes 0-0 = 28
+   (none left); 2v2 deals 7×4=28 (none left). Boneyard formulas handle empty
+   yards with zero special-casing.
+5. **Misdeal "8 dominoes" trigger** generalized to *any hand-size mismatch*
+   vs the mode's expected count (literal text only fits 7-tile modes; a
+   digital deal can't miscount anyway — matters for future constructed
+   positions).
+6. **1v1 doubles-cannot-close:** credit walks back through an entire run of
+   consecutive doubles to the most recent non-double play. 1v1v1/2v2
+   explicitly allow doubles to close. **OPEN:** if EVERY play of a round was
+   a double, falls back to crediting the last player (neither doc speaks).
+7. **THE BIG ONE:** the mandated opening tile is FIRST-ROUND-OF-MATCH ONLY.
+   Later rounds: starter freely chooses any tile (chain starts empty).
+   Caught by the owner walking their own real gameplay trace. This is why
+   `dealFirstRound` vs `dealSubsequentRound` exist as separate functions.
+8. **1v1 "One Domino Rule" (both players down to one tile) — EXPLICITLY NOT
+   IMPLEMENTED.** Mechanics genuinely underspecified: with
+   draw-one-then-play-one netting hand size back to one, how a Domino
+   victory occurs *within* the ritual is unclear in both documents. Several
+   readings considered; none clearly correct. Needs an owner conversation.
+   Ordinary Mandatory Play + Forced Drawing correctly govern every other
+   1v1 endgame state.
+9. **2v2 team mapping:** `playerIndex % 2`; team 0 = {0,2}, team 1 = {1,3}.
+   Inferred from "partners sit opposite" + turn-order convention.
+   Confident enough to ship, not certain enough to call settled.
+10. **Match winner among 3+ participants:** strictly-lowest score wins
+    outright (convention for threshold games); docs silent on 1v1v1 endings.
+    Flagged, not settled.
+11. **"May not refuse to win/close"** restates ordinary Mandatory Play — it
+    does NOT narrow the legal-move set. Players legitimately (often
+    correctly) decline a visible win/close. Owner-confirmed with real-play
+    reasoning. `MoveValidator` correctly does zero win/close filtering.
+12. **CRITICAL TEST-WRITING LESSON:** every `BeliefState` must account for
+    all 28 tiles. Any test constructing states for ProbabilityEngine must
+    make hands + chain + boneyard sum to exactly 28 (minus mode-excluded
+    tiles): build via `DominoTile::fromIndex(0..27)`, place tiles of interest
+    where needed, PAD everything else into the believer's own hand (extra
+    known tiles there never affect tracked behavior). Two real test failures
+    were caused by violating this before it became law.
+
+### 5.4 Engine rigor status (stated plainly — do NOT "fix" these)
+
+- **BeliefState** constructor + `applyOpponentDraw`: EXACT — algebra-verified
+  to preserve per-tile normalization AND per-location counts simultaneously.
+- **`markTileKnown`:** DOCUMENTED APPROXIMATION (single-pass rescale; exact
+  joint solution needs Sinkhorn-style iterative proportional fitting).
+  `probability()` re-normalizes per-tile at query time, so individual tiles
+  always sum to 1 even when aggregates drift slightly. Intentional;
+  documented in the class header.
+- **EvaluationEngine** operates on ONE concrete GameState and needs NO
+  belief machinery — uncertainty averaging happens one level up in
+  SearchEngine across determinizations. By design; do not re-couple.
+- **Determinizer:** capacity-exact, marginal-probability-weighted samples —
+  NOT exact draws from the true joint posterior. Standard and defensible for
+  search averaging.
+- **`probabilityHoldsAtLeast`:** Poisson-binomial DP treating tile
+  memberships as independent — a standard approximation (true membership is
+  correlated through hand-count constraints), ≤7 trials, computed exactly
+  via DP rather than sampling.
+
+### 5.5 Still-open design questions (unchanged by Phases 1–2)
+
+- **One Domino Rule mechanics** (see 5.3 #8) — blocked on owner conversation.
+- **Behavioral analysis** (hesitation / declined draws as evidence):
+  `ProbabilityEngine.observe*()` seams exist; rigorous implementation needs a
+  CALIBRATED likelihood model that doesn't exist yet — adding arbitrary
+  adjustment numbers would violate the never-fabricate rule.
+- **DifficultyModel mapping** — now owned by roadmap Phase 3 (owner
+  confirmation granted via roadmap adoption).
+
+### 5.6 Early production timeline (compressed; full narratives retired)
+
+Foundation (61 files, 278 checks) → search stack (`Chain::fromKnownState`,
+extended GameState ctor, Determinizer, SimulationEngine, SearchEngine —
+including the hand-verified "avoid handing opponent the 4-6 Domino" puzzle)
+→ UI shell + environment batches 1–7 (time phases, appearance curve, stars,
+weather, settings, legibility scrim; one real test bug fixed: Singapore-tz
+assertion claimed night where it's actually primeDay) → EntropySource
+rewritten to per-draw OS CSPRNG (owner-supplied design; rejection-sampled
+Fisher–Yates) → bridge designed, built, fuzzed (two compile bugs in an
+independently-drafted bridge fixed, including a missing namespace brace that
+would have given every public function internal linkage) → independent audit
+(see `fix-log.md`) → Phases 1–2 (recent commits).
+
+Full batch-by-batch narratives were retired with the old file on purpose;
+everything load-bearing survives in code comments, `docs/`, `fix-log.md`,
+and this section.
+
+
+---
+
+## 6. ✅ CHECK MY WORK — copy, paste, compare
 
 Run all commands from inside the `Isolyn-current_4` folder (Terminal:
 type `cd `, drag the folder onto the window, press Return).
@@ -218,14 +348,14 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
 
 ---
 
-## 6. HOUSE RULES (inherited from HANDOFF.md §6 — still law)
+## 7. HOUSE RULES (inherited from early production — still law)
 
 1. **Never claim it works without running it.** Show the command output.
 2. **Never invent probabilities or rules.** Ambiguity → flag it in comments +
    tell the owner. Guessing = forbidden.
 3. **No placeholder code.** If it's not built, SAY so (docs above all do).
 4. **Zip/commit after every meaningful chunk.** History lesson at top of
-   HANDOFF.md explains why this is survival, not preference.
+   §5.2 explains why this is survival, not preference.
 5. **DifficultyModel needs owner confirmation before building.** Roadmap
    adoption counted as that confirmation once; re-confirm per-session anyway.
 6. NEW (this session): **engine stays the only place game truth is computed.**
@@ -234,7 +364,7 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
 
 ---
 
-## 7. IF YOU ARE A WEAK AI (or cautious human): DO EXACTLY THIS
+## 8. IF YOU ARE A WEAK AI (or cautious human): DO EXACTLY THIS
 
 1. Run PROOFS 1–4 above. If any output differs → STOP, report the mismatch
    verbatim, change nothing.
@@ -246,14 +376,14 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
 5. Never edit `Sources/IsolynEngine/` without also adding/updating a test in
    `Tests/IsolynEngineTests/`.
 6. When unsure between two readings of any rule, choose neither — write the
-   question into `HANDOFF.md`'s ambiguity section style and ASK THE OWNER.
+   question down in §5's ambiguity-listing style and ASK THE OWNER.
 7. Next planned work = Phase 3 of `../isolyn roadmap.md` (AI opponent via
    DifficultyModel). Its spec, acceptance ladder, and calibration harness
    requirements are already written there — follow them literally.
 
 ---
 
-## 8. GLOSSARY (jargon → plain)
+## 9. GLOSSARY (jargon → plain)
 
 - **commit / git / push** — save-point / save-point system / upload save-points to GitHub
 - **compile / build** — translate human-readable code into machine-executable form

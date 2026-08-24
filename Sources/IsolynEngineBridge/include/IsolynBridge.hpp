@@ -71,7 +71,7 @@
 //    uint64_t values have zero ambiguity crossing into Swift regardless
 //    of exactly which Cxx-interop version ends up importing this header,
 //    unlike an opaque pointer type, which this project has no way to
-//    verify without a Swift toolchain (see HANDOFF.md -- no session
+//    verify without a Swift toolchain (see legacy handoff.md §5.6 -- no session
 //    building this codebase has ever had one). IDs are never reused
 //    (monotonic per-process counters), so there is no ABA-style risk of
 //    a stale handle silently addressing a different, later session.

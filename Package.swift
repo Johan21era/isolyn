@@ -46,7 +46,7 @@ let package = Package(
         // has NOT been verified by an actual Swift/Xcode compile in any
         // session that has produced this codebase, including this one --
         // no session has ever had a Swift toolchain available (see
-        // HANDOFF.md). Hand-reviewed carefully against the real
+        // legacy handoff.md §5.6). Hand-reviewed carefully against the real
         // IsolynBridge.hpp signatures instead; treat as unverified until
         // it has actually been built in Xcode.
         .executableTarget(

@@ -10,7 +10,7 @@ It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already 
 
 ## Two facts about the engine that shaped every other decision here
 
-These came from reading the actual `.cpp` files, not from assuming API behavior from headers — see `HANDOFF.md` for the fuller audit trail.
+These came from reading the actual `.cpp` files, not from assuming API behavior from headers — see `legacy handoff.md` §5.6 for the fuller audit trail.
 
 **1. The engine enforces nothing at its own boundary.** `MatchController::playTurn` and `MoveExecutor::apply` check their legality precondition via `assert(MoveValidator::isLegal(...))` — and `assert()` compiles to nothing under `NDEBUG`, which Xcode's Release configuration defines by default. Calling either with an illegal move in a Release build is undefined behavior in the engine, not a safe rejection. This is why `bridge_submit_move` explicitly calls `MoveValidator::isLegal` itself before ever touching `MatchController`, regardless of build configuration — the bridge is the actual enforcement point, not a redundant extra check on top of one the engine already does. Same story for `resolveForcedDraw`/`endTurnWithNoPlay`'s `currentPlayerHasLegalMove()` precondition.
 

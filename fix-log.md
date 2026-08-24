@@ -25,7 +25,7 @@ legacy handoff.md §CHECK-MY-WORK.
 - **Failure scenario:** every `swift test` died pre-run: `'cstdint' file not found` / `could not build Objective-C module 'IsolynEngineBridge'`. The entire XCTest suite had NEVER executed anywhere.
 - **Repro:** checkout commit before this fix → `swift test`
 - **Why it fails:** SPM compiles each Swift target's module interface separately; without interop mode the Clang module of the bridge header is built in ObjC mode where `<cstdint>` doesn't resolve.
-- **Worst-case impact:** all 25 environment tests permanently unverifiable; HANDOFF's flagged uncertainty never answerable.
+- **Worst-case impact:** all 25 environment tests permanently unverifiable; the project's long-flagged interop uncertainty was never answerable until this fix.
 - **Finality:** *"Adding `.interoperabilityMode(.Cxx)` to IsolynAppTests makes swift test build."* → proven true by run.
 - **Fix:** one-line `swiftSettings:` addition on the testTarget.
 - **Verification:** `swift test` → `Executed 28 tests … 0 failures` (was: fatalError).
