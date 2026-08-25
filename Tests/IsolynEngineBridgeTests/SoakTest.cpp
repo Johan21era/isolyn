@@ -12,15 +12,31 @@
 #include <sstream>
 #include <string>
 
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#endif
+
 using namespace isolyn::bridge;
 
 namespace {
 
-// Linux-specific (/proc/self/status) on purpose -- this is a dev-sandbox
-// diagnostic tool, not portable production code, and this repo's engine
-// tests already use platform-conditional entropy sources elsewhere for
-// the same reason: use what the sandbox actually provides.
+// Platform RSS reader. FIX-27 (audit OA-1): this was Linux-only
+// (/proc/self/status) by design back when a Linux sandbox was the only
+// machine that ever ran it -- but macOS is the SHIPPING platform and the
+// only one CI runs on, so "couldn't measure" was silently green here on
+// every single run. Now: Mach task introspection on Apple, /proc on
+// Linux, and a LOUD inconclusive everywhere else (see main()'s banner)
+// -- never a quiet pass pretending to have measured anything.
 long currentRssKb() {
+#if defined(__APPLE__)
+    mach_task_basic_info_data_t info{};
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (::task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                    reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS) {
+        return -1;
+    }
+    return static_cast<long>(info.resident_size / 1024);
+#elif defined(__linux__)
     std::ifstream f("/proc/self/status");
     std::string line;
     while (std::getline(f, line)) {
@@ -32,6 +48,9 @@ long currentRssKb() {
         }
     }
     return -1;
+#else
+    return -1;
+#endif
 }
 
 void runOneRealisticCycle(int cycleIndex) {
@@ -99,8 +118,17 @@ int main(int argc, char** argv) {
     std::printf("VmRSS after all %d cycles: %ld KB\n", cycles, rssAfter);
 
     if (rssAfterWarmup <= 0 || rssAfter <= 0) {
-        std::printf("\n[inconclusive] could not read /proc/self/status -- not this sandbox's fault necessarily, "
-                    "just not a signal this run can report on\n");
+        // FIX-27 (audit OA-1): an unmeasurable run used to exit 0 with one
+        // quiet line -- indistinguishable from a pass in a scrolled log.
+        // Still exits 0 (never false-fail an exotic environment), but now
+        // it SCREAMS. On Linux and macOS -- the only two platforms this
+        // project has ever run on -- inconclusive should simply never
+        // happen again; if it does, something platform-shaped changed.
+        std::printf("\n*************************************************************\n");
+        std::printf("*** WARNING: RSS MEASUREMENT UNAVAILABLE ON THIS PLATFORM ***\n");
+        std::printf("*** The leak signal is ABSENT from this run. This soak    ***\n");
+        std::printf("*** test verified NOTHING. Investigate before trusting.   ***\n");
+        std::printf("*************************************************************\n");
         return 0;
     }
 

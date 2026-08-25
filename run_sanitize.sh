@@ -35,6 +35,27 @@ case "$MODE" in
         ;;
 esac
 
+# FIX-27 companion (audit OA-1 verification, remediation roadmap P1): clang's
+# AddressSanitizer holds freed memory in a quarantine before recycling it. At
+# the DEFAULT quarantine size (~256MB) that fill-out reaches far past this
+# suite's 200-cycle soak warmup, so SoakTest's post-warmup RSS-growth check
+# ended up measuring THE QUARANTINE, not the program -- a ~27KB/cycle false
+# alarm under macOS clang (the native-allocator truth on the same machine,
+# same day: 8.4 bytes/cycle, flat checkpoints). A deliberately SMALL
+# quarantine saturates INSIDE the warmup window -- which is precisely what
+# the soak's warmup phase exists to absorb -- so the instrumented signal
+# measures post-warmup churn again. Both directions verified live this
+# session, same binary, same workload:
+#   default quarantine     : 32,610 B/cycle -> [FAIL] (plateau artifact)
+#   quarantine_size_mb=16  :    136 B/cycle -> [pass] (flat checkpoints)
+# LeakSanitizer itself is unavailable on this platform ("detect_leaks is not
+# supported"), so the independent detectors here are: the native-allocator
+# soak run, and this de-confounded instrumented run.
+if [ "$MODE" = "address" ]; then
+    ASAN_OPTIONS="quarantine_size_mb=16"
+    export ASAN_OPTIONS
+fi
+
 run_with_timeout() {
     local secs="$1"; shift
     if command -v timeout >/dev/null 2>&1; then
