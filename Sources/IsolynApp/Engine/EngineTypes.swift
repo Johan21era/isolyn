@@ -271,6 +271,57 @@ struct GameSnapshot: Sendable {
     }
 }
 
+// MARK: - Test construction seam (FIX-28 / remediation roadmap P2d)
+
+extension GameSnapshot {
+    /// Headless-test construction seam (audit OA-4, remediation roadmap
+    /// P2d). Why this exists, stated plainly: SnapshotDTO's fixed C arrays
+    /// import into Swift as TUPLES, which cannot be filled element-by-
+    /// element programmatically, and `init?(dto:)` being declared in the
+    /// struct's primary body suppresses the memberwise initializer -- so
+    /// WITHOUT this, no headless test anywhere can fabricate a controlled
+    /// GameSnapshot (real sessions deal real CSPRNG hands; resolver/layout
+    /// math tests need CONTROLLED hands). This is the one sanctioned
+    /// escape hatch: internal (reachable under @testable), never for
+    /// production paths -- production code obtains snapshots exclusively
+    /// through EngineSession.snapshot(for:) so hidden-information
+    /// enforcement stays bridge-side and structural, exactly as before.
+    ///
+    /// Contract mirrors buildSnapshot's C++ guarantees: otherHandSizes and
+    /// finalHandValues passed as-is (tests pass playerCount-sized arrays;
+    /// nothing padded or invented here), chainLeftEnd/chainRightEnd nil
+    /// iff chain is empty.
+    init(stateVersion: UInt64,
+         mode: MatchFormat,
+         playerCount: Int,
+         requestingPlayerIndex: Int,
+         currentPlayerIndex: Int,
+         ownHand: [Tile],
+         otherHandSizes: [Int],
+         chain: [Tile],
+         chainLeftEnd: Int?,
+         chainRightEnd: Int?,
+         boneyardDrawableCount: Int,
+         finalHandValues: [Int],
+         roundOutcome: RoundOutcome,
+         legalMoves: [Move]) {
+        self.stateVersion = stateVersion
+        self.mode = mode
+        self.playerCount = playerCount
+        self.requestingPlayerIndex = requestingPlayerIndex
+        self.currentPlayerIndex = currentPlayerIndex
+        self.ownHand = ownHand
+        self.otherHandSizes = otherHandSizes
+        self.chain = chain
+        self.chainLeftEnd = chainLeftEnd
+        self.chainRightEnd = chainRightEnd
+        self.boneyardDrawableCount = boneyardDrawableCount
+        self.finalHandValues = finalHandValues
+        self.roundOutcome = roundOutcome
+        self.legalMoves = legalMoves
+    }
+}
+
 // MARK: - Match orchestration
 
 /// The running state of a multi-round match after one completed round was
