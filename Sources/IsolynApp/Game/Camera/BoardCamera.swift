@@ -37,8 +37,16 @@ final class BoardCamera {
 
     /// Maximum absolute translation in each direction.
     /// The board cannot be panned beyond ±maxOffset.
-    var maxOffsetX: CGFloat = 300
-    var maxOffsetY: CGFloat = 200
+    ///
+    /// FIX-28 (audit OA-4 / remediation roadmap P2c): these are no longer
+    /// anonymous magic numbers -- SnakeChainBoard raises them to cover the
+    /// POST-scale residual overflow of unusually long chains, so panning
+    /// can always reach the tail. Defaults preserved exactly; bounds are
+    /// only ever raised, never shrunk, by layout.
+    static let defaultMaxOffsetX: CGFloat = 300
+    static let defaultMaxOffsetY: CGFloat = 200
+    var maxOffsetX: CGFloat = BoardCamera.defaultMaxOffsetX
+    var maxOffsetY: CGFloat = BoardCamera.defaultMaxOffsetY
 
     /// How aggressively the camera resists at boundaries (0–1).
     var boundaryResistance: Double = 0.3

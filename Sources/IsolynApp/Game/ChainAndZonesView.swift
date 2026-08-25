@@ -37,6 +37,7 @@ struct ChainAndZonesView: View {
                         canPlay: canPlay,
                         selectedTile: selectedTile,
                         availableSize: geo.size,
+                        camera: camera,
                         selectedSideIsPlayable: selectedSideIsPlayable,
                         onPlaySide: playOnSide,
                         onHoverPip: { pip in
@@ -149,6 +150,7 @@ private struct SnakeChainBoard: View {
     let canPlay: Bool
     let selectedTile: Tile?
     let availableSize: CGSize
+    let camera: BoardCamera
     let selectedSideIsPlayable: (ChainSide) -> Bool
     let onPlaySide: (ChainSide) -> Void
     let onHoverPip: (Int?) -> Void
@@ -160,6 +162,18 @@ private struct SnakeChainBoard: View {
     var body: some View {
         let metrics = SnakeChainLayout.compute(
             orientedTiles: orientedTiles, availableSize: availableSize)
+
+        // FIX-28 P2b/P2c application. The ONE UNIFORM scale from the pure
+        // layout keeps the §2/§3 exact-2:1 domino law intact BY CONSTRUCTION
+        // at any scale; it engages only past SnakeChainLayout.fitThreshold,
+        // so ordinary games never see it. Whatever overflow survives past
+        // the minScale floor is handed to the camera as extra pan range
+        // (halved: the offset translates the plane's CENTER), so the tail
+        // of even a pathological chain stays reachable. Mutations happen in
+        // onAppear/onChange closures -- never during body evaluation.
+        let residualX = max(0, metrics.contentWidth * metrics.suggestedScale - availableSize.width) / 2
+        let residualY = max(0, metrics.contentHeight * metrics.suggestedScale - availableSize.height) / 2
+        let boundsSignature = "\(Int(residualX))|\(Int(residualY))"
 
         ZStack {
             ForEach(Array(metrics.placed.enumerated()), id: \.offset) { _, placed in
@@ -183,7 +197,20 @@ private struct SnakeChainBoard: View {
             }
         }
         .frame(width: availableSize.width, height: availableSize.height)
+        // ONE uniform auto-fit scale (§17 "scale the board intelligently";
+        // completes the mandate's responsive clause).
+        .scaleEffect(metrics.suggestedScale)
         .animation(.easeOut(duration: 0.18), value: snapshot.stateVersion)
+        .onAppear { raiseCameraBounds(residualX, residualY) }
+        .onChange(of: boundsSignature) { _, _ in raiseCameraBounds(residualX, residualY) }
+    }
+
+    /// Bounds only ever GROW toward the fitted extent (defaults preserved;
+    /// reset-view zeroes OFFSETS, never bounds). Called from lifecycle
+    /// closures only.
+    private func raiseCameraBounds(_ residualX: CGFloat, _ residualY: CGFloat) {
+        camera.maxOffsetX = max(camera.maxOffsetX, BoardCamera.defaultMaxOffsetX + residualX)
+        camera.maxOffsetY = max(camera.maxOffsetY, BoardCamera.defaultMaxOffsetY + residualY)
     }
 
     // MARK: Playable-end markers (§8: unmistakable, restrained, valid-only)
