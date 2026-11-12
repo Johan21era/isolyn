@@ -1,7 +1,7 @@
 # ISOLYN IMPLEMENTATION ROADMAP
 
 **Companion to:** `isolyn current audit.md` (findings F‑01…F‑12) · `graphify-out/GRAPH_REPORT.md` (trace findings F‑T1…F‑T5)
-**Baseline state:** entire package builds & tests green on macOS (Swift 6.3 / Xcode 26.6) · engine 356/356 · bridge 33/33 · Swift suite 25/25 · zero force-unwraps · zero doc/code divergence confirmed by graph trace.
+**Baseline at roadmap writing (2026-08):** entire package builds & tests green on macOS (Swift 6.3 / Xcode 26.6) · engine 356/356 · bridge 33/33 · Swift suite 25/25 · zero force-unwraps · zero doc/code divergence confirmed by graph trace. Current verified counts live in `README.md`, `legacy handoff.md`, and `docs/BRIDGE_TESTING.md`; this roadmap is a plan, not a status report.
 
 ---
 
@@ -127,6 +127,30 @@ Acceptance: monotonic win-rate ladder (each tier beats the previous ≥55%), cor
 **AI turn flow (reuses Phase 2's machinery — that's why P3 follows P2):** on opponent turns, `GameViewModel` dispatches `requestAnalysis(believer: seat, config-from-DifficultyModel)` via the existing detached-task path (UI never blocks — proven at 10.7M concurrent queries), awaits the outcome, submits `recommendedMove`. Hard rule inherited unchanged: `samplesCompleted == 0` → fall back to a uniformly-random *legal* move and log, never display. Fairness note: the AI reasons from its own believer perspective only — hidden-info isolation is structural (snapshot model), not honor-system.
 
 **Explicitly deferred:** heuristic-weight tuning (`kNextRoundStartBonus`, eval weights) stays untouched this phase — changing evaluation while introducing opponents would confound the calibration signals. Weight tuning becomes a Phase 5+ follow-up only if ladder acceptance fails.
+
+---
+
+## PHASE 3.5 — OFFLINE LAB + METAL ACCELERATOR (owner-added track)
+
+**Status:** standalone batch evaluator implemented 2026-11-11; search
+integration pending. Not included in the original 100% budget. This track runs
+beside Phases 3–5, not instead of them. See
+`docs/OPEN_DECISIONS.md` (ADR-002/003), `docs/LAB.md`, and
+`docs/ACCELERATOR.md` for the binding detail.
+
+- **Offline lab/trainer:** `tools/selfplay/` is a C++ harness that links the real
+  engine and emits reproducible CSV/JSONL; `lab/` is a Python package for
+  calibration, datasets, and optional training. Python never ships in the app
+  and never owns a game rule. Trained weights return to C++ inference.
+- **Metal accelerator:** a first-class GPU compute backend, not a micro-
+  optimization. Start with batched leaf evaluation and parallel root
+  determinizations; a GPU-resident frontier comes only after parity and
+  throughput are proven. CPU is the reference and always the fallback.
+- **Gates:** CPU parity, deterministic tie-breaking, no rules in shaders,
+  fallback on missing/unsupported GPUs, and a measured strength ladder — not
+  kernel throughput alone.
+- **Order:** self-play baseline first, then calibration, then accelerator;
+  learned evaluation only if the ladder justifies it.
 
 ---
 

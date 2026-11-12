@@ -21,6 +21,10 @@ namespace isolyn {
 // this mapping -- they just index into it.
 class DominoTile {
 public:
+    // Trivial default construction keeps stack-allocated search buffers free
+    // of per-entry initialization; callers must assign before reading.
+    DominoTile() = default;
+
     static constexpr int kMinPips = 0;
     static constexpr int kMaxPips = 6;
     static constexpr int kTileCount = 28; // (kMaxPips+1)*(kMaxPips+2)/2

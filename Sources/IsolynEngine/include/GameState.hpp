@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <cstdint>
 #include <vector>
 #include "Boneyard.hpp"
 #include "Chain.hpp"
@@ -70,6 +71,16 @@ public:
     void setCurrentPlayerIndex(int index);
 
     const std::vector<PlayRecord>& playHistory() const { return m_playHistory; }
+
+    // Stable 64-bit hash of every fact that can affect a future search:
+    // hands (order-independent), chain sequence/end values, the full
+    // boneyard draw order (hidden from players, but not from the search's
+    // sampled world), current player, mode, and play history. This is the
+    // key used by SearchEngine's transposition table. It is deliberately
+    // not incremental yet -- states here are tiny, and a correct hash is
+    // worth more than shaving a few microseconds before parity/strength
+    // measurements exist.
+    std::uint64_t hash() const;
 
     // Removes `tile` from `playerIndex`'s hand and attaches it to the
     // chain at `side` (ignored, and the chain opened instead, if the

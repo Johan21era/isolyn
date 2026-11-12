@@ -345,6 +345,43 @@ int main() {
         CHECK(true, "match close is idempotent like every other handle surface");
     }
 
+    std::printf("== 2v2 match recording: two team score slots, not four player slots ==\n");
+    {
+        MatchHandle m = bridge_match_begin(GameModeDTO::TwoVsTwo);
+        CHECK(m != kInvalidMatchHandle, "2v2 match tracker created");
+        SessionHandle s = bridge_session_create_first_round(GameModeDTO::TwoVsTwo);
+        CHECK(s != kInvalidSessionHandle, "2v2 session created");
+
+        SnapshotDTO done{};
+        for (int op = 0; op < 400; ++op) {
+            int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+            SnapshotDTO snap = bridge_get_snapshot(s, current);
+            if (snap.status != BridgeStatus::Ok) { done = snap; break; }
+            if (snap.roundOutcome != RoundOutcomeDTO::InProgress) {
+                done = bridge_get_snapshot(s, 0);
+                break;
+            }
+            if (snap.legalMovesForRequestingPlayer.count > 0) {
+                bridge_submit_move(s, snap.stateVersion, snap.legalMovesForRequestingPlayer.moves[0]);
+            } else if (snap.boneyardDrawableCount > 0) {
+                CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+                if (r.status != BridgeStatus::Ok) bridge_end_turn_with_no_play(s, snap.stateVersion);
+            } else {
+                bridge_end_turn_with_no_play(s, snap.stateVersion);
+            }
+        }
+
+        CHECK(done.roundOutcome != RoundOutcomeDTO::InProgress, "2v2 round reached a real outcome");
+        MatchResultDTO rec = bridge_match_record_round(m, s);
+        CHECK(rec.status == BridgeStatus::Ok, "2v2 round recorded without a score-slot mismatch");
+        CHECK(rec.participantCount == 2, "2v2 tracks exactly two TEAM participants, not four players");
+        CHECK(rec.scoresPerParticipant[0] >= 0 && rec.scoresPerParticipant[1] >= 0,
+              "both 2v2 team scores are populated");
+
+        bridge_session_close(s);
+        bridge_match_close(m);
+    }
+
     std::printf("== terminal-state guard: mutators refuse a finished round (audit F-03 regression) ==\n");
     {
         SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
@@ -389,6 +426,21 @@ int main() {
         CHECK(after.stateVersion == termSnap.stateVersion,
               "state version UNCHANGED after all four refused mutations -- fails closed, mutates nothing");
         bridge_session_close(s);
+    }
+
+    std::printf("== difficulty profiles: C++ owns the strength-to-search mapping ==\n");
+    {
+        DifficultyProfileDTO casual = bridge_difficulty_profile(100);
+        CHECK(casual.strength == 100 && casual.maxDepthPlies == 2 && casual.determinizationCount == 8,
+              "casual strength maps to 2 plies / 8 determinizations");
+
+        DifficultyProfileDTO club = bridge_difficulty_profile(900);
+        CHECK(club.strength == 900 && club.maxDepthPlies == 3 && club.determinizationCount == 16,
+              "club strength maps to 3 plies / 16 determinizations");
+
+        DifficultyProfileDTO elite = bridge_difficulty_profile(99999);
+        CHECK(elite.strength == 3000 && elite.maxDepthPlies == 8 && elite.determinizationCount == 64,
+              "out-of-range strength clamps to the elite profile");
     }
 
     if (g_failures == 0) {

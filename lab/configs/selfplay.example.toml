@@ -1,0 +1,17 @@
+# Isolyn offline lab — example self-play configuration (scaffold).
+# No parser consumes this file yet; it records the intended experiment shape.
+
+[engine]
+depth = 4
+determinizations = 20
+opponent_depth = 4
+opponent_determinizations = 20
+seed = 1
+
+[selfplay]
+games = 200
+max_plies = 200
+output = "lab/data/selfplay.csv"
+
+[ladder]
+strengths = [100, 400, 900, 1600, 2300, 3000]

@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include "GameState.hpp"
 #include "GameMode.hpp"
 
@@ -8,14 +9,54 @@ namespace isolyn {
 // can be explained rather than just producing an opaque final number
 // (Concept Spec's Evaluation Philosophy: every move's evaluation must be
 // explainable, never "felt right").
+//
+// The first four components are the original hand-written signals. The
+// remaining four are the strength layer added in this pass:
+//   winThreat   -- an immediate Domino win is available to a participant
+//   pipControl  -- how many tiles in hand match either exposed chain end
+//   tempo       -- whose turn/team is currently acting
+//   teamSupport -- in 2v2, the partner's mobility (partnership awareness)
+//
+// All eight components are deliberately separate and independently
+// tunable. EvaluationWeights below is the calibration seam: a future
+// self-play trainer can replace the defaults without changing search or
+// any caller.
 struct EvaluationBreakdown {
-    double mobility;
-    double blocking;
-    double expectedValue;
+    double mobility = 0.0;
+    double blocking = 0.0;
+    double expectedValue = 0.0;
     // Only meaningful when the evaluated position is actually Closed;
     // zero otherwise.
-    double closingOpportunity;
-    double total;
+    double closingOpportunity = 0.0;
+
+    double winThreat = 0.0;
+    double pipControl = 0.0;
+    double tempo = 0.0;
+    double teamSupport = 0.0;
+
+    double total = 0.0;
+};
+
+// Defaults are hand-tuned from the rules/strategy notes, not claimed to
+// be statistically calibrated. They are deliberately kept in one place
+// so self-play can replace them with measured values later.
+struct EvaluationWeights {
+    double mobility = 1.0;
+    double blocking = 1.0;
+    double expectedValue = 1.0;
+    double closingOpportunity = 1.0;
+    double winThreat = 1.0;
+    double pipControl = 0.5;
+    double tempo = 0.1;
+    double teamSupport = 0.25;
+};
+
+// A fixed-size result for the search leaf path. Keeping the values inline
+// avoids one heap allocation per player; `playerCount` tells callers how many
+// entries are meaningful.
+struct EvaluationTotals {
+    std::array<double, 4> totals{};
+    int playerCount = 0;
 };
 
 // Combines the independently-testable heuristic components into one
@@ -24,23 +65,18 @@ struct EvaluationBreakdown {
 //
 // Deliberately does NOT know about hidden information, belief states, or
 // multiple determinizations, and needs no BeliefState/ProbabilityEngine
-// dependency to work correctly: when SearchEngine eventually calls this,
-// it will do so once per sampled hidden-tile guess (a determinization),
-// and within any one such guess every hand value genuinely is known --
-// to that simulated world, not to the real, still-uncertain game.
-// Averaging this engine's output across many different determinizations
-// is what turns per-sample "known" values into a genuine
-// expected-value-under-uncertainty estimate -- that averaging is
-// SearchEngine's responsibility, one level up, not this class's. This is
-// what makes EvaluationEngine safe to build before BeliefState exists at
-// all.
-//
-// Weights below are placeholders, not calibrated constants -- Phase 7
-// (profile, measure, tune against real search outcomes) is what
-// eventually justifies real numbers here, not values picked in advance
-// of any evidence.
+// dependency to work correctly: when SearchEngine calls this, it does so
+// once per sampled hidden-tile guess (a determinization), and within any
+// one such guess every hand value genuinely is known -- to that simulated
+// world, not to the real, still-uncertain game. Averaging this engine's
+// output across many different determinizations is what turns per-sample
+// "known" values into a genuine expected-value-under-uncertainty estimate
+// -- that averaging is SearchEngine's responsibility, one level up.
 class EvaluationEngine {
 public:
+    // Legacy named constants retained for callers/tests that referenced
+    // the original four-component contract. New code should use
+    // EvaluationWeights.
     static constexpr double kMobilityWeight = 1.0;
     static constexpr double kBlockingWeight = 1.0;
     static constexpr double kExpectedValueWeight = 1.0;
@@ -51,7 +87,18 @@ public:
     // combines partners' hand values for 2v2 via RulesEngine's
     // team-index helpers before scoring -- team scoring, not individual
     // scoring, is what actually applies in that mode.
-    static EvaluationBreakdown evaluate(GameMode mode, const GameState& state, int playerIndex);
+    static EvaluationBreakdown evaluate(GameMode mode,
+                                        const GameState& state,
+                                        int playerIndex,
+                                        const EvaluationWeights& weights = EvaluationWeights{});
+
+    // Computes every player's total from one pass over the state. Search uses
+    // this at leaves so mobility, blocking, threat, closed scoring, and 2v2
+    // team support are not recomputed once per player. The totals are exactly
+    // the `total` fields the per-player API would return.
+    static EvaluationTotals evaluateAll(GameMode mode,
+                                        const GameState& state,
+                                        const EvaluationWeights& weights = EvaluationWeights{});
 };
 
 } // namespace isolyn

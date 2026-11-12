@@ -28,7 +28,7 @@ final class AppState {
     enum Screen: Equatable {
         case entry
         case modeSelect
-        case game(MatchFormat)
+        case game(MatchFormat, OpponentMode, AILevel)
         case comingSoon(String)
     }
 

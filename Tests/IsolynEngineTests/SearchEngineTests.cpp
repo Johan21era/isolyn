@@ -81,6 +81,40 @@ int main() {
               "player 0's evaluation reflects an immediate Domino win -- an empty hand scores 0, the best possible ExpectedValueHeuristic outcome");
     }
 
+    section("SearchEngine: iterative deepening reports a completed depth and exact-endgame use");
+    {
+        std::vector<DominoTile> padding;
+        for (int i = 0; i < DominoTile::kTileCount; ++i) {
+            DominoTile t = DominoTile::fromIndex(i);
+            if (t == DominoTile(5, 5) || t == DominoTile(2, 2) ||
+                t == DominoTile(1, 1)) continue;
+            padding.push_back(t);
+        }
+        std::deque<DominoTile> chainTiles(padding.begin(), padding.end());
+        Chain chain = Chain::fromKnownState(chainTiles, 2, 5);
+
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(5, 5), DominoTile(2, 2) },
+            { DominoTile(1, 1) },
+        };
+        GameState state(GameMode::OneVsOne, hands, {}, chain,
+                        { PlayRecord{1, DominoTile(2, 5)} }, 0);
+
+        BeliefState belief = ProbabilityEngine::constructFromGameState(state, 0);
+        std::mt19937_64 rng(99);
+        SearchEngine::Config config;
+        config.maxDepthPlies = 3;
+        config.determinizationCount = 2;
+        config.endgameTileLimit = 8;
+        auto decision = SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, config, rng);
+
+        check(decision.depthReached == 3, "iterative deepening completes the configured depth");
+        check(decision.samplesCompleted == 2, "every requested determinization sample is counted");
+        check(decision.completed, "the decision is marked complete when both samples finish");
+        check(decision.exactEndgame, "the empty-boneyard late endgame is solved exactly");
+        check(decision.nodesVisited > 0, "search diagnostics record visited nodes");
+    }
+
     if (failureCount() == 0) {
         std::cout << "\nSearchEngine: all checks passed\n";
         return 0;

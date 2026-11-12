@@ -1,8 +1,72 @@
 #include "GameState.hpp"
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <cstdint>
+#include <vector>
 
 namespace isolyn {
+
+namespace {
+
+constexpr std::uint64_t kFnvOffset = 1469598103934665603ULL;
+constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
+
+void hashMix(std::uint64_t& hash, std::uint64_t value) noexcept {
+    hash ^= value;
+    hash *= kFnvPrime;
+}
+
+} // namespace
+
+std::uint64_t GameState::hash() const {
+    std::uint64_t hash = kFnvOffset;
+
+    hashMix(hash, static_cast<std::uint64_t>(m_mode));
+    hashMix(hash, static_cast<std::uint64_t>(m_currentPlayerIndex));
+    hashMix(hash, static_cast<std::uint64_t>(m_hands.size()));
+
+    // A hand has no meaningful order (see the undoDrawTile comment in the
+    // header), so sort canonical tile indices before hashing. Two states
+    // that differ only by hand ordering are genuinely the same state and
+    // should share a transposition-table entry.
+    for (const auto& hand : m_hands) {
+        // Hands are at most 28 tiles. Keep the canonical sort on the stack:
+        // hash() runs once per search node, so a heap allocation per hand
+        // was measurable overhead in the leaf-heavy search.
+        std::array<int, DominoTile::kTileCount> indices{};
+        const auto handSize = hand.size();
+        for (std::size_t i = 0; i < handSize; ++i) indices[i] = hand[i].index();
+        std::sort(indices.begin(), indices.begin() + static_cast<std::ptrdiff_t>(handSize));
+        hashMix(hash, static_cast<std::uint64_t>(handSize));
+        for (std::size_t i = 0; i < handSize; ++i) {
+            hashMix(hash, static_cast<std::uint64_t>(indices[i]));
+        }
+    }
+
+    const auto& chainTiles = m_chain.orderedTiles();
+    hashMix(hash, static_cast<std::uint64_t>(chainTiles.size()));
+    for (const auto& tile : chainTiles) hashMix(hash, static_cast<std::uint64_t>(tile.index()));
+    if (m_chain.isEmpty()) {
+        hashMix(hash, 0xFFFFFFFFULL);
+    } else {
+        hashMix(hash, static_cast<std::uint64_t>(m_chain.leftEnd()));
+        hashMix(hash, static_cast<std::uint64_t>(m_chain.rightEnd()));
+    }
+
+    // Draw order matters: a future forced draw can expose different tiles.
+    const auto& boneyard = m_boneyard.remainingTiles();
+    hashMix(hash, static_cast<std::uint64_t>(boneyard.size()));
+    for (const auto& tile : boneyard) hashMix(hash, static_cast<std::uint64_t>(tile.index()));
+
+    hashMix(hash, static_cast<std::uint64_t>(m_playHistory.size()));
+    for (const auto& record : m_playHistory) {
+        hashMix(hash, static_cast<std::uint64_t>(record.playerIndex));
+        hashMix(hash, static_cast<std::uint64_t>(record.tile.index()));
+    }
+
+    return hash;
+}
 
 GameState::GameState(GameMode mode,
                       std::vector<std::vector<DominoTile>> hands,

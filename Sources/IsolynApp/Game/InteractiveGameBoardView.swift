@@ -13,6 +13,7 @@ import IsolynEngineBridge
 /// gesture arbitration, hover-chain overlay, appearance settings.
 struct InteractiveGameBoardView: View {
     let format: MatchFormat
+    let opponent: OpponentMode
 
     // Core game state
     @State private var viewModel: GameViewModel
@@ -31,9 +32,10 @@ struct InteractiveGameBoardView: View {
     // Selection
     @State private var selectedTile: Tile?
 
-    init(format: MatchFormat) {
+    init(format: MatchFormat, opponent: OpponentMode, aiLevel: AILevel) {
         self.format = format
-        _viewModel = State(initialValue: GameViewModel(mode: format))
+        self.opponent = opponent
+        _viewModel = State(initialValue: GameViewModel(mode: format, opponent: opponent, aiLevel: aiLevel))
     }
 
     var body: some View {
@@ -106,7 +108,7 @@ struct InteractiveGameBoardView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(format.rawValue.uppercased())
+                Text("\(format.rawValue.uppercased()) · \(opponent == .computer ? "VS COMPUTER" : "HOT SEAT")")
                     .font(IsolynTheme.caption(12)).tracking(2).foregroundStyle(IsolynTheme.brass)
                 turnBanner
             }
@@ -126,7 +128,7 @@ struct InteractiveGameBoardView: View {
     private var turnBanner: some View {
         Group {
             if let snap = viewModel.snapshot, snap.roundOutcome == .inProgress {
-                Text("Player \(snap.currentPlayerIndex + 1)'s turn")
+                Text(viewModel.turnLabel)
                     .font(IsolynTheme.title(15)).foregroundStyle(IsolynTheme.ivory)
             } else {
                 Text("Round complete")
@@ -223,7 +225,7 @@ struct InteractiveGameBoardView: View {
 
             Spacer()
 
-            if viewModel.analysisRunning {
+            if viewModel.analysisRunning || viewModel.aiThinking {
                 ProgressView().controlSize(.small)
             }
             analysisSummary
@@ -325,6 +327,8 @@ struct InteractiveGameBoardView: View {
     }
 
     private var hintText: String {
+        if viewModel.aiThinking { return "Computer is thinking…" }
+        if viewModel.isComputerTurn { return "Computer's turn." }
         if viewModel.mustPass { return "No moves and the boneyard is dry — pass." }
         if !viewModel.isMyTurn { return "Another player is acting…" }
         guard let s = viewModel.snapshot else { return "" }

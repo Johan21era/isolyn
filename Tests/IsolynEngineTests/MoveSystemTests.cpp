@@ -5,6 +5,7 @@
 #include "GameState.hpp"
 #include "TestHarness.hpp"
 #include <algorithm>
+#include <array>
 
 using namespace isolyn;
 using namespace isolyn::test;
@@ -82,6 +83,43 @@ int main() {
 
         check(!MoveGenerator::hasAnyLegalMove(state, 1), "player 1's only tile (1-1) matches neither end -- no legal move");
         check(MoveGenerator::generate(state, 1).empty(), "generate() agrees: no candidates for player 1");
+    }
+
+    section("MoveGenerator: countLegalMoves agrees with generate()'s size");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(6, 5), DominoTile(4, 2), DominoTile(6, 3), DominoTile(1, 1) },
+            { DominoTile(5, 2), DominoTile(3, 3), DominoTile(0, 1) },
+        };
+        GameState state(GameMode::OneVsOne, hands, {});
+        state.playTile(0, DominoTile(6, 5), GameState::ChainSide::Left);
+        for (int player = 0; player < state.playerCount(); ++player) {
+            check(MoveGenerator::countLegalMoves(state, player) ==
+                      static_cast<int>(MoveGenerator::generate(state, player).size()),
+                  "allocation-free mobility count matches the full move list");
+        }
+    }
+
+    section("MoveGenerator: stack-buffer generation is move-for-move identical");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(6, 5), DominoTile(4, 2), DominoTile(6, 3), DominoTile(1, 1) },
+            { DominoTile(5, 2), DominoTile(3, 3), DominoTile(0, 1) },
+        };
+        GameState state(GameMode::OneVsOne, hands, {});
+        state.playTile(0, DominoTile(6, 5), GameState::ChainSide::Left);
+        for (int player = 0; player < state.playerCount(); ++player) {
+            const auto expected = MoveGenerator::generate(state, player);
+            std::array<Move, MoveGenerator::kMaxMoves> actual{};
+            const std::size_t count =
+                MoveGenerator::generateInto(state, player, actual);
+            check(count == expected.size(), "stack-buffer count matches the vector API");
+            bool identical = true;
+            for (std::size_t i = 0; i < count; ++i) {
+                identical = identical && actual[i] == expected[i];
+            }
+            check(identical, "stack-buffer candidates match the vector API in order");
+        }
     }
 
     section("MoveValidator: a genuinely legal move is legal");

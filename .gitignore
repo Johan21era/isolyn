@@ -13,3 +13,15 @@ xcuserdata/
 
 # Graphify derived caches (keep graph.json / reports / manifest, drop regenerable cache)
 graphify-out/cache/
+# Generated 3D graph page (rebuild with scripts/build-graph-3d.py)
+graphify-out/graph-3d-full.html
+graphify-out/20*/
+
+# Offline lab/trainer artifacts
+lab/.venv/
+lab/data/*
+!lab/data/.gitkeep
+tools/selfplay/build/
+Accelerator/build/
+__pycache__/
+*.pyc

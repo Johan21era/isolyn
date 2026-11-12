@@ -8,6 +8,8 @@ struct ModeSelectorView: View {
     @Environment(AppState.self) private var appState
 
     @State private var selectedID: String?
+    @State private var opponent: OpponentMode = .human
+    @State private var aiLevel: AILevel = .club
 
     private let options: [ModeOption] = [
         ModeOption(
@@ -64,6 +66,40 @@ struct ModeSelectorView: View {
                 .padding(.horizontal, 40)
                 .padding(.top, 36)
 
+                HStack(spacing: 18) {
+                    Text("Opponent")
+                        .font(IsolynTheme.caption(11))
+                        .tracking(1.5)
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+
+                    Picker("Opponent", selection: $opponent) {
+                        ForEach(OpponentMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 230)
+
+                    if opponent == .computer {
+                        Text("Strength")
+                            .font(IsolynTheme.caption(11))
+                            .tracking(1.5)
+                            .foregroundStyle(IsolynTheme.ivoryMuted)
+
+                        Picker("Strength", selection: $aiLevel) {
+                            ForEach(AILevel.allCases) { level in
+                                Text(level.title).tag(level)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 130)
+                    }
+                }
+                .padding(.horizontal, 40)
+                .padding(.top, 22)
+
                 Spacer()
 
                 HStack {
@@ -85,7 +121,7 @@ struct ModeSelectorView: View {
     private func startMatch() {
         guard let selectedID, let format = MatchFormat(rawValue: selectedID) else { return }
         withAnimation(.easeInOut(duration: 0.35)) {
-            appState.screen = .game(format)
+            appState.screen = .game(format, opponent, aiLevel)
         }
     }
 

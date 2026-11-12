@@ -4,7 +4,7 @@
 namespace isolyn {
 
 double MobilityHeuristic::score(const GameState& state, int playerIndex) {
-    return static_cast<double>(MoveGenerator::generate(state, playerIndex).size());
+    return static_cast<double>(MoveGenerator::countLegalMoves(state, playerIndex));
 }
 
 } // namespace isolyn

@@ -300,6 +300,19 @@ struct MatchResultDTO {
     int32_t nextRoundStarterIndex;                // valid only if the recorded round was finished; -1 on failure
 };
 
+// Search configuration for one difficulty tier. This is deliberately a
+// POD query rather than a second engine policy layer: the caller still owns
+// turn flow and move submission, while C++ owns the mapping from a public
+// strength label to the tested SearchEngine config.
+struct DifficultyProfileDTO {
+    int32_t strength;
+    int32_t maxDepthPlies;
+    int32_t determinizationCount;
+};
+
+// Returns the profile for a strength label, clamped to [100, 3000].
+DifficultyProfileDTO bridge_difficulty_profile(int32_t strength);
+
 // Creates an empty running-score tracker for the given mode. Returns
 // kInvalidMatchHandle on an invalid mode.
 MatchHandle bridge_match_begin(GameModeDTO mode);

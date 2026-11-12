@@ -1,0 +1,6 @@
+scripts/vendor/
+tools/selfplay/build/
+lab/.venv/
+lab/data/
+__pycache__/
+Accelerator/build/

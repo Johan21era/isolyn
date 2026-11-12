@@ -1,0 +1,65 @@
+import Foundation
+import IsolynEngineBridge
+
+/// Who controls the other seats in a match. The human always sits at player 0.
+/// In 2v2 the partner seat (2) must also be computer-controlled in this
+/// single-human mode; otherwise the round stalls whenever the partner is due
+/// to act, since the UI is always requested from player 0's perspective.
+enum OpponentMode: String, CaseIterable, Identifiable, Equatable, Sendable {
+    case human = "Hot Seat"
+    case computer = "Computer"
+
+    var id: String { rawValue }
+}
+
+/// Public strength labels. The actual depth/determinization numbers come from
+/// the C++ DifficultyModel through the bridge -- this enum is presentation
+/// only, so the app cannot drift from the engine's calibrated tier mapping.
+enum AILevel: Int, CaseIterable, Identifiable, Sendable {
+    case casual = 100
+    case club = 900
+    case expert = 1600
+    case master = 2300
+    case elite = 3000
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .casual: return "Casual"
+        case .club: return "Club"
+        case .expert: return "Expert"
+        case .master: return "Master"
+        case .elite: return "Elite"
+        }
+    }
+}
+
+struct AIProfile: Equatable, Sendable {
+    let strength: Int
+    let maxDepthPlies: Int32
+    let determinizationCount: Int32
+
+    init(level: AILevel) {
+        let dto = isolyn.bridge.bridge_difficulty_profile(Int32(level.rawValue))
+        strength = Int(dto.strength)
+        maxDepthPlies = dto.maxDepthPlies
+        determinizationCount = dto.determinizationCount
+    }
+}
+
+extension MatchFormat {
+    /// Player 0 is always human. 2v2 partners sit opposite (0/2 and 1/3), so
+    /// the computer controls seats 1, 2 and 3 -- including the human's partner.
+    func isComputerSeat(_ seat: Int, for opponent: OpponentMode) -> Bool {
+        guard opponent == .computer else { return false }
+        switch self {
+        case .oneVOne:
+            return seat == 1
+        case .oneVOneVOne:
+            return seat != 0
+        case .twoVTwo:
+            return seat != 0
+        }
+    }
+}

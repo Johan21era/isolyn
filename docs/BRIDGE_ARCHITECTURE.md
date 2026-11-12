@@ -6,7 +6,7 @@ What the Swift/C++ bridge is, why it's shaped the way it is, and what it deliber
 
 A narrow layer between the SwiftUI app (`Sources/IsolynApp`) and the authoritative C++ engine (`Sources/IsolynEngine`). It exists because nothing wired the two together before this — `Package.swift` said so explicitly ("no Swift/C++ interop is wired up here... future work"), and a repo-wide search turned up zero prior bridge/adapter/interop artifacts of any kind. This is not a refactor of something that existed; it's new.
 
-It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`run_tests.sh`, 356 checks across 19 executables as of this writing), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
+It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`run_tests.sh`, 426 checks across 19 executables as of 2026-11-11), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
 
 ## Two facts about the engine that shaped every other decision here
 
@@ -20,7 +20,7 @@ These came from reading the actual `.cpp` files, not from assuming API behavior 
 
 Two different guarantees, layered:
 
-- **Per-session mutex (`EngineSessionImpl::mutex` in `IsolynBridge.cpp`).** Every command and query takes this lock for the duration of its (always fast — the engine's mutating operations are all O(hand size) at most) work. This is defense in depth, not the primary design: it means a caller that violates the intended serialization discipline gets blocking, not a silent data race. It was not in the original design — added during review of an independently-written draft of this same bridge, and kept because it closes a real gap this project has no way to verify from the Linux sandbox this bridge was built in (there has never been a Swift toolchain available to compile-check that the intended actor discipline is actually followed on the Swift side).
+- **Per-session mutex (`EngineSessionImpl::mutex` in `IsolynBridge.cpp`).** Every command and query takes this lock for the duration of its (always fast — the engine's mutating operations are all O(hand size) at most) work. This is defense in depth, not the primary design: it means a caller that violates the intended serialization discipline gets blocking, not a silent data race. It was not in the original design — added during review of an independently-written draft of this same bridge, and kept as defense in depth because it protects callers even if the intended actor discipline is violated. The Swift package now compiles and runs on this machine, but a mutex still makes misuse fail safely rather than silently race.
 - **Swift actor (`EngineSession` in `Sources/IsolynApp/Engine/EngineSession.swift`).** The intended primary mechanism. One `EngineSession` actor per session; all command/query calls against it are automatically serialized by the language, not by convention.
 
 **Analysis is the deliberate exception**, because `SearchEngine::chooseBestMove` (depth 4 × 20 determinizations by default) is genuinely slow, and nothing else on a session should have to wait behind it. This works specifically because of how the engine is designed, not despite it:
@@ -67,7 +67,7 @@ This mirrors how the engine itself keeps hidden and known information structural
 
 ## Why the DTOs are POD-only, fixed-size, no STL
 
-Every public type in `IsolynBridge.hpp` is a plain enum, a plain struct of primitives and fixed C arrays, or a `uint64_t` handle — no `std::vector`, `std::string`, `std::optional`, references, or templates cross the boundary. This is the most conservative reading of "narrowest boundary the actual toolchain supports," made without a compiler available to verify STL bridging behavior for this specific Xcode/Swift version. Fixed arrays are sized against the game's actual hard ceiling (28 tiles, `kTotalTileCount`) rather than a "typical" smaller number, specifically because Sandbox Mode (`docs/FEATURE_SPECS.md`) allows arbitrary, user-constructed positions — truncating real data to fit an assumed-typical bound would silently corrupt whatever didn't fit.
+Every public type in `IsolynBridge.hpp` is a plain enum, a plain struct of primitives and fixed C arrays, or a `uint64_t` handle — no `std::vector`, `std::string`, `std::optional`, references, or templates cross the boundary. This is the most conservative reading of "narrowest boundary the actual toolchain supports," chosen for stable interop rather than relying on STL bridging behavior that varies by toolchain. The Swift target compiles this header and exercises it in the package tests. Fixed arrays are sized against the game's actual hard ceiling (28 tiles, `kTotalTileCount`) rather than a "typical" smaller number, specifically because Sandbox Mode (`docs/FEATURE_SPECS.md`) allows arbitrary, user-constructed positions — truncating real data to fit an assumed-typical bound would silently corrupt whatever didn't fit.
 
 The cost of this choice lands entirely on the Swift side: a fixed C array imports into Swift as a tuple, not an `Array`, which is genuinely awkward to consume directly. `Sources/IsolynApp/Engine/EngineTypes.swift` handles this with one reusable `withTupleAsArray` helper (pointer-reinterpretation from tuple memory to a typed buffer, which is safe because the two are guaranteed to have identical layout) rather than hand-writing tuple-accessor code per field.
 
@@ -75,10 +75,9 @@ The cost of this choice lands entirely on the Swift side: a fixed C array import
 
 Said plainly rather than silently dropped, matching this project's own established documentation standard:
 
-- **Match-level scoring across rounds.** `EngineSession`/`EngineSessionImpl` wrap exactly one round, matching `MatchController`'s own scope exactly (`MatchController.hpp`: "construct a fresh GameState for each new round"). `ScoreSystem` (running totals across rounds) isn't wired into the bridge at all — that needs a real round-to-round orchestration design (who calls `RulesEngine::determineNextRoundStarter`, who holds the running `ScoreSystem` between rounds, when does the next `EngineSession` get created) that hasn't been designed yet, not something to improvise inline here.
 - **Sandbox Mode's arbitrary starting positions.** No bridge entry point accepts a caller-constructed `GameState` — `docs/FEATURE_SPECS.md` calls for a `PositionConstructor` on the engine side that doesn't exist yet. Nothing to bridge to until that's built.
 - **A `bridge_analysis_run` pinned against a concurrent `bridge_analysis_snapshot_destroy`.** `find()` on the analysis handle table only guarantees the snapshot was valid at that instant, not for the whole (potentially long) remainder of a run call. In practice this is safe under the documented discipline (destroy only after run returns; use `bridge_analysis_request_cancel` to ask an in-flight run to stop, never destroy underneath it) — but it's a caller-discipline guarantee, not a structurally-enforced one, unlike the shared_ptr fix that closed the equivalent gap for session handles. A generation-checked handle or reference count on the analysis side would close this properly; it's real, scoped, undone work, not something to improvise under this pass's time constraints.
-- **Everything Swift-compiler-dependent.** SwiftUI integration, actual Xcode builds, on-device performance characteristics of the search — all explicitly the next owner's territory, per this project's own long-standing arrangement (no session that has worked on this codebase has ever had a Swift toolchain available).
+- **Native visual and on-device performance behavior.** The Swift package compiles and its headless tests run on macOS, but this document cannot prove what the running window looks like or how search latency feels in the packaged app. Those remain manual checks.
 
 ---
 
@@ -110,5 +109,5 @@ the handle, publishes scores/winner/next-starter, drives
 serializes with the session's own command stream.
 
 Verified: SmokeTest match section (record/duplicate-reject/starter/
-accumulation/idempotent close) -- suite at 57/57; ASan+UBSan clean over the
-new paths; swift build clean, swift test 25/25.
+accumulation/idempotent close) -- current bridge suite 68/68; ASan+UBSan clean
+over the new paths; Swift package currently 49 tests, 1 skipped, 0 failures.

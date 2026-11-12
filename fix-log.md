@@ -329,3 +329,184 @@ residue per house rule 7.
 - **FOUND EN ROUTE (pre-existing, not introduced here -- confirmed verbatim in HEAD):** `advance()` incremented the column UNSIGNED (`col += n`) while x moved signed. After the FIRST row-break corner, no second corner could ever fire ((dir<0 && col==0) unreachable going left; col had already passed cols-1 going right), so any chain longer than one row continued LEFT FOREVER off the board's edge instead of snaking. Latent since the snake board shipped; invisible with real mid-game chains (<13 tiles on an 800pt plane); exposed immediately by BoardLayoutTests' synthetic 40-tile chains (diagnostic trace showed y stuck at two values, x running to -720). Fixed with signed advance (`col += n * Int(dir)`), anchor-commented in place.
 - **Fix:** (1) ALL placement/extent/fit math hoisted VERBATIM into internal pure `SnakeChainLayout` (orient/compute/fitScale + named constants) -- rendering consumes its data unchanged. (2) Auto-fit: ONE UNIFORM `scaleEffect(suggestedScale)`, engaged only past 94% axis occupancy, clamped 0.62...1.0 -- uniform scaling multiplies both axes equally, so the mandate's exact-2:1 law holds BY CONSTRUCTION; below the floor scaling STOPS and pan takes over (§17 priority order encoded). (3) Content-aware camera bounds: post-scale residual overflow (halved -- offset moves the plane's center) raises maxOffsetX/Y from new named defaults; bounds only ever GROW; mutated in onAppear/onChange closures, never during body evaluation. (4) Test seam: internal test-only `GameSnapshot` init -- tuple DTOs are unfillable element-wise from Swift and `init?(dto:)` suppresses the memberwise initializer, so without this NO headless test can fabricate controlled snapshots (real sessions deal CSPRNG hands). Production paths untouched: snapshots still come ONLY from EngineSession.snapshot(for:) so hidden-info enforcement stays bridge-side.
 - **Verification:** `swift build` zero warnings; `swift test` -> **Executed 45 tests, with 1 test skipped and 0 failures** (was 35; +10 BoardLayoutTests covering orient-flip correctness, corner-cap placement, marker-clearance vs double-protrusion extents (hand-derived 34 vs 52pt), fit-scale exactness/threshold/tighter-axis/floor/monotonicity, degenerate guards, and multi-row serpentine integrity with in-bounds x assertions that FAIL against the pre-fix bug). Engine suite untouched (362/362 via earlier gate this session). Long-chain visual behavior flagged for owner eyeball at next app launch (headless session cannot screenshot GUI) -- risk-register item anticipated this.
+
+---
+
+# SESSION: ENGINE/SEARCH/EVALUATION OVERHAUL + METAL BATCH EVALUATOR (2026-11-11)
+
+> Current worktree, intentionally uncommitted. This is the closeout receipt for
+the session; all earlier entries retain their original historical numbers.
+
+## ENGINE-01 — Search, terminal scoring, evaluation, difficulty, and AI mode
+- **Files:** `Sources/IsolynEngine/SearchEngine.cpp`, `EvaluationEngine.cpp`,
+  `GameState.cpp`, the matching headers, `Sources/IsolynEngineBridge/*`,
+  `Sources/IsolynApp/Game/Opponent.swift`, difficulty/AI tests, and the lab.
+- **Why:** finish the engine/search/evaluation overhaul without changing the
+  bridge's POD contract or silently changing the public evaluation contract.
+- **What landed:** iterative deepening, alpha-beta/team negamax for 1v1 and
+  2v2, full-width maxn for 1v1v1, transposition table with exact bounds,
+  killer/history ordering, exact endgame solving, the eight-component
+  evaluation, root-score selection fixes, terminal-utility ordering, measured
+  difficulty tiers, AI turn flow, and self-play/calibration tooling.
+- **Verification (2026-11-11):** engine 19 executables / **386 checks**; bridge
+  2 executables / **68 checks**; Swift **49 tests, 1 skipped, 0 failures**;
+  lab **4 tests**; ASan+UBSan **21 executables / 454 checks**; TSan
+  **2 executables / 82 checks**; standalone fuzz **37,500 executions** with zero
+  crashes, hangs, or sanitizer findings.
+- **Limitations:** difficulty labels remain provisional; no external-engine
+  Elo claim. The measured ladder is internal and recorded in `docs/LAB.md`.
+
+## METAL-01 — Standalone Metal batch evaluator
+- **Files:** `Accelerator/` — runtime-compiled MSL, generic and compact kernels,
+  CPU reference, position/feature encoders, parity/failure tests, benchmark.
+- **Verification:** `./Accelerator/build.sh` passed: generic and compact
+  CPU/GPU parity, 1v1/1v1v1/2v2/closed/terminal coverage, malformed-batch
+  rejection, and compact throughput. Development M3, 16,384-position batch:
+  CPU ~10.4M positions/sec; Metal ~24-28M positions/sec (~2.3-2.7x across runs).
+- **Limitation:** evaluator microbenchmark only. The accelerator is **not wired
+  into `SearchEngine`**, so this is not a search-speed or strength claim.
+
+## OPS-10 — Closeout Initiative
+- **Documentation sweep:** `README.md`, `Accelerator/README.md`,
+  `docs/ACCELERATOR.md`, `docs/BRIDGE_ARCHITECTURE.md`,
+  `docs/BRIDGE_TESTING.md`, `docs/OPEN_DECISIONS.md`, `isolyn roadmap.md`,
+  `legacy handoff.md`, `tools/selfplay/README.md`, `tree.md`, and this file.
+  `docs/LAB.md` and `lab/README.md` were reviewed and needed no numeric change.
+- **Documentation gate:** the Monarcha/Asterisma `documentation_audit.py` gate
+  does not exist in this repository. Manual path/count/claim review was run;
+  the gate itself is **SKIPPED** with that reason, not presented as a pass.
+- **Verification sweep:** commands and results above are current; no skipped
+  test stage is counted as a pass. The accelerator harness is separate from the
+  SPM suite, and that separation is intentional.
+
+## PERF-01 — CPU evaluator/hash and Metal kernel throughput round (2026-11-11)
+- **Files:** `Sources/IsolynEngine/{MoveGenerator,MobilityHeuristic,BlockingHeuristic,GameState,SearchEngine}.cpp`, their headers, `Tests/IsolynEngineTests/MoveSystemTests.cpp`, `Accelerator/src/MetalAccelerator.mm`, `Accelerator/shaders/evaluation.metal`, `Accelerator/src/EvaluationShaderSource.hpp`, `Accelerator/tests/AcceleratorTests.mm`, and the benchmark/self-play tools.
+- **CPU measured (short-run, pre-hardening):** evaluation 1v1/1v1v1/2v2 **30.9M/24.8M/17.0M** player-evals/s versus the recorded **10.9M/8.8M/5.0M** baseline; hash **50.9M/37.8M/29.3M**/s versus **10.9-20.6M**/s; movegen **43.5-43.9M**/s versus **~28-38M**/s. The sustained median figures below are the ones to use for capacity planning. Mobility/blocking now use allocation-free legal-move counts, and `GameState::hash` sorts hand indices in a stack array.
+- **Self-play:** fixed seed 21, depth 4, 20 determinizations. 1v1: 100 games, 3,360,695 nodes / 0.82s = **4.10M nodes/s** (baseline normalized 3.09M/s). 1v1v1: 20 games, 2,482,394 / 0.57s = **4.35M/s** (baseline 2.19M/s). 2v2: 20 games, 1,045,161 / 0.38s = **2.75M/s** (baseline 1.44M/s).
+- **Metal measured:** warmed medians of 32 dispatches: 1K **3.5-4.4M/s**, 4K **16.6-18.1M/s**, 16K **45-58M/s**, 65K **129-136M/s**; host encode **35-46M positions/s**. Persistent shared buffers, table-driven tile geometry, and a 65,536-position cap. Controlled A/B at 65K: arithmetic **68-69M/s** versus LUT **129-136M/s** (~1.9x). The max-size kernel is ~7.6-7.9x the CPU evaluator; encode+dispatch is ~33M/s, so host encoding is now the bottleneck.
+- **Rejected/neutral:** the first fixed-buffer generation attempt temporarily regressed the public movegen benchmark to ~29-32M/s; restoring the vector `generate()` path recovered ~43-44M/s. The search-only allocation-free path remained end-to-end neutral, so no search-speed claim is made for that experiment; the public vector API remains.
+- **Verification:** engine 19 executables / **386 checks**; bridge **68 checks**; ASan+UBSan **21 executables / 454 checks**; accelerator **71 checks**; `git diff --check` clean. No commit or push.
+- **Junk-artifact audit:** `469M -> 48M`. Removed only regenerable
+  `.build/`, root `build/`, `Accelerator/build/`, and `.DS_Store` files. Kept
+  `lab/data/` measurements, `graphify-out/` reports/graphs, source, tests, docs,
+  `.git/`, and every unknown artifact.
+- **Graph refresh:** `graphify update . --force` -> **1,936 nodes / 3,581
+  edges**; `graph-3d-full.html` regenerated and `--check` passed; `graph.json`
+  SHA-256 `9834bbd7780fd88dc82da1ee96ae5c58e8dcd5dafe25dd4a6eeeb83563f3c26c`.
+  Interactive WebGL opening was not independently verified; the generated page
+  is 2.56 MiB and its byte-level check passed.
+- **Owner gate:** no commit and no push. Commit approval and push approval are
+  separate explicit gates; this entry does not claim either.
+
+## STRESS-01 — sustained CPU/Metal stress campaign (2026-11-11)
+- **Harness hardening:** `tools/bench/main.cpp` now warms caches/frequency and reports three-sample medians. The earlier un-warmed 0.22s harness varied by nearly 2x under scheduler noise; the hardened three-run ranges below are stable enough for capacity work.
+- **Sustained CPU medians:** 1v1/1v1v1/2v2 evaluation **27.5-28.2M / 23.3M / 16.4-16.6M** player-evals/s; movegen **41.5-43.8M**/s; hash **47.4M / 36.0M / 27.4M**/s. The short-run pre-hardening numbers above are not sustained results.
+- **Self-play throughput and memory:** 1v1 1,000 games: 32,341,886 nodes / 7.68s = **4.21M nodes/s**, 7.8MB peak. 1v1v1 100 games: 12,205,946 / 2.82s = **4.33M/s**, 7.2MB. 2v2 100 games: 5,369,331 / 1.95s = **2.75M/s**, 7.2MB. 5,000-game 1v1 soak: 165,881,215 nodes / 38.80s = **4.28M/s**, 85,389 decisions, **19.4MB peak**, zero incomplete rounds.
+- **Repeatability:** five 200-game 1v1 runs were 1.52-1.55s with identical 6,510,491-node workloads; three 50-game 1v1v1 runs were 1.41-1.42s; three 50-game 2v2 runs were 0.95-0.96s.
+- **Depth, samples, deadline:** depth 5 and depth 6, 100 determinizations, and a 5ms per-move budget all completed with zero incomplete rounds; peak RSS stayed at or below 8.7MB. The 5ms run made 826 decisions in 2.12s (about 2.6ms per decision), so the cooperative deadline did not overrun materially.
+- **Concurrency:** aggregate 1v1 self-play throughput was 8.10M nodes/s with 2 processes, 13.58M/s with 4, and 19.95M/s with 8; the 8-way run used 7.9MB peak per process and had no failed rounds. This is process-level scaling, not a shared-memory thread benchmark; TSan covers the existing threaded bridge/search paths.
+- **Metal soak (pre-face-mask):** five repeated full harness runs at 65K positions measured **132-136M positions/s**; 16K measured **57-63M/s**; host encoding ranged **23-49M positions/s**. The 65K-state fixture peaked at **315MB RSS**; that is fixture/state storage, not a persistent kernel allocation. Every parity, malformed-input, and oversized-batch check passed.
+- **Findings:** no crashes, hangs, failed rounds, or time-budget blowups were observed. The remaining measured bottlenecks are host-side encoding for max-size Metal batches and the finite 4P+4E core budget under 8-way process load. No new engine defect was found in this campaign.
+
+## METAL-02 — face-mask kernel optimization (2026-11-11)
+- **Files:** `Accelerator/shaders/evaluation.metal`, `Accelerator/src/EvaluationShaderSource.hpp`, `Accelerator/src/MetalAccelerator.mm`, and the accelerator harness. The embedded MSL is now byte-for-byte identical to the `.metal` reference.
+- **Kernel change:** seven precomputed face masks replace the 28-tile scans in mobility, pip control, and immediate-threat checks. Mobility and threat use bitwise intersections plus `popcount`; pip control reuses the mobility already computed for each player.
+- **Measured:** 1K **4.3-5.2M**, 4K **17.3-18.6M**, 16K **62-66M**, and 65K **162-170M positions/s** typical. The 10-run 65K median was **168.7M/s**, full range 148-172M/s; host encoding was 43-45M positions/s. The harness peaked at 315MB because it stores 65,536 `GameState` fixtures plus encoded rows.
+- **Pipeline analysis:** batch-size scaling shows a roughly **200us** dispatch/completion floor (1K and 4K are both ~0.2ms per call). At 65K, about 4.4MB of input/output moves in ~0.4ms (~11GB/s), so the kernel is compute/dispatch-bound, not bandwidth-bound. Host encoding (~1.5ms for 65K) is the end-to-end bottleneck; the synchronous `waitUntilCompleted` API prevents overlap.
+- **Rejected variants:** 7-bit hand-value tables were neutral (~160-175M/s); 64-byte row padding lost the direct A/B (10-run median 163.6M vs 168.7M unpadded); 64-thread groups were slower (median ~162M). All were removed, and the kernel source was revalidated after each restore.
+- **Verification:** accelerator harness **83 checks**, three final full sweeps, exact shader/source match, and all 1v1/1v1v1/2v2/closed/terminal/empty-chain/equal-end/threat parity cases passed. No commit or push.
+
+## REGRESSION-01 — post-Metal regression matrix (2026-11-11)
+- **Coverage added:** compact Metal parity for an empty chain (`leftEnd < 0`), equal chain ends (double-counted mobility), and a one-tile immediate threat; accelerator harness rose from 71 to **83 checks**.
+- **Correctness/stability:** engine **19 executables / 386 checks**; bridge **2 / 68**; ASan+UBSan **21 / 454**; TSan **2 / 82**; Swift **49 tests, 1 skipped, 0 failures**; standalone fuzz **37,500 executions** with zero crashes, hangs, or sanitizer findings. Shader and embedded MSL are byte-for-byte identical; `git diff --check` is clean.
+- **Performance regression check:** hardened CPU benchmark 1v1/1v1v1/2v2 evaluation **30.8-31.3M / 24.5-24.7M / 17.4-17.5M** player-evals/s, movegen **42.9-46.2M/s**, hash **50.0-50.8M / 37.7-37.9M / 29.2-29.5M**/s. Self-play: 1v1 1,000 games **7.34s / 4.41M nodes/s**, 1v1v1 100 games **2.67s / 4.57M/s**, 2v2 100 games **1.86s / 2.89M/s**; zero incomplete rounds; peak RSS 7.1-7.9MB. 8-way aggregate: **21.95M nodes/s**, zero incomplete rounds.
+- **Metal regression check:** five post-edge-test runs at 65K: **164.2-170.2M positions/s** (median **169.1M/s**); 4K **18.4-18.7M/s**; 1K **4.57-4.80M/s**; 16K normal cluster **63.5-64.3M/s** with two scheduler outliers. Host encoding **22.6-44.9M positions/s**. All 83 checks passed on every run.
+
+## PERF-02 — batch leaf evaluation + inline raw totals (2026-11-11)
+- **Files:** `Sources/IsolynEngine/include/EvaluationEngine.hpp`, `Sources/IsolynEngine/EvaluationEngine.cpp`, `Sources/IsolynEngine/SearchEngine.cpp`, `Tests/IsolynEngineTests/EvaluationEngineTests.cpp`.
+- **Problem:** each search leaf evaluated once per player. That repeated hand value, mobility, immediate-threat, closed-state scoring, and (in 2v2) team-mobility work for every player, then allocated a `std::vector` for each result. Transposition-table hits also copied that vector.
+- **Batch evaluator:** added `EvaluationTotals` (fixed `std::array<double,4>` plus player count) and `EvaluationEngine::evaluateAll`. It computes hand values, mobility, threats, pip control, team support, and blocking contributions once, and computes the closer/round scores once when closed. The existing per-player `evaluate` API and its breakdown remain unchanged.
+- **Search integration:** leaves and terminal nodes call `evaluateAll` once; search now carries an inline `RawEvaluation` instead of a heap vector, so TT hits/copies and `bestRaw` updates no longer allocate. Root accumulation remains vector-based because it runs once per candidate/determinization, not per node.
+- **Parity coverage:** batch totals are compared with per-player totals for 1v1, 1v1v1, 2v2, terminal, empty-chain, immediate-threat, 2v2-closed, and 2v2-terminal fixtures. Search node and decision counts were identical before and after the change in all three modes.
+- **End-to-end self-play (seed 21, depth 4, 20 determinizations):**
+
+  | Workload | Pre-batch | Final | Change |
+  |---|---|---:|---:|
+  | 1v1, 1,000 games | 7.34s / 4.41M nodes/s | **6.31s / 5.13M nodes/s** | **+16%** |
+  | 1v1v1, 100 games | 2.67s / 4.57M nodes/s | **1.64s / 7.44M nodes/s** | **+63%** |
+  | 2v2, 100 games | 1.86s / 2.89M nodes/s | **1.14s / 4.71M nodes/s** | **+63%** |
+
+  Node counts were unchanged: 1v1 32,341,886 / 16,822 decisions; 1v1v1
+  12,205,946 / 2,186; 2v2 5,369,331 / 2,105. Peak RSS for 1,000 1v1 games
+  remained 7.8MB. Repeats were stable: five 200-game 1v1 runs **1.25-1.31s**
+  (pre-batch 1.52-1.55s); three 50-game 1v1v1 runs **0.81-0.83s**; three
+  50-game 2v2 runs **0.56s**. A depth-5 / 100-determinization 1v1 run completed
+  10 games in **0.48s** (3,112,046 nodes, 6.48M nodes/s). Eight concurrent 1v1
+  processes completed with zero failed rounds at **19.45-22.15M nodes/s**
+  aggregate; that is within the previous 21.95M/s run's process-scheduler
+  noise, so no separate concurrency claim is made.
+- **Subsystem comparison:** movegen **42.7-45.3M/s** (prior 42.9-46.2M) and hash
+  **50.5-51.0M / 37.7-38.0M / 29.4-29.5M**/s (prior 50.0-50.8M / 37.7-37.9M /
+  29.2-29.5M) were unchanged. The standalone per-player evaluation benchmark was
+  **27.8-29.0M / 22.9-23.1M / 16.0-16.2M** player-evals/s this round versus
+  30.8-31.3M / 24.5-24.7M / 17.4-17.5M previously; reordering `evaluate` made
+  no difference. That benchmark does not exercise the batch leaf path, and the
+  end-to-end search measurements above are the relevant result.
+- **Verification:** engine **19 executables / 426 checks**; bridge **2 / 68**;
+  ASan+UBSan **21 / 494**; TSan **2 / 82**; Swift **49 tests, 1 skipped, 0
+  failures**; standalone fuzz **37,500 executions**, zero findings; accelerator
+  **95 checks**. `git diff --check` clean. No commit or push.
+- **Limitation:** the accelerator remains standalone and is not wired into
+  `SearchEngine`; no Metal search-speed claim is made here.
+
+## STRESS-02 — adversarial verification campaign (2026-11-11)
+- **Files:** `Tests/IsolynEngineTests/EvaluationEngineTests.cpp` and
+  `Accelerator/tests/AcceleratorTests.mm` (new stress gates); no production
+  source was changed in this campaign.
+- **Randomized numerical differential:** 250 legal positions per mode (750
+  total), constructed from shuffled tiles and 6-15 random legal plays, compared
+  `EvaluationEngine::evaluateAll` against per-player `evaluate` for every player.
+  Every fifth position used non-default, mixed-sign weights. Maximum absolute
+  delta: **0.0** in 1v1, 1v1v1, and 2v2; player-count mismatches: **0**.
+- **Large multi-mode Metal batches:** 4,096 compact positions per mode, with
+  current-player variation, encoded and evaluated through Metal. All modes
+  matched the CPU evaluator with maximum absolute delta **0.0**.
+- **Sustained resource runs:**
+
+  | Workload | Result | Peak RSS | Incomplete |
+  |---|---:|---:|---:|
+  | 1v1, 5,000 games | 163,080,800 nodes / 85,256 decisions / 32.22s | 9.7MB | 0 |
+  | 1v1v1, 1,000 games | 121,666,036 nodes / 21,943 decisions / 16.34s | 7.1MB | 0 |
+  | 2v2, 1,000 games | 53,815,988 nodes / 20,915 decisions / 11.52s | 7.1MB | 0 |
+
+- **Oversubscription:** 16 simultaneous 1v1 self-play processes on the 8-core M3
+  completed **51,246,101 nodes in 2.06s** aggregate (**24.88M nodes/s**) with zero
+  incomplete rounds. This is a stability result under 2x CPU oversubscription,
+  not a scaling claim.
+- **Deadline pressure:** 200 1v1 games with a **1ms per-move** budget completed
+  all 200 rounds in 1.26s (3,362 decisions, 6,236,237 nodes), zero incomplete.
+  1v1v1 (100 games) and 2v2 (100 games) at the same 1ms budget completed all
+  rounds with zero incomplete; they visited 8,285,542 / 2,199 and 5,037,480 /
+  2,106 nodes / decisions respectively. A file-descriptor limit of 64 also
+  completed a 5-game smoke run; hard address-space/data-segment limits are not
+  usable on this macOS host.
+- **Heavy search settings:** 20 games each at depth 5 with 50 determinizations
+  completed with zero incomplete rounds: 1v1v1 in **2.30s**, 2v2 in **1.01s**.
+- **Metal repetition:** three back-to-back harness runs each passed **95/95**
+  checks. 65K throughput was **140.3-171.3M positions/s** (316MB fixture RSS).
+  With `MTL_DEBUG_LAYER=1` and `MTL_SHADER_VALIDATION=1`, all 95 checks still
+  passed with no validation errors; 65K throughput fell to **79.2M/s**, as
+  expected from validation overhead.
+- **Metal contention:** four concurrent harness processes each passed **95/95**;
+  65K throughput degraded to **108.9-148.7M/s** under shared-GPU contention.
+  A mixed run of two Metal harnesses plus eight CPU self-play processes passed
+  all **95** checks in both Metal processes and completed **26,342,925 CPU nodes**
+  with zero incomplete rounds; Metal 65K throughput was **104.5-112.4M/s**.
+- **Outcome:** no crashes, hangs, incorrect values, failed batches, incomplete
+  rounds, or unexpected search behavior were found. The only unverified
+  constraint is a hard memory cap because `RLIMIT_AS` and `RLIMIT_DATA` are
+  rejected by this macOS host; sustained RSS was measured instead.
+- **Final verification:** engine **19 executables / 426 checks**; bridge **2 /
+  68**; ASan+UBSan **21 / 494**; TSan **2 / 82**; Swift **49 tests, 1 skipped,
+  0 failures**; standalone fuzz **75,000 executions**, zero findings;
+  accelerator **95 checks**. `git diff --check` clean. No commit or push.

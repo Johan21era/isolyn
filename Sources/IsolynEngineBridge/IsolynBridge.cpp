@@ -1,6 +1,7 @@
 #include "IsolynBridge.hpp"
 
 #include "Dealer.hpp"
+#include "DifficultyModel.hpp"
 #include "EntropySource.hpp"
 #include "MatchController.hpp"
 #include "MoveGenerator.hpp"
@@ -202,6 +203,16 @@ HandleTable<AnalysisSnapshotImpl>& analysisTable() { static HandleTable<Analysis
 // One running ScoreSystem for one mode. Guarded by its own mutex; whenever a
 // call must take BOTH this and a session's mutex, the session mutex is taken
 // FIRST everywhere (single global ordering => no deadlock).
+//
+// Participant semantics are mode-dependent: 2v2 tracks two TEAM scores, not
+// four individual scores. This helper is the single source of truth for that
+// count -- the old constructor used Dealer::playerCountForMode (4 for 2v2),
+// while bridge_match_record_round correctly built two team values, producing
+// a size mismatch: debug assert, release out-of-bounds read.
+int participantCountForMode(GameMode m) {
+    return m == GameMode::TwoVsTwo ? 2 : Dealer::playerCountForMode(m);
+}
+
 struct MatchStateImpl {
     GameMode mode;
     ScoreSystem scores;
@@ -209,7 +220,7 @@ struct MatchStateImpl {
     bool matchEnded = false;
     int winnerParticipantIndex = -1;
     std::mutex mutex;
-    MatchStateImpl(GameMode m) : mode(m), scores(m, Dealer::playerCountForMode(m)) {}
+    MatchStateImpl(GameMode m) : mode(m), scores(m, participantCountForMode(m)) {}
 };
 HandleTable<MatchStateImpl>& matchTable() { static HandleTable<MatchStateImpl> t; return t; }
 
@@ -433,12 +444,6 @@ CommandResultDTO bridge_end_turn_with_no_play(SessionHandle session, uint64_t ex
 // ============================================================================
 namespace {
 
-int participantCountForMode(GameMode m) {
-    // 2v2 scores per TEAM (ScoreSystem's own documented participant semantics);
-    // every other mode scores per player.
-    return m == GameMode::TwoVsTwo ? 2 : Dealer::playerCountForMode(m);
-}
-
 MatchResultDTO failedMatch(BridgeStatus status) noexcept {
     MatchResultDTO r{};
     r.status = status;
@@ -532,6 +537,18 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
 }
 
 void bridge_match_close(MatchHandle match) { matchTable().erase(match); }
+
+// ============================================================================
+// Difficulty
+// ============================================================================
+DifficultyProfileDTO bridge_difficulty_profile(int32_t strength) {
+    const DifficultyProfile p = DifficultyModel::profileForStrength(strength);
+    DifficultyProfileDTO out{};
+    out.strength = static_cast<int32_t>(p.strength);
+    out.maxDepthPlies = static_cast<int32_t>(p.maxDepthPlies);
+    out.determinizationCount = static_cast<int32_t>(p.determinizationCount);
+    return out;
+}
 
 // ============================================================================
 // Analysis

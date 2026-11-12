@@ -26,6 +26,31 @@ int main() {
         check(state.playHistory().empty(), "play history starts empty");
     }
 
+    section("GameState: hash is order-independent for hands but sensitive to turn and draw order");
+    {
+        std::vector<DominoTile> boneyard = {
+            DominoTile(0, 0), DominoTile(1, 2), DominoTile(3, 4), DominoTile(5, 6),
+        };
+        std::vector<std::vector<DominoTile>> handsA = {
+            { DominoTile(1, 1), DominoTile(2, 3) },
+            { DominoTile(4, 4), DominoTile(5, 6) },
+        };
+        std::vector<std::vector<DominoTile>> handsB = {
+            { DominoTile(2, 3), DominoTile(1, 1) },
+            { DominoTile(5, 6), DominoTile(4, 4) },
+        };
+        GameState a(GameMode::OneVsOne, handsA, boneyard);
+        GameState b(GameMode::OneVsOne, handsB, boneyard);
+        check(a.hash() == b.hash(), "hand ordering does not change the state hash");
+
+        GameState otherTurn(GameMode::OneVsOne, handsA, boneyard, Chain(), {}, 1);
+        check(a.hash() != otherTurn.hash(), "whose turn it is changes the state hash");
+
+        std::vector<DominoTile> reversedBoneyard(boneyard.rbegin(), boneyard.rend());
+        GameState otherDrawOrder(GameMode::OneVsOne, handsA, reversedBoneyard);
+        check(a.hash() != otherDrawOrder.hash(), "boneyard draw order changes the state hash");
+    }
+
     section("GameState: playTile removes from hand, attaches to chain, records history -- atomically");
     {
         std::vector<std::vector<DominoTile>> hands = {

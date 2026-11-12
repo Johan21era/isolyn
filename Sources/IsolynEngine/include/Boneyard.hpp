@@ -56,6 +56,12 @@ public:
     // undrawn (which includes an empty boneyard to begin with).
     std::vector<DominoTile> lockedTiles() const;
 
+    // Full remaining order, including the locked tail. Search needs this
+    // for a state hash: draw order is part of the state, even though the
+    // identities are hidden from every player. Exposed read-only; gameplay
+    // never changes the order except through drawNext()/undoDraw().
+    const std::deque<DominoTile>& remainingTiles() const { return m_tiles; }
+
 private:
     std::deque<DominoTile> m_tiles;
 };

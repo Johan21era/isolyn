@@ -38,6 +38,8 @@ final class GameViewModel {
     private(set) var phase: Phase = .loading
     private(set) var snapshot: GameSnapshot?
     let mode: MatchFormat
+    let opponent: OpponentMode
+    let aiLevel: AILevel
 
     /// Scores BEFORE vs AFTER the most recent recording -- powers the
     /// "+N points" animation on the reveal overlay. Empty until first record.
@@ -59,6 +61,14 @@ final class GameViewModel {
     private(set) var analysisWasCancelled = false
     private var analysisTask: AnalysisTask?
 
+    // MARK: - Computer opponent state
+
+    /// True while the opponent's turn is being searched or played. The board
+    /// remains visible, but every human control is disabled.
+    private(set) var aiThinking = false
+    private var aiTask: AnalysisTask?
+    private var aiTurnTask: Task<Void, Never>?
+
     // MARK: - Core objects
 
     private(set) var session: EngineSession?
@@ -75,8 +85,10 @@ final class GameViewModel {
 
     // MARK: - Init / teardown
 
-    init(mode: MatchFormat) {
+    init(mode: MatchFormat, opponent: OpponentMode = .human, aiLevel: AILevel = .club) {
         self.mode = mode
+        self.opponent = opponent
+        self.aiLevel = aiLevel
         do {
             let coordinator = try MatchCoordinator(mode: mode)
             guard let firstRound = EngineSession.createFirstRound(mode: mode) else {
@@ -99,6 +111,7 @@ final class GameViewModel {
     /// references here is sufficient, and avoids awaiting an actor method
     /// from synchronous teardown contexts like test defer blocks.
     func shutdown() {
+        cancelAITurn()
         analysisTask?.cancel()
         session = nil
         match?.close()
@@ -117,8 +130,12 @@ final class GameViewModel {
     private func refresh(forcedDrawAttempts: Int) async {
         guard setupError == nil, let session, let match else { return }
         do {
-            var snap = try await session.snapshot(for: knownCurrentPlayerIndex)
-            if snap.currentPlayerIndex != snap.requestingPlayerIndex {
+            // In AI mode the board is always requested from the human seat.
+            // Showing the computer's own hand while it thinks would leak
+            // hidden information; hot-seat still follows the current seat.
+            let requestedSeat = opponent == .computer ? 0 : knownCurrentPlayerIndex
+            var snap = try await session.snapshot(for: requestedSeat)
+            if opponent == .human && snap.currentPlayerIndex != snap.requestingPlayerIndex {
                 // Fresh-round pivot: the first fetch seeds from player 0, but
                 // dealFirstRound already advanced the turn past the opener.
                 // Re-request from the TRUE current seat so the board always
@@ -137,11 +154,14 @@ final class GameViewModel {
             }
             if match.matchWinner != nil { phase = .matchOver; return }
 
-            // Post-pivot invariant: the displayed snapshot IS the acting
-            // player's view.
-            assert(snap.currentPlayerIndex == snap.requestingPlayerIndex)
+            // Post-pivot invariant for hot-seat: the displayed snapshot IS
+            // the acting player's view. AI mode intentionally shows the human
+            // seat while the computer acts.
+            if opponent == .human {
+                assert(snap.currentPlayerIndex == snap.requestingPlayerIndex)
+            }
 
-            if snap.legalMoves.isEmpty {
+            if snap.currentPlayerIndex == snap.requestingPlayerIndex && snap.legalMoves.isEmpty {
                 if snap.boneyardDrawableCount > 0, forcedDrawAttempts < 32 {
                     _ = try await session.resolveForcedDraw(expecting: snap.stateVersion)
                     await refresh(forcedDrawAttempts: forcedDrawAttempts + 1)
@@ -153,6 +173,7 @@ final class GameViewModel {
             }
 
             phase = .playing
+            scheduleAITurnIfNeeded()
         } catch let error as BridgeError {
             if case .staleRequest = error {
                 await refresh(forcedDrawAttempts: forcedDrawAttempts)
@@ -169,6 +190,22 @@ final class GameViewModel {
     var isMyTurn: Bool {
         guard let s = snapshot, s.roundOutcome == .inProgress else { return false }
         return s.currentPlayerIndex == s.requestingPlayerIndex
+    }
+
+    var isComputerTurn: Bool {
+        guard let s = snapshot, s.roundOutcome == .inProgress else { return false }
+        return isComputerSeat(s.currentPlayerIndex)
+    }
+
+    func isComputerSeat(_ seat: Int) -> Bool {
+        mode.isComputerSeat(seat, for: opponent)
+    }
+
+    var turnLabel: String {
+        guard let s = snapshot, s.roundOutcome == .inProgress else { return "Round complete" }
+        if isComputerSeat(s.currentPlayerIndex) { return "Computer's turn" }
+        if mode == .twoVTwo { return "Team \(s.currentPlayerIndex % 2 + 1)'s turn" }
+        return "Player \(s.currentPlayerIndex + 1)'s turn"
     }
 
     var canPlayTiles: Bool {
@@ -210,7 +247,7 @@ final class GameViewModel {
     // MARK: - Actions
 
     func play(_ move: Move) async {
-        guard let session, let s = snapshot, s.roundOutcome == .inProgress else { return }
+        guard isMyTurn, let session, let s = snapshot, s.roundOutcome == .inProgress else { return }
         do {
             _ = try await session.submitMove(move, expecting: s.stateVersion)
             invalidateAnalysis()
@@ -292,6 +329,7 @@ final class GameViewModel {
             alertError = .bridgeFailure(diagnostic: "could not deal the next round")
             return false
         }
+        cancelAITurn()
         if let oldSession = session { await oldSession.close() }
         session = next
         invalidateAnalysis()
@@ -303,6 +341,7 @@ final class GameViewModel {
     /// Fresh match: same mode, brand-new score tracker, mandated-opener deal.
     func newMatch() async {
         guard let match else { return }
+        cancelAITurn()
         if let oldSession = session { await oldSession.close() }
         session = nil
         match.reset()
@@ -328,7 +367,7 @@ final class GameViewModel {
     /// perspective. Defaults tuned to the engine's documented sweet spot.
     func toggleAnalysis(believer playerIndex: Int) async {
         if analysisRunning { cancelAnalysis(); return }
-        guard let session else { return }
+        guard isMyTurn, let session else { return }
         do {
             let task = try await session.requestAnalysis(
                 believer: playerIndex,
@@ -384,5 +423,117 @@ final class GameViewModel {
         analysisOutcome = nil
         analysisRunning = false
         analysisWasCancelled = false
+    }
+
+    // MARK: - Computer opponent
+
+    private func scheduleAITurnIfNeeded() {
+        guard opponent == .computer,
+              aiTurnTask == nil,
+              !aiThinking,
+              phase == .playing,
+              let snap = snapshot,
+              snap.roundOutcome == .inProgress,
+              isComputerSeat(snap.currentPlayerIndex) else { return }
+
+        aiTurnTask = Task { [weak self] in
+            guard let self else { return }
+            await self.performAITurn()
+            self.aiTurnTask = nil
+            // A three-way match can hand the turn from one computer seat to
+            // another. The refresh inside performAITurn cannot schedule that
+            // next turn while THIS task is still stored, so re-check here.
+            self.scheduleAITurnIfNeeded()
+        }
+    }
+
+    private func performAITurn() async {
+        guard let session, let visible = snapshot,
+              visible.roundOutcome == .inProgress,
+              isComputerSeat(visible.currentPlayerIndex) else { return }
+
+        aiThinking = true
+        defer {
+            aiThinking = false
+            aiTask = nil
+        }
+
+        let seat = visible.currentPlayerIndex
+        let profile = AIProfile(level: aiLevel)
+
+        // Forced draws are rules actions, not strategic choices. Resolve them
+        // one at a time from the computer's own snapshot until it can play or
+        // has to pass, exactly as a human turn would.
+        for _ in 0..<64 {
+            if Task.isCancelled { return }
+
+            do {
+                let view = try await session.snapshot(for: seat)
+                guard view.roundOutcome == .inProgress else {
+                    await refresh()
+                    return
+                }
+                guard view.currentPlayerIndex == seat else {
+                    await refresh()
+                    return
+                }
+
+                if view.legalMoves.isEmpty {
+                    if view.boneyardDrawableCount > 0 {
+                        _ = try await session.resolveForcedDraw(expecting: view.stateVersion)
+                    } else {
+                        _ = try await session.endTurnWithNoPlay(expecting: view.stateVersion)
+                    }
+                    continue
+                }
+
+                let task = try await session.requestAnalysis(
+                    believer: seat,
+                    maxDepthPlies: profile.maxDepthPlies,
+                    determinizationCount: profile.determinizationCount
+                )
+                aiTask = task
+                let outcome = try await task.result
+                aiTask = nil
+
+                if Task.isCancelled { return }
+
+                // The analysis contract says zero completed samples means no
+                // real recommendation. Fall back to a genuinely legal move
+                // rather than displaying or submitting fabricated analysis.
+                let move: Move
+                if outcome.samplesCompleted > 0,
+                   view.legalMoves.contains(outcome.recommendedMove) {
+                    move = outcome.recommendedMove
+                } else if let fallback = view.legalMoves.randomElement() {
+                    move = fallback
+                } else {
+                    await refresh()
+                    return
+                }
+
+                _ = try await session.submitMove(move, expecting: view.stateVersion)
+                await refresh()
+                return
+            } catch let error as BridgeError {
+                if case .staleRequest = error { continue }
+                if case .invalidRequest = error { continue }
+                alertError = error
+                return
+            } catch {
+                alertError = .bridgeFailure(diagnostic: String(describing: error))
+                return
+            }
+        }
+
+        alertError = .bridgeFailure(diagnostic: "computer could not resolve its turn")
+    }
+
+    private func cancelAITurn() {
+        aiTurnTask?.cancel()
+        aiTurnTask = nil
+        aiTask?.cancel()
+        aiTask = nil
+        aiThinking = false
     }
 }

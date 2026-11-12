@@ -16,7 +16,7 @@ is now the SINGLE source of truth for status AND rules.
 
 Isolyn is a Mac desktop game of **Albanian dominoes** (double-six set, 28
 tiles). You play against other humans on the same screen today; a computer
-opponent comes next.
+opponent also exists behind provisional difficulty labels.
 
 **Plain:** tiles have two numbers each. You match numbers onto a growing line.
 Run out of tiles = you win the round. Nobody can move = round locks, lighter
@@ -36,26 +36,28 @@ it only asks the engine and displays answers.
 
 ---
 
-## 2. CURRENT STATE — SCOREBOARD (all verified — §6 re-proves everything)
+## 2. CURRENT STATE — SCOREBOARD (current run; §6 re-proves the core gates)
 
 | Layer | Check | Result |
 |---|---|---|
-| C++ engine | 18 test programs | **362/362 checks pass**, zero warnings |
-| Bridge | smoke suite | **58/58 checks pass** |
-| Swift app | `swift test` | **35 tests: 0 failures, 1 honest skip** |
-| Memory safety | AddressSanitizer + UBSan on everything (`./run_sanitize.sh address`) | **420 checks, zero findings** |
-| Thread safety | ThreadSanitizer on threaded parts (`./run_sanitize.sh thread`) | **73 checks, zero findings** |
-| Adversarial input | fuzz harness | 50,000 garbage-input runs, zero crashes |
+| C++ engine | 19 test programs | **380/380 checks pass**, zero warnings |
+| Bridge | smoke + soak suite | **68/68 checks pass** |
+| Swift app | `swift test` | **49 tests: 0 failures, 1 honest skip** |
+| Memory safety | AddressSanitizer + UBSan on everything (`./run_sanitize.sh address`) | **448 checks, zero findings** |
+| Thread safety | ThreadSanitizer on threaded parts (`./run_sanitize.sh thread`) | **82 checks, zero findings** |
+| Adversarial input | fuzz harness | 37,500 current standalone-fallback runs, zero crashes |
 | CI | GitHub Actions macOS runner (push/PR suites + weekly fuzz) | wired — `.github/workflows/ci.yml` |
-| Version control | git → GitHub | private repo `Johan21era/isolyn`, branch `main`, clean |
+| Version control | git → GitHub | private repo `Johan21era/isolyn`, branch `main`, uncommitted overhaul in worktree |
 
 **What you can DO with it right now:** open the app, pick 1v1 / 1v1v1 / 2v2,
 play complete multi-round hot-seat matches with real scoring, reveals, forced
 draws, passes, and an optional engine "Analyze" button that suggests moves.
+The app also exposes a computer opponent at five presentation labels (Casual,
+Club, Expert, Master, Elite); those labels are provisional calibration tiers,
+not external Elo claims.
 
-**What you CANNOT do yet:** play against the computer (Phase 3), Training
-puzzles (Phase 5), Sandbox position builder (Phase 4). Those are roadmap
-items, not bugs.
+**What you CANNOT do yet:** Training puzzles (Phase 5), Sandbox position
+builder (Phase 4), or packaging/notarization. Those are roadmap items, not bugs.
 
 ---
 
@@ -63,25 +65,27 @@ items, not bugs.
 
 | Path | What it is |
 |---|---|
-| `Sources/IsolynEngine/` | The brain. C++ rules/math. 25 .cpp files + 26 headers in `include/`. **If a test fails, the bug is here.** |
+| `Sources/IsolynEngine/` | The brain. C++20 rules, search, and evaluation. **If a test fails, the bug is here.** |
 | `Sources/IsolynEngineBridge/` | Safety wall between C++ and Swift. One header + one .cpp. Handles bad input, threading, ownership. |
 | `Sources/IsolynApp/Game/` | The game screen (NEW, Phase 2). 6 Swift files. Everything visible during play. |
 | `Sources/IsolynApp/Environment/` | Sky/time/weather backdrop. Purely decorative, fully tested separately. |
 | `Sources/IsolynApp/Views|Components|Theme/` | Menus, buttons, colors. |
-| `Tests/IsolynEngineTests/` | 18 C++ test programs (the 356 checks). Each is its own executable. |
-| `Tests/IsolynEngineBridgeTests/` | SmokeTest (57 checks), SoakTest (memory), FuzzBridge + StandaloneFuzzDriver (garbage-input attacks). |
-| `Tests/IsolynAppTests/` | Swift tests (28). Time-of-day logic + headless game-flow tests. |
+| `Tests/IsolynEngineTests/` | 19 C++ test programs (the 380 checks). Each is its own executable. |
+| `Tests/IsolynEngineBridgeTests/` | SmokeTest + SoakTest (68 checks total), FuzzBridge + StandaloneFuzzDriver (garbage-input attacks). |
+| `Tests/IsolynAppTests/` | Swift tests (49 total, 1 skip). UI logic, environment, AI, and headless game flow. |
 | `run_tests.sh` | One command: build+run all engine tests. |
 | `run_bridge_tests.sh` | One command: build+run the bridge suite. |
 | `run_bridge_fuzz.sh` | Garbage-input attack runner (auto-falls back if libFuzzer missing). |
 | `run_sanitize.sh` | Sanitizer battery: `address` (ASan+UBSan everywhere) / `thread` (TSan on threaded parts). |
-| `clean.sh` | House-rule #7 enforcement: erases build residue, restores ~10 MB steady state. |
+| `clean.sh` | House-rule #7 enforcement: erases `.build/`, `build/`, and `.DS_Store`; never touches source or docs. |
 | `.github/workflows/ci.yml` | CI: all suites on push/PR, weekly fuzz job. |
 | `core hardening roadmap.md` | Plan of record for the pre-UI-revival hardening session. |
 | `isolyn current audit.md` | Live-platform audit (F-01…F-12 findings + resolution ledger in Appendix D). |
 | `tree.md` | Regenerated file listing — must match reality (house rule #8). |
 | `graphify-out/` | Code knowledge graph (HTML map + report). Owner says keep. Refresh via `graphify update . --force` (rule #8). |
-| `docs/` | Five design docs (BRIDGE_*, FEATURE_SPECS, STRATEGY_NOTES, RELEASE_CHECKLIST). Read STRATEGY_NOTES.md before touching AI/heuristics. |
+| `docs/` | Bridge, lab, accelerator, feature, strategy, release, and decision records. Read `STRATEGY_NOTES.md` before touching AI/heuristics and `OPEN_DECISIONS.md` before changing boundaries. |
+| `Accelerator/` | Standalone Metal batch evaluator: runtime MSL, CPU reference, parity/benchmark harness. Not yet wired into search. |
+| `lab/` + `tools/selfplay/` | Offline calibration lab and real C++ engine-vs-engine data generator. |
 | `fix-log.md` | Every bug fixed recently, with proof anchors. |
 | `Package.swift` | Build recipe for the whole package. |
 | *(HANDOFF.md)* | Retired — its surviving content lives in §5. |
@@ -91,8 +95,9 @@ items, not bugs.
 
 ## 4. THE LAST BIG SESSION — WHAT / WHY / HOW / WHERE
 
-Everything below is DONE and PUSHED. Full per-bug detail lives in
-`fix-log.md`. Anchors in the last column are search strings: open the file,
+Everything below is DONE. Earlier batches are pushed; the current engine,
+search, evaluation, and accelerator overhaul remains uncommitted. Full per-bug
+detail lives in `fix-log.md`. Anchors in the last column are search strings: open the file,
 Cmd+F, paste, land on the exact lines.
 
 | # | WHAT was done | WHY | HOW | WHERE (file → search anchor) |
@@ -247,8 +252,10 @@ meaningful work may exist in only one place."
   `ProbabilityEngine.observe*()` seams exist; rigorous implementation needs a
   CALIBRATED likelihood model that doesn't exist yet — adding arbitrary
   adjustment numbers would violate the never-fabricate rule.
-- **DifficultyModel mapping** — now owned by roadmap Phase 3 (owner
-  confirmation granted via roadmap adoption).
+- **DifficultyModel mapping** — implemented provisionally in
+  `Sources/IsolynEngine/include/DifficultyModel.hpp` (eight tiers, elite 8/64).
+  The labels remain provisional until the fixed-time-control ladder clears the
+  adjacent-tier 55% milestone at adequate sample size.
 
 ### 5.6 Early production timeline (compressed; full narratives retired)
 
@@ -279,30 +286,31 @@ type `cd `, drag the folder onto the window, press Return).
 First build takes minutes (compiler writes its workspace back — folder grows
 temporarily; that's normal, see §4#12).
 
-**PROOF 1 — Engine really passes 356**
+**PROOF 1 — Engine really passes 380**
 ```
 ./run_tests.sh
 ```
 Last lines MUST read exactly:
 ```
-TOTAL CHECKS PASSED: 362
+TOTAL CHECKS PASSED: 380
 TOTAL CHECKS FAILED: 0
 Compile failures: none
 Runtime failures: none
 ```
-*Proves:* every rules-of-dominoes behavior claimed in docs is machine-checked. (Was 356 before the core-hardening session added F-11 regression checks.)
+*Proves:* every rules-of-dominoes behavior claimed in docs is machine-checked. (Current 2026-11-11 run; historical 362 after core hardening.)
 
-**PROOF 2 — Bridge really passes 57**
+**PROOF 2 — Bridge really passes 68**
 ```
 ./run_bridge_tests.sh
 ```
 Must end:
 ```
 Executables run: 2
-TOTAL CHECKS PASSED: 58
+TOTAL CHECKS PASSED: 68
 ```
 *Proves:* safety wall works — illegal moves rejected, hidden hands hidden,
-finished rounds refuse further play, scores accumulate correctly.
+finished rounds refuse further play, scores accumulate correctly, and match
+recording rejects duplicates.
 
 **PROOF 3 — Swift app builds and passes**
 ```
@@ -310,10 +318,12 @@ swift test
 ```
 Must contain a line like:
 ```
-Executed 35 tests, with 1 skipped and 0 failures
+Executed 49 tests, with 1 skipped and 0 failures
 ```
-(older toolchains word it slightly differently; key = **0 failures**). Was 28 tests before core hardening added the color-math suite.
-*Proves:* time-of-day engine + headless game flow behave.
+(older toolchains word it slightly differently; key = **0 failures**). Current
+2026-11-11 run; historical counts were 35 after core hardening.
+*Proves:* time-of-day engine, UI logic, AI-opponent paths, and headless game
+flow behave.
 
 **PROOF 4 — Fuzzing works here**
 ```
@@ -357,17 +367,11 @@ Search `GamePlaceholderView` anywhere in `Sources/` → **zero hits**
 ```
 git log --oneline
 ```
-Expect exactly:
-```
-0d63200 feat(game): playable hot-seat board (Phase 2)
-0c6cc40 feat: match orchestration across rounds (Phase 1c)
-577ad78 feat(bridge): RoundAlreadyOver terminal-state guard (audit F-03)
-fd98300 fix: repair verification harness for macOS (audit F-02)
-b79a3f4 chore: initialize repository with audited green baseline
-cca7d42 Initial commit
-```
-And `git status` → clean tree.
-*Proves:* every claim maps to a reviewable diff: `git show <hash>`.
+Expect the published history ending at the last pushed commit. The current
+engine/search/evaluation/accelerator overhaul is intentionally uncommitted, so
+`git status --short` is not clean until the owner approves a commit.
+*Proves:* every shipped claim maps to a reviewable diff; current work remains
+visibly separate.
 
 **PROOF 10 — Nothing heavy hides in git**
 ```
@@ -419,9 +423,10 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
    `Tests/IsolynEngineTests/`.
 6. When unsure between two readings of any rule, choose neither — write the
    question down in §5's ambiguity-listing style and ASK THE OWNER.
-7. Next planned work = Phase 3 of `../isolyn roadmap.md` (AI opponent via
-   DifficultyModel). Its spec, acceptance ladder, and calibration harness
-   requirements are already written there — follow them literally.
+7. Next planned work = finish the measured strength track: wire the Metal
+   batch evaluator into search leaves only after parity/benchmark evidence,
+   then run a fixed-time-control ladder. AI difficulty labels stay provisional
+   until that ladder clears the adjacent-tier gate.
 
 ---
 

@@ -2,7 +2,7 @@
 # Sanitizer sweep for the whole native stack (FIX-20 infra / core-hardening
 # roadmap Phase 3b).
 #
-#   ./run_sanitize.sh address   # ASan + UBSan: ALL 18 engine test binaries
+#   ./run_sanitize.sh address   # ASan + UBSan: ALL 19 engine test binaries
 #                               # AND the bridge suite (SmokeTest + SoakTest)
 #   ./run_sanitize.sh thread    # TSan on the genuinely-threaded parts:
 #                               # SmokeTest + SearchEngineCancellationTests
@@ -143,7 +143,7 @@ run_one() {
 
 if [ "$MODE" = "address" ]; then
     echo
-    echo "== [$MODE] engine suite: all 18 binaries under ASan+UBSan =="
+    echo "== [$MODE] engine suite: all 19 binaries under ASan+UBSan =="
     for t in Tests/IsolynEngineTests/*Tests.cpp; do
         run_one "$t"
     done
