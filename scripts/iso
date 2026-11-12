@@ -1,5 +1,5 @@
 #!/bin/bash
-# Isolyn quick launch: rebuild the current tree and open the newest app.
+# IsolynV2.0 quick launch: rebuild the current tree and open the newest app.
 # Target of the `iso`, `ISO`, `Iso`, and `isolyn` shell aliases.
 set -euo pipefail
 
@@ -8,16 +8,16 @@ cd "$ROOT"
 
 # `open` on an already-running app only activates the old process. Quit it
 # first so every invocation actually runs the freshly built binary.
-if pgrep -x Isolyn >/dev/null 2>&1; then
-  echo "♻️  Closing the running Isolyn so the new build can launch…"
-  pkill -TERM -x Isolyn 2>/dev/null || true
+if pgrep -x IsolynV2.0 >/dev/null 2>&1; then
+  echo "♻️  Closing the running IsolynV2.0 so the new build can launch…"
+  pkill -TERM -x IsolynV2.0 2>/dev/null || true
   for _ in {1..50}; do
-    pgrep -x Isolyn >/dev/null 2>&1 || break
+    pgrep -x IsolynV2.0 >/dev/null 2>&1 || break
     sleep 0.1
   done
-  if pgrep -x Isolyn >/dev/null 2>&1; then
-    echo "⚠️  Isolyn ignored SIGTERM; forcing it closed."
-    pkill -KILL -x Isolyn 2>/dev/null || true
+  if pgrep -x IsolynV2.0 >/dev/null 2>&1; then
+    echo "⚠️  IsolynV2.0 ignored SIGTERM; forcing it closed."
+    pkill -KILL -x IsolynV2.0 2>/dev/null || true
     sleep 0.3
   fi
 fi

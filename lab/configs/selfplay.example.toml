@@ -1,4 +1,4 @@
-# Isolyn offline lab — example self-play configuration (scaffold).
+# IsolynV2.0 offline lab — example self-play configuration (scaffold).
 # No parser consumes this file yet; it records the intended experiment shape.
 
 [engine]

@@ -1,4 +1,4 @@
-# ISOLYN RELEASE CHECKLIST
+# ISOLYNV2.0 RELEASE CHECKLIST
 
 **Purpose:** core-hardening roadmap Phase 3c. The project currently ships as an
 SPM executable target; actual distribution needs an Xcode app shell with
@@ -25,7 +25,7 @@ execution time).
 ## 2. Privacy manifest (`PrivacyInfo.xcprivacy`)
 
 - [ ] Add the privacy manifest to the app bundle.
-- [ ] Declare **CoreLocation** access. Isolyn reads location ONLY to fetch live
+- [ ] Declare **CoreLocation** access. IsolynV2.0 reads location ONLY to fetch live
       weather (`LiveWeatherService` → `CLLocationManager().location`, one-shot
       read, no continuous tracking, no background location).
       - Required-access-reason key for location: use the "app functionality"
@@ -37,7 +37,7 @@ execution time).
 ## 3. Usage-description strings (Info.plist)
 
 - [ ] `NSLocationWhenInUseUsageDescription` -- suggested copy:
-      > "Isolyn uses your approximate location to show real weather on the game
+      > "IsolynV2.0 uses your approximate location to show real weather on the game
       > table. You can play everything without allowing this."
 - [ ] No other usage strings are needed today (no camera/mic/photos/contacts).
 

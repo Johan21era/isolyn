@@ -1,4 +1,4 @@
-# Isolyn Metal Accelerator
+# IsolynV2.0 Metal Accelerator
 
 **Status:** real batch-evaluation backend, 2026-11-11. The generic linear
 kernel and the compact `EvaluationEngine` kernel both compile at runtime and
@@ -7,7 +7,7 @@ pass CPU/GPU parity tests on Apple M3. The backend is **not yet wired into
 
 ## Ambition
 
-This is a first-class GPU compute backend for Isolyn, not a token Metal
+This is a first-class GPU compute backend for IsolynV2.0, not a token Metal
 checkbox. The target is a measured strength and throughput increase from
 batched evaluation and parallel determinizations, with the CPU engine remaining
 the reference implementation and fallback.

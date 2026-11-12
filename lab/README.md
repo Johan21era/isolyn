@@ -1,8 +1,8 @@
-# Isolyn Offline Lab
+# IsolynV2.0 Offline Lab
 
 **Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` produces a real calibration report. The Python trainer, weight export, and Elo ladder are still scaffolds.
 
-This directory is the home for offline self-play, calibration, and (later) learned-evaluation experiments. It is deliberately **outside the shipped app**: Python is a tooling language here, never a runtime dependency of Isolyn.
+This directory is the home for offline self-play, calibration, and (later) learned-evaluation experiments. It is deliberately **outside the shipped app**: Python is a tooling language here, never a runtime dependency of IsolynV2.0.
 
 ## Boundary
 

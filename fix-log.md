@@ -510,3 +510,23 @@ the session; all earlier entries retain their original historical numbers.
   68**; ASan+UBSan **21 / 494**; TSan **2 / 82**; Swift **49 tests, 1 skipped,
   0 failures**; standalone fuzz **75,000 executions**, zero findings;
   accelerator **95 checks**. `git diff --check` clean. No commit or push.
+
+## RENAME-01 — IsolynV2.0 identity regathering (2026-11-11)
+- **Product identity:** `IsolynV2.0` is now the SPM package name, executable
+  product name, generated app-bundle name, `CFBundleDisplayName`/`CFBundleName`,
+  and window title. `run.sh` and `scripts/iso` target the new executable.
+- **Stable technical identity:** `IsolynEngine`, `IsolynEngineBridge`,
+  `IsolynApp`, the source paths, and the C++ `isolyn` namespace were deliberately
+  retained. Dots are not legal in Swift module/C++ identifiers, and changing
+  them would be a separate ABI/import migration. The bundle identifier remains
+  `com.isolyn.app` so existing local app identity is not silently migrated.
+- **Inventory:** `docs/PROJECT_INVENTORY.md` records the component LOC and the
+  caller chain from the SwiftUI entry point through `EngineSession`, the bridge,
+  `SearchEngine`, and `EvaluationEngine::evaluateAll`, plus the offline lab,
+  self-play, and standalone Metal callers.
+- **Verification:** `swift package describe` reports package `IsolynV2.0` and
+  products `IsolynEngine` / `IsolynV2.0`; `swift build` succeeds; `swift test`
+  passes **49 tests, 1 skipped, 0 failures**; engine **426 checks** and bridge
+  **68 checks** pass; `run.sh` syntax, `scripts/iso` syntax, `Info.plist`, and
+  the renamed binary path were checked. `git diff --check` clean. This entry is
+  committed and pushed separately; no production behavior changed.

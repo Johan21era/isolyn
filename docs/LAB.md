@@ -7,7 +7,7 @@ exported weight set, and no Elo claim against external engines.
 
 ## Purpose
 
-Give Isolyn a reproducible place to:
+Give IsolynV2.0 a reproducible place to:
 
 - play engine-vs-engine games,
 - calibrate the `DifficultyModel` ladder,

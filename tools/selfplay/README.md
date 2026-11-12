@@ -1,4 +1,4 @@
-# Isolyn Self-Play Generator
+# IsolynV2.0 Self-Play Generator
 
 **Status:** working engine-vs-engine generator, updated 2026-11-11. It links
 the real `IsolynEngine` and emits one CSV row per move. It is not a strength

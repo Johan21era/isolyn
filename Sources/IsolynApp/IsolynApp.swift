@@ -8,7 +8,7 @@ struct IsolynApp: App {
     public init() {}
 
     public var body: some Scene {
-        WindowGroup("Isolyn") {
+        WindowGroup("IsolynV2.0") {
             RootView()
                 .environment(appState)
                 .environment(environmentManager)

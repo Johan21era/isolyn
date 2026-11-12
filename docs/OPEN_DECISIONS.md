@@ -1,4 +1,4 @@
-# Isolyn — Open Decisions & Architecture Records
+# IsolynV2.0 — Open Decisions & Architecture Records
 
 > Created 2026-11-11. The audit flagged this ledger as missing. Each ADR records
 > the decision, why it was made, and what would cause it to be revisited.
@@ -11,7 +11,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-11
 
-**Context.** Isolyn is a ~13k-line macOS game. Its engine is C++20; its UI is
+**Context.** IsolynV2.0 is a ~13k-line macOS game. Its engine is C++20; its UI is
 SwiftUI; the bridge is a POD-only C++ boundary that already carries a significant
 share of the project's complexity. The open product work is 2v2 correctness, AI,
 Sandbox, Training, and packaging — not language capability.
@@ -23,7 +23,7 @@ live outside the C++ engine.
 
 **Why.** A new product language would add another ABI, build system, CI job,
 debugger, packaging path, and source of truth. The current bottlenecks are
-product completeness and correctness, not expressiveness. Isolyn's advantage is
+product completeness and correctness, not expressiveness. IsolynV2.0's advantage is
 its narrow waist, not its language count.
 
 **Consequences.** Offline work may use Python freely; integration happens through
@@ -74,7 +74,7 @@ reach the target strength ladder, or training data outgrows local disk/CPU.
 - **Date:** 2026-11-11
 
 **Context.** The owner wants a serious strength increase, not a small Metal
-experiment. Isolyn's search evaluates many independent determinized worlds,
+experiment. IsolynV2.0's search evaluates many independent determinized worlds,
 which is a natural batch workload for Apple Silicon's unified-memory GPU.
 
 **Decision.** Build a **first-class Metal compute backend** for batched

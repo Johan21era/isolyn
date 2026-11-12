@@ -62,7 +62,7 @@ struct GameSummary {
 };
 
 void usage(std::ostream& out) {
-    out << "Isolyn self-play generator\n"
+    out << "IsolynV2.0 self-play generator\n"
         << "Usage: selfplay [options]\n"
         << "  --games N               rounds to play (default 200)\n"
         << "  --depth N               max iterative-deepening depth (default 4)\n"
@@ -438,7 +438,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    std::cout << "Isolyn self-play\n"
+    std::cout << "IsolynV2.0 self-play\n"
               << "  games: " << options.games << "\n"
               << "  mode: " << options.mode << "\n"
               << "  depth: " << options.depth << "\n"

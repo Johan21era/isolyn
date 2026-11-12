@@ -1,5 +1,5 @@
 #!/bin/bash
-# Isolyn — build + wrap in minimal .app bundle + launch
+# IsolynV2.0 — build + wrap in minimal .app bundle + launch
 # Usage: ./run.sh [--release]
 #
 # Why this exists: SwiftPM executables don't produce .app bundles, and macOS
@@ -15,20 +15,20 @@ CONFIG="debug"
 echo "🔨 Building ($CONFIG)..."
 swift build -c "$CONFIG" 2>&1 | tail -1
 
-BINARY=".build/$([ "$CONFIG" = "debug" ] && echo "debug" || echo "release")/IsolynApp"
+BINARY=".build/$([ "$CONFIG" = "debug" ] && echo "debug" || echo "release")/IsolynV2.0"
 [ -f "$BINARY" ] || { echo "❌ binary not found at $BINARY"; exit 1; }
 
-APP="build/Isolyn.app"
+APP="build/IsolynV2.0.app"
 mkdir -p "$APP/Contents/MacOS"
-cp "$BINARY" "$APP/Contents/MacOS/Isolyn"
+cp "$BINARY" "$APP/Contents/MacOS/IsolynV2.0"
 
 cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>com.isolyn.app</string>
-<key>CFBundleName</key><string>Isolyn</string>
-<key>CFBundleExecutable</key><string>Isolyn</string>
+<key>CFBundleName</key><string>IsolynV2.0</string>
+<key>CFBundleExecutable</key><string>IsolynV2.0</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>
@@ -36,5 +36,5 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 </dict></plist>
 PLIST
 
-echo "🚀 Launching Isolyn…"
+echo "🚀 Launching IsolynV2.0…"
 open "$APP"

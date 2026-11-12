@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the focused Isolyn CPU microbenchmark against the real engine.
+# Build the focused IsolynV2.0 CPU microbenchmark against the real engine.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

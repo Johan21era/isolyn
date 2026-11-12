@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the self-play scaffold against the real engine. macOS-only, like Isolyn.
+# Build the self-play scaffold against the real engine. macOS-only, like IsolynV2.0.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

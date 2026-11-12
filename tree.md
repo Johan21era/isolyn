@@ -1,4 +1,4 @@
-# Isolyn — File Tree
+# IsolynV2.0 — File Tree
 
 ```
 .
@@ -192,6 +192,7 @@
 |   |-- FEATURE_SPECS.md
 |   |-- LAB.md
 |   |-- OPEN_DECISIONS.md
+|   |-- PROJECT_INVENTORY.md
 |   |-- RELEASE_CHECKLIST.md
 |   `-- STRATEGY_NOTES.md
 |-- graphify-out
@@ -271,7 +272,7 @@
 |-- run_tests.sh
 `-- tree.md
 
-52 directories, 217 files
+52 directories, 218 files
 ```
 
-**52 directories, 217 files** excluding build dirs, caches, and local lab data (house rule #7) — regenerated 2026-11-11 for the closeout sweep.
+**52 directories, 218 files** excluding build dirs, caches, and local lab data (house rule #7) — regenerated 2026-11-11 for the closeout sweep.

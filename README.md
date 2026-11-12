@@ -1,4 +1,4 @@
-# Isolyn
+# IsolynV2.0
 
 A macOS hot-seat dominoes game with a C++20 rules/search engine, a POD-only
 Swift/C++ bridge, and a SwiftUI client.
@@ -10,6 +10,13 @@ Swift/C++ bridge, and a SwiftUI client.
 ```
 
 Or, if the shell aliases are installed, `iso` / `ISO` / `Iso` / `isolyn`.
+
+## Project identity
+
+`IsolynV2.0` is the package, product, window, and app-bundle display name.
+The Swift targets (`IsolynEngine`, `IsolynEngineBridge`, `IsolynApp`) and the
+C++ `isolyn` namespace remain unchanged: dots are not legal in those
+identifiers, and keeping them stable preserves the bridge ABI and test imports.
 
 ## Architecture
 
@@ -27,6 +34,7 @@ Or, if the shell aliases are installed, `iso` / `ISO` / `Iso` / `isolyn`.
   Metal as a first-class backend, one source of game truth.
 - `docs/LAB.md` — offline lab architecture and milestones.
 - `docs/ACCELERATOR.md` — Metal architecture, parity gates, and throughput evidence.
+- `docs/PROJECT_INVENTORY.md` — project identity, caller map, and current LOC inventory.
 
 ## Status
 

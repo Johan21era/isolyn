@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "Isolyn",
+    name: "IsolynV2.0",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .library(name: "IsolynEngine", targets: ["IsolynEngine"]),
-        .executable(name: "IsolynApp", targets: ["IsolynApp"]),
+        .executable(name: "IsolynV2.0", targets: ["IsolynApp"]),
     ],
     targets: [
         .target(

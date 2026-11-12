@@ -134,7 +134,7 @@ void benchmarkMode(GameMode mode) {
 } // namespace
 
 int main() {
-    std::cout << "Isolyn CPU benchmark (higher is better)\n";
+    std::cout << "IsolynV2.0 CPU benchmark (higher is better)\n";
     std::cout << "mode   eval positions/s  movegen/s    hash/s\n";
     benchmarkMode(GameMode::OneVsOne);
     benchmarkMode(GameMode::OneVsOneVsOne);
