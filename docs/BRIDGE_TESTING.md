@@ -18,8 +18,8 @@ copy them as current numbers.
 | Check | Command | Result |
 |---|---|---|
 | Engine suite | `./run_tests.sh` | 19 executables, **426 checks passed**, 0 failed |
-| Bridge suite | `./run_bridge_tests.sh` | 2 executables, **68 checks passed**, 0 failed |
-| Swift package | `swift test` | **49 tests, 1 skipped, 0 failures** |
+| Bridge suite | `./run_bridge_tests.sh` | 2 executables, **73 checks passed**, 0 failed |
+| Swift package | `swift test` | **68 tests, 1 skipped, 0 failures** |
 | AddressSanitizer + UBSan | `./run_sanitize.sh address` | 21 executables, **494 checks passed**, 0 findings |
 | ThreadSanitizer | `./run_sanitize.sh thread` | 2 executables, **82 checks passed**, 0 findings |
 | Standalone fuzz fallback | `./run_bridge_fuzz.sh 30` | 75,000 executions, zero crashes/hangs/sanitizer findings |
@@ -44,7 +44,7 @@ coverage-guided fuzzing; the scope is the documented bridge attack surface.
 - a cross-thread snapshot hammer while an analysis is running.
 
 `SoakTest.cpp` exercises repeated session lifecycles and reports its own RSS
-threshold. Its current result is part of the 68-check bridge total, not a silent
+threshold. Its current result is part of the 73-check bridge total, not a silent
 zero-check pass.
 
 ## Historical findings

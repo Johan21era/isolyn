@@ -10,12 +10,15 @@ import SwiftUI
 /// parameter, so a plain `.disabled(...)` on the button is all that's
 /// ever needed to keep the visual state in sync.
 struct PrimaryCapsuleButtonStyle: ButtonStyle {
+    var minWidth: CGFloat? = nil
+
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(IsolynTheme.title(16))
             .foregroundStyle(isEnabled ? IsolynTheme.ebony : IsolynTheme.ivoryMuted)
+            .frame(minWidth: minWidth)
             .padding(.horizontal, 30)
             .padding(.vertical, 12)
             .background(

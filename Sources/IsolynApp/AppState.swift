@@ -16,6 +16,14 @@ enum MatchFormat: String, Identifiable, Equatable {
     case twoVTwo = "2v2"
 
     var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .oneVOne: return "Duel"
+        case .oneVOneVOne: return "Three-Way"
+        case .twoVTwo: return "Partners"
+        }
+    }
 }
 
 /// The app's single navigation state. One root observable object, owned

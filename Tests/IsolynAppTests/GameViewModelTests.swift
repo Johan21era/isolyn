@@ -81,6 +81,32 @@ final class GameViewModelTests: XCTestCase {
         if !hunted { throw XCTSkip("no blocked deal encountered in 24 hunts (p≈0.87 of at least one)") }
     }
 
+    func test_voluntaryDraw_publishesDrawEventForTheFlight() async throws {
+        for _ in 0..<24 {
+            let vm = GameViewModel(mode: .oneVOne)
+            await vm.refresh()
+            guard vm.isMyTurn, vm.canVoluntaryDraw, let before = vm.snapshot else {
+                vm.shutdown()
+                continue
+            }
+
+            await vm.voluntaryDraw()
+            guard let after = vm.snapshot else {
+                vm.shutdown()
+                return XCTFail("post-draw snapshot missing")
+            }
+            XCTAssertEqual(after.ownHand.count, before.ownHand.count + 1)
+
+            let event = try XCTUnwrap(vm.drawEvent, "a real draw must publish a flight event")
+            XCTAssertEqual(event.seat, after.requestingPlayerIndex)
+            XCTAssertEqual(event.count, 1)
+            XCTAssertEqual(event.tiles, after.ownHand.filter { !before.ownHand.contains($0) })
+            vm.shutdown()
+            return
+        }
+        throw XCTSkip("no drawable opening deal encountered in 24 hunts")
+    }
+
     private func viewModelNeedsPass(_ vm: GameViewModel) -> Bool {
         vm.mustPass
     }

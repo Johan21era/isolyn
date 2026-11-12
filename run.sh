@@ -37,4 +37,12 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 PLIST
 
 echo "🚀 Launching IsolynV2.0…"
+# A copied SwiftPM executable can carry a signature that macOS rejects once it
+# is wrapped in a fresh .app (the launch dies with "Code Signature Invalid").
+# Clear Finder/resource xattrs and ad-hoc sign the bundle we actually launch.
+if command -v codesign >/dev/null 2>&1; then
+    xattr -cr "$APP" 2>/dev/null || true
+    codesign --force --deep --sign - "$APP" >/dev/null
+fi
+
 open "$APP"

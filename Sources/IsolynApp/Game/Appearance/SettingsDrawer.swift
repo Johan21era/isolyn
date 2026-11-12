@@ -1,24 +1,37 @@
 import SwiftUI
 import IsolynEngineBridge
 
-/// Compact side settings drawer for domino appearance customization.
+/// Compact side settings drawer for domino appearance and inspection.
 /// Slides in from the right edge; owns its own gesture space; never pans
-/// the board or alters camera/hover/game state.
+/// the board or advances game state.
 struct SettingsDrawer: View {
     @Binding var isOpen: Bool
     @Bindable var appearanceManager: AppearanceManager
+    @Bindable var inspectionSettings: InspectionSettings
     let onClose: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 0) {
             header
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 14)
+
             Divider().overlay(IsolynTheme.ebonyLine)
-            DominoAppearanceSection(manager: appearanceManager)
-            Divider().overlay(IsolynTheme.ebonyLine)
-            presetsSection
-            Spacer()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    InspectionSection(settings: inspectionSettings)
+                    Divider().overlay(IsolynTheme.ebonyLine)
+                    DominoAppearanceSection(manager: appearanceManager)
+                    Divider().overlay(IsolynTheme.ebonyLine)
+                    presetsSection
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.hidden)
         }
-        .padding(20)
         .frame(width: 260)
         .frame(maxHeight: .infinity)
         .background(
@@ -33,7 +46,7 @@ struct SettingsDrawer: View {
 
     private var header: some View {
         HStack {
-            Text("APPEARANCE")
+            Text("SETTINGS")
                 .font(IsolynTheme.caption(11))
                 .tracking(2)
                 .foregroundStyle(IsolynTheme.brass)
@@ -70,6 +83,52 @@ struct SettingsDrawer: View {
     }
 }
 
+// MARK: - Inspection Section
+
+private struct InspectionSection: View {
+    @Bindable var settings: InspectionSettings
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("INSPECTION")
+                .font(IsolynTheme.caption(10))
+                .tracking(1.5)
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+
+            Toggle("Reveal on hover", isOn: Binding(
+                get: { settings.autoHoverEnabled },
+                set: { settings.setAutoHoverEnabled($0) }
+            ))
+            .toggleStyle(.switch)
+            .font(IsolynTheme.body(12))
+            .tint(IsolynTheme.brass)
+
+            Text("Off by default. Inspect a domino's number family with the chosen mouse button.")
+                .font(IsolynTheme.caption(10))
+                .foregroundStyle(IsolynTheme.ivoryMuted.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                Text("Mouse button")
+                    .font(IsolynTheme.caption(11))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                Spacer()
+                Picker("Mouse button", selection: Binding(
+                    get: { settings.mouseButton },
+                    set: { settings.setMouseButton($0) }
+                )) {
+                    ForEach(InspectionMouseButton.allCases) { button in
+                        Text(button.rawValue).tag(button)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 120)
+            }
+        }
+    }
+}
+
 // MARK: - Domino Appearance Section
 
 private struct DominoAppearanceSection: View {
@@ -96,7 +155,7 @@ private struct DominoAppearanceSection: View {
             Text("EDGE HIGHLIGHT").font(IsolynTheme.caption(10)).tracking(1.5)
                 .foregroundStyle(IsolynTheme.ivoryMuted)
 
-            Picker("", selection: Binding(
+            Picker("Edge highlight", selection: Binding(
                 get: { manager.appearance.edgeMode },
                 set: { manager.setEdgeMode($0) }
             )) {
@@ -104,8 +163,9 @@ private struct DominoAppearanceSection: View {
                     Text(mode.rawValue).tag(mode)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .labelsHidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             if manager.appearance.edgeMode != .none {
                 ColorEditorRow(

@@ -139,23 +139,24 @@ batch      CPU positions/s   Metal positions/s   Metal us/call
 1,024      ~17M              ~4.3-5.2M           ~196-215
 4,096      ~17M              ~17.3-18.6M         ~221-237
 16,384     ~17M              ~62-66M             ~247-260
-65,536     ~17M              ~162-170M           ~385-429
-host encode                   ~43-45M positions/s
+65,536     ~17M              ~196-209M           ~313-334
+host encode                   ~55M positions/s
 ```
 
 The compact kernel now reuses persistent shared `MTLBuffer`s, uses a
 28-entry tile-geometry lookup table, and accepts up to 65,536 positions. The
 latest kernel additionally precomputes seven face masks: mobility and
 immediate-threat checks use two `popcount` operations instead of scanning all
-28 tiles, and pip control reuses the already-computed mobility value. The
-10-run 65K median is 168.7M positions/s (full range 148-172M/s including
-scheduler outliers); the 16K median is 63.8M/s.
+28 tiles, and pip control reuses the already-computed mobility value. The final
+three-run 65K range is 196-209M positions/s (313-334us); an earlier 10-run
+median was 168.7M/s, showing normal GPU clock/scheduler variance. The 16K
+median is 63.8M/s.
 
 An earlier LUT-only A/B at 65,536 positions measured 68-69M/s for the
 arithmetic shader versus 129-136M/s for the table-driven shader (~1.9x). After
 the face-mask rewrite, the max-size kernel is about 9.8-10.3x the CPU
-evaluator. Host encoding is now the end-to-end bottleneck: encoding plus one
-max-size dispatch is about 34M positions/s.
+evaluator. Host encoding is still the end-to-end bottleneck: encoding plus one
+max-size dispatch is about 41M positions/s.
 
 Dispatch and completion have a roughly 200us floor. At 65K the kernel moves
 about 3.9MB of row data plus 0.5MB of output in roughly 0.4ms (about 11GB/s),

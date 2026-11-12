@@ -31,7 +31,7 @@ struct ComingSoonView: View {
                     .font(IsolynTheme.body(14))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: 380)
 
                 Button {
                     goBack()
@@ -43,6 +43,7 @@ struct ComingSoonView: View {
                 .buttonStyle(.plain)
                 .padding(.top, 8)
             }
+            .frame(maxWidth: 520)
             .padding(48)
         }
     }

@@ -1,4 +1,5 @@
 #include "EvaluationEngine.hpp"
+#include <optional>
 #include "BlockingHeuristic.hpp"
 #include "ClosingOpportunityHeuristic.hpp"
 #include "ExpectedValueHeuristic.hpp"
@@ -16,6 +17,32 @@ int handValueOf(const GameState& state, int playerIndex) {
         total += tile.value();
     }
     return total;
+}
+
+struct HandFacts {
+    int value = 0;
+    int legalMoves = 0;
+};
+
+// The batch path needs both the hand value and the legal-move count. Computing
+// them together avoids scanning every hand twice at every leaf.
+HandFacts handFacts(const GameState& state, int playerIndex) {
+    HandFacts facts;
+    const auto& hand = state.hand(playerIndex);
+    if (state.chain().isEmpty()) {
+        for (const auto& tile : hand) facts.value += tile.value();
+        facts.legalMoves = static_cast<int>(hand.size());
+        return facts;
+    }
+
+    const int left = state.chain().leftEnd();
+    const int right = state.chain().rightEnd();
+    for (const auto& tile : hand) {
+        facts.value += tile.value();
+        if (tile.hasFace(left)) ++facts.legalMoves;
+        if (tile.hasFace(right)) ++facts.legalMoves;
+    }
+    return facts;
 }
 
 bool hasImmediateDominoWin(const GameState& state, int playerIndex) {
@@ -158,9 +185,10 @@ EvaluationBreakdown EvaluationEngine::evaluate(GameMode mode,
     return breakdown;
 }
 
-EvaluationTotals EvaluationEngine::evaluateAll(GameMode mode,
-                                               const GameState& state,
-                                               const EvaluationWeights& weights) {
+static EvaluationTotals evaluateAllImpl(GameMode mode,
+                                        const GameState& state,
+                                        const EvaluationWeights& weights,
+                                        std::optional<bool> knownClosed) {
     EvaluationTotals result;
     const int playerCount = state.playerCount();
     result.playerCount = playerCount;
@@ -190,14 +218,22 @@ EvaluationTotals EvaluationEngine::evaluateAll(GameMode mode,
         return result;
     }
 
+    bool allPlayersStuck = true;
     for (int p = 0; p < playerCount; ++p) {
-        handValues[static_cast<std::size_t>(p)] = handValueOf(state, p);
-        mobility[static_cast<std::size_t>(p)] = MobilityHeuristic::score(state, p);
-        threats[static_cast<std::size_t>(p)] = hasImmediateDominoWin(state, p);
+        const HandFacts facts = handFacts(state, p);
+        handValues[static_cast<std::size_t>(p)] = facts.value;
+        mobility[static_cast<std::size_t>(p)] = static_cast<double>(facts.legalMoves);
+        if (facts.legalMoves > 0) allPlayersStuck = false;
+        // A one-tile hand is an immediate threat exactly when it has a legal
+        // move; mobility already answers that question without a second scan.
+        threats[static_cast<std::size_t>(p)] =
+            state.hand(p).size() == 1 && facts.legalMoves > 0;
     }
 
     std::array<double, 4> closing{};
-    if (MoveGenerator::isPositionClosed(state)) {
+    const bool positionClosed = knownClosed.value_or(
+        state.boneyard().drawableCount() == 0 && allPlayersStuck);
+    if (positionClosed) {
         std::vector<int> participantValues;
         int closerPlayer = RulesEngine::determineCloser(mode, state.playHistory());
         if (mode == GameMode::TwoVsTwo) {
@@ -294,6 +330,20 @@ EvaluationTotals EvaluationEngine::evaluateAll(GameMode mode,
             + weights.teamSupport * teamSupport[static_cast<std::size_t>(p)];
     }
     return result;
+}
+
+EvaluationTotals EvaluationEngine::evaluateAll(GameMode mode,
+                                               const GameState& state,
+                                               const EvaluationWeights& weights) {
+    return evaluateAllImpl(mode, state, weights, std::nullopt);
+}
+
+EvaluationTotals EvaluationEngine::evaluateAllWithClosed(
+    GameMode mode,
+    const GameState& state,
+    bool positionClosed,
+    const EvaluationWeights& weights) {
+    return evaluateAllImpl(mode, state, weights, positionClosed);
 }
 
 } // namespace isolyn

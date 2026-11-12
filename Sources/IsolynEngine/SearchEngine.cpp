@@ -53,8 +53,12 @@ struct RawEvaluation {
     double operator[](std::size_t index) const { return values[index]; }
 };
 
-RawEvaluation evaluateAll(GameMode mode, const GameState& state) {
-    const EvaluationTotals totals = EvaluationEngine::evaluateAll(mode, state);
+RawEvaluation evaluateAll(GameMode mode,
+                          const GameState& state,
+                          std::optional<bool> positionClosed = std::nullopt) {
+    const EvaluationTotals totals = positionClosed.has_value()
+        ? EvaluationEngine::evaluateAllWithClosed(mode, state, *positionClosed)
+        : EvaluationEngine::evaluateAll(mode, state);
     RawEvaluation raw;
     raw.values = totals.totals;
     raw.count = static_cast<std::uint8_t>(totals.playerCount);
@@ -241,10 +245,17 @@ SearchValue searchZeroSum(GameState& state,
 
     const int player = state.currentPlayerIndex();
 
-    const bool closed = MoveGenerator::isPositionClosed(state);
     const bool exactEndgame = isExactEndgame(context, state);
-    if (closed || (depthRemaining <= 0 && !exactEndgame)) {
+    if (depthRemaining <= 0 && !exactEndgame) {
+        // evaluateAll derives Closed from the mobility it already computes,
+        // so a horizon leaf needs no separate all-player legality scan.
         RawEvaluation raw = evaluateAll(context.mode, state);
+        return SearchValue{relativeScore(raw, player, context.mode), raw};
+    }
+
+    const bool closed = MoveGenerator::isPositionClosed(state);
+    if (closed) {
+        RawEvaluation raw = evaluateAll(context.mode, state, true);
         return SearchValue{relativeScore(raw, player, context.mode), raw};
     }
 
@@ -352,9 +363,14 @@ RawEvaluation searchMulti(GameState& state,
     if (tick(context)) return {};
 
     const int player = state.currentPlayerIndex();
-    const bool closed = MoveGenerator::isPositionClosed(state);
-    if (closed || depthRemaining <= 0) {
+    if (depthRemaining <= 0) {
+        // evaluateAll derives Closed from mobility without a second scan.
         return evaluateAll(context.mode, state);
+    }
+
+    const bool closed = MoveGenerator::isPositionClosed(state);
+    if (closed) {
+        return evaluateAll(context.mode, state, true);
     }
 
     std::vector<DominoTile> drawn = resolveForcedDraws(state, player);

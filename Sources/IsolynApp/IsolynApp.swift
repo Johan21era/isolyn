@@ -12,11 +12,13 @@ struct IsolynApp: App {
             RootView()
                 .environment(appState)
                 .environment(environmentManager)
-                .frame(minWidth: 900, minHeight: 620)
+                .frame(minWidth: IsolynLayout.minWindowWidth,
+                       minHeight: IsolynLayout.minWindowHeight)
                 .background(IsolynTheme.ebony)
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1080, height: 720)
+        .defaultPosition(.center)
         .windowStyle(.hiddenTitleBar)
 
         // FIX-26b (roadmap 5b): ends the audit's oldest "wire-or-remove

@@ -19,13 +19,13 @@ struct ChainAndZonesView: View {
     let snapshot: GameSnapshot?
     let canPlay: Bool
     let appearance: DominoAppearance
+    let inspectionSettings: InspectionSettings
     @Binding var selectedTile: Tile?
     let camera: BoardCamera
     let arbiter: GestureArbiter
     let hoverController: HoverChainController
     let onPlay: (Move) -> Void
-
-    @State private var lastMouseLocation: CGPoint? = nil
+    let onDropTargetsChanged: ([ChainSide: CGRect]) -> Void
 
     var body: some View {
         ZStack {
@@ -36,12 +36,18 @@ struct ChainAndZonesView: View {
                         appearance: appearance,
                         canPlay: canPlay,
                         selectedTile: selectedTile,
+                        inspectionSettings: inspectionSettings,
+                        onInspectFace: { number in
+                            hoverController.cancelScheduledDismissal()
+                            hoverController.setTarget(number, snapshot: snapshot)
+                        },
                         availableSize: geo.size,
                         camera: camera,
                         selectedSideIsPlayable: selectedSideIsPlayable,
                         onPlaySide: playOnSide,
                         onHoverPip: { pip in
-                            guard !arbiter.isDragging else { return }
+                            guard inspectionSettings.autoHoverEnabled,
+                                  !arbiter.isDragging else { return }
                             if let pip {
                                 hoverController.cancelScheduledDismissal()
                                 hoverController.setTarget(pip, snapshot: snapshot)
@@ -67,10 +73,14 @@ struct ChainAndZonesView: View {
                             appearance: appearance,
                             onClose: { hoverController.dismiss() }
                         )
+                        .padding(.top, 8)
                         .padding(.trailing, 20)
                         .onHover { over in
-                            if over { hoverController.cancelScheduledDismissal() }
-                            else { hoverController.scheduleDismissal() }
+                            if over {
+                                hoverController.cancelScheduledDismissal()
+                            } else if inspectionSettings.autoHoverEnabled {
+                                hoverController.scheduleDismissal()
+                            }
                         }
                     }
                     Spacer()
@@ -80,6 +90,9 @@ struct ChainAndZonesView: View {
         .contentShape(Rectangle())
         .gesture(boardDragGesture.simultaneously(with: tapGesture))
         .onTapGesture {} // consume bare clicks so they don't fall through
+        .onPreferenceChange(BoardDropTargetFrames.self) { frames in
+            onDropTargetsChanged(frames)
+        }
     }
 
     // MARK: - Selection resolution
@@ -112,9 +125,12 @@ struct ChainAndZonesView: View {
                     hoverController.suspend()
                 }
             }
-            .onEnded { _ in
+            .onEnded { value in
                 _ = arbiter.pointerUp()
-                camera.endDrag(lastLocation: lastMouseLocation)
+                // Hand the release point to the camera directly. The old
+                // separate @State was never assigned, so inertia always
+                // received nil and the board stopped dead on release.
+                camera.endDrag(lastLocation: value.location)
                 Task { try? await Task.sleep(nanoseconds: 200_000_000)
                     hoverController.resume(snapshot: snapshot, target: hoverController.activeTarget)
                 }
@@ -149,11 +165,15 @@ private struct SnakeChainBoard: View {
     let appearance: DominoAppearance
     let canPlay: Bool
     let selectedTile: Tile?
+    let inspectionSettings: InspectionSettings
+    let onInspectFace: (Int) -> Void
     let availableSize: CGSize
     let camera: BoardCamera
     let selectedSideIsPlayable: (ChainSide) -> Bool
     let onPlaySide: (ChainSide) -> Void
     let onHoverPip: (Int?) -> Void
+
+    @State private var hoverTracker = InspectionHoverTracker()
 
     private var orientedTiles: [SnakeChainLayout.Oriented] {
         SnakeChainLayout.orient(chain: snapshot.chain, leftEnd: snapshot.chainLeftEnd)
@@ -176,7 +196,7 @@ private struct SnakeChainBoard: View {
         let boundsSignature = "\(Int(residualX))|\(Int(residualY))"
 
         ZStack {
-            ForEach(Array(metrics.placed.enumerated()), id: \.offset) { _, placed in
+            ForEach(Array(metrics.placed.enumerated()), id: \.offset) { index, placed in
                 IsolynDominoTile(
                     displayingLeft: placed.tile.left,
                     right: placed.tile.right,
@@ -184,11 +204,55 @@ private struct SnakeChainBoard: View {
                     height: SnakeChainLayout.tileShortAxis,
                     appearance: appearance
                 )
+                .overlay(alignment: .leading) {
+                    if index == 0, hasMove(on: .left) {
+                        EndEdgeHighlight(active: selectedSideIsPlayable(.left), leading: true)
+                    }
+                }
+                .overlay(alignment: .trailing) {
+                    if index == metrics.placed.count - 1, hasMove(on: .right) {
+                        EndEdgeHighlight(active: selectedSideIsPlayable(.right), leading: false)
+                    }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let point):
+                        // Horizontal tiles split left/right; vertical tiles
+                        // split top/bottom. In both cases the leading half
+                        // is half the short axis from the origin.
+                        let leading = placed.vertical
+                            ? point.y < SnakeChainLayout.tileShortAxis
+                            : point.x < SnakeChainLayout.tileShortAxis
+                        hoverTracker.set(
+                            index: index,
+                            face: leading ? placed.tile.left : placed.tile.right
+                        )
+                    case .ended:
+                        hoverTracker.clear(index: index)
+                    }
+                }
                 .position(placed.x, placed.y)
-                .transition(.scale(scale: 0.9).combined(with: .opacity))
+                .transition(
+                    .asymmetric(
+                        insertion: .scale(scale: 0.72).combined(with: .opacity),
+                        removal: .opacity
+                    )
+                )
             }
 
-            endpointMarkers(metrics)
+            if metrics.placed.isEmpty && canPlay {
+                // A quiet 2:1 silhouette for the opening placement. The
+                // invisible target at the center handles the actual tap.
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                    .frame(width: SnakeChainLayout.tileShortAxis * 2,
+                           height: SnakeChainLayout.tileShortAxis)
+                    .position(availableSize.width / 2, availableSize.height / 2)
+                    .allowsHitTesting(false)
+            }
+
+            endpointTargets(metrics)
 
             if metrics.placed.isEmpty && !canPlay {
                 Text("Round opening…")
@@ -197,12 +261,23 @@ private struct SnakeChainBoard: View {
             }
         }
         .frame(width: availableSize.width, height: availableSize.height)
+        .background(
+            InspectionEventMonitor(
+                button: inspectionSettings.mouseButton,
+                tracker: hoverTracker,
+                onInspect: onInspectFace
+            )
+        )
         // ONE uniform auto-fit scale (§17 "scale the board intelligently";
         // completes the mandate's responsive clause).
         .scaleEffect(metrics.suggestedScale)
-        .animation(.easeOut(duration: 0.18), value: snapshot.stateVersion)
+        .animation(.spring(response: 0.42, dampingFraction: 0.82), value: snapshot.stateVersion)
         .onAppear { raiseCameraBounds(residualX, residualY) }
         .onChange(of: boundsSignature) { _, _ in raiseCameraBounds(residualX, residualY) }
+        .onChange(of: snapshot.stateVersion) { _, _ in hoverTracker.clearAll() }
+        .onChange(of: camera.offsetX) { _, _ in hoverTracker.clearAll() }
+        .onChange(of: camera.offsetY) { _, _ in hoverTracker.clearAll() }
+        .onDisappear { hoverTracker.clearAll() }
     }
 
     /// Bounds only ever GROW toward the fitted extent (defaults preserved;
@@ -213,16 +288,20 @@ private struct SnakeChainBoard: View {
         camera.maxOffsetY = max(camera.maxOffsetY, BoardCamera.defaultMaxOffsetY + residualY)
     }
 
-    // MARK: Playable-end markers (§8: unmistakable, restrained, valid-only)
+    // MARK: Playable-end targets (§8: valid-only, now visually quiet)
+
+    private func hasMove(on side: ChainSide) -> Bool {
+        canPlay && snapshot.legalMoves.contains { $0.side == side }
+    }
 
     @ViewBuilder
-    private func endpointMarkers(_ metrics: SnakeChainLayout.Metrics) -> some View {
+    private func endpointTargets(_ metrics: SnakeChainLayout.Metrics) -> some View {
         let handHasMoveOn: (ChainSide) -> Bool = { side in
             snapshot.legalMoves.contains { $0.side == side }
         }
         if snapshot.chain.isEmpty {
             if canPlay && (handHasMoveOn(.left) || handHasMoveOn(.right)) {
-                EndMarker(pip: nil, active: canPlay && selectedTile != nil, size: SnakeChainLayout.markerDiameter) {
+                EndTarget(side: .left, label: "Empty table, place the opening domino") {
                     // Any selected tile opens the chain.
                     if let tile = selectedTile,
                        let move = Set(snapshot.legalMoves).first(where: { $0.tile == tile }) {
@@ -233,16 +312,16 @@ private struct SnakeChainBoard: View {
             }
         } else {
             if let pos = metrics.headPosition, handHasMoveOn(.left) {
-                EndMarker(pip: snapshot.chainLeftEnd,
-                          active: canPlay && selectedTile != nil && selectedSideIsPlayable(.left),
-                          size: SnakeChainLayout.markerDiameter) { onPlaySide(.left) }
+                EndTarget(side: .left, label: "Open left end showing \(snapshot.chainLeftEnd.map(String.init) ?? "unknown")") {
+                    onPlaySide(.left)
+                }
                 .onHover { onHoverPip($0 ? snapshot.chainLeftEnd : nil) }
                 .position(pos)
             }
             if let pos = metrics.tailPosition, handHasMoveOn(.right) {
-                EndMarker(pip: snapshot.chainRightEnd,
-                          active: canPlay && selectedTile != nil && selectedSideIsPlayable(.right),
-                          size: SnakeChainLayout.markerDiameter) { onPlaySide(.right) }
+                EndTarget(side: .right, label: "Open right end showing \(snapshot.chainRightEnd.map(String.init) ?? "unknown")") {
+                    onPlaySide(.right)
+                }
                 .onHover { onHoverPip($0 ? snapshot.chainRightEnd : nil) }
                 .position(pos)
             }
@@ -280,12 +359,15 @@ enum SnakeChainLayout {
     // Canonical board metrics (§16 spacing scale; §7 gap 0–6px) --
     // previously private constants on the view; hoisted so layout math
     // and rendering share one source of truth.
-    static let tileShortAxis: CGFloat = 26
+    static let tileShortAxis: CGFloat = 38
     static let hGap: CGFloat = 4
-    /// Row pitch leaves room for perpendicular doubles (long axis 52)
+    /// Row pitch leaves room for perpendicular doubles (long axis 76)
     /// to protrude into the inter-row band without touching neighbours.
     static var rowPitch: CGFloat { tileShortAxis * 2 + 4 }
-    static let markerDiameter: CGFloat = 34
+    /// Invisible end-target hit area. The visible affordance stays a thin
+    /// 2.25pt tick, but a release anywhere inside this generous square (plus
+    /// `HandDropResolver.dropPadding`) counts as landing on the end.
+    static let endTargetDiameter: CGFloat = 96
     /// Auto-fit engagement point (fraction of an axis in use).
     static let fitThreshold: CGFloat = 0.94
     /// Auto-fit floor -- never shrink tiles past readability (§17 order:
@@ -331,32 +413,28 @@ enum SnakeChainLayout {
         let startX = midX - CGFloat(cols) * pitchX / 2 + pitchX / 2
         var centerX = startX
 
-        func advance(_ n: Int = 1) {
-            centerX += CGFloat(n * Int(dir)) * pitchX
-            // FIX-28 discovery: this line read `col += n` -- UNSIGNED. `col`
-            // therefore counted UP forever even on leftward runs, so after
-            // the first corner NO second corner could ever fire ((dir<0 &&
-            // col==0) unreachable; (dir>0 && col==cols-1) already passed)
-            // and any chain longer than one row silently walked off the
-            // board's left edge instead of snaking. Latent since the snake
-            // board shipped -- invisible with real mid-game chains (<13
-            // tiles), exposed immediately by BoardLayoutTests' synthetic
-            // long chains. Signed advance makes col track the actual
-            // column position in BOTH directions.
-            col += n * Int(dir)
+        // A vertical tile is only half as wide as a horizontal one. Advancing
+        // a full cell after it left ~23pt of dead air on both sides of every
+        // double -- the exact "space is so big for doubles" gap. Advance by
+        // the two tiles' real half-widths instead, so perpendicular doubles
+        // and corner caps sit at the same 4pt visual gap as every other tile.
+        func isTurn(at index: Int, column: Int, direction: CGFloat) -> Bool {
+            let remainingAfter = orientedTiles.count - index - 1
+            return remainingAfter > 0 &&
+                ((direction > 0 && column == cols - 1) || (direction < 0 && column == 0))
         }
 
         var i = 0
         while i < orientedTiles.count {
             let t = orientedTiles[i]
-            let remainingAfter = orientedTiles.count - i - 1
-            let needsTurn = remainingAfter > 0 && ((dir > 0 && col == cols - 1) || (dir < 0 && col == 0))
+            let needsTurn = isTurn(at: i, column: col, direction: dir)
 
             if needsTurn {
                 // CORNER: this tile turns the run -- rendered VERTICAL as a
                 // perpendicular end-cap IN its own row cell; the next row
-                // starts in this same column. Pitch (56) clears the long
-                // axis (52) with 4pt air, guaranteeing no overlap (§7).
+                // starts in this same column. The cell pitch still leaves
+                // the long axis room, but horizontal neighbours were already
+                // advanced against this tile's narrow visual width.
                 placed.append(Placed(x: centerX, y: rowY(row), tile: t, vertical: true))
                 row += 1
                 dir *= -1
@@ -364,8 +442,17 @@ enum SnakeChainLayout {
                 continue
             }
 
-            placed.append(Placed(x: centerX, y: rowY(row), tile: t, vertical: t.isDouble))
-            advance()
+            let vertical = t.isDouble
+            placed.append(Placed(x: centerX, y: rowY(row), tile: t, vertical: vertical))
+
+            let nextColumn = col + Int(dir)
+            let nextIsVertical = i + 1 < orientedTiles.count &&
+                (orientedTiles[i + 1].isDouble ||
+                 isTurn(at: i + 1, column: nextColumn, direction: dir))
+            let currentHalfWidth = vertical ? tileShortAxis / 2 : tileShortAxis
+            let nextHalfWidth = nextIsVertical ? tileShortAxis / 2 : tileShortAxis
+            centerX += dir * (currentHalfWidth + hGap + nextHalfWidth)
+            col = nextColumn
             i += 1
         }
 
@@ -375,13 +462,14 @@ enum SnakeChainLayout {
         }
         let headDirIn: CGFloat = 1
         let tailDir = dir
-        let headPos = CGPoint(x: first.x - headDirIn * (tileShortAxis + 22), y: first.y)
-        let tailPos = CGPoint(x: last.x + tailDir * (tileShortAxis + 22), y: last.y)
+        let firstHalfWidth = first.vertical ? tileShortAxis / 2 : tileShortAxis
+        let lastHalfWidth = last.vertical ? tileShortAxis / 2 : tileShortAxis
+        let headPos = CGPoint(x: first.x - headDirIn * (firstHalfWidth + 22), y: first.y)
+        let tailPos = CGPoint(x: last.x + tailDir * (lastHalfWidth + 22), y: last.y)
 
-        // Extent: each tile's own half-extents (vertical tiles reach
-        // ±shortAxis on Y -- the perpendicular-double protrusion --
-        // horizontal ones ±shortAxis on X), plus both end markers'
-        // clearance rings.
+        // Extent is the actual domino geometry only. Endpoint hit targets
+        // are invisible now, so their clearance must not push the visible
+        // chain off-center on a wide table.
         var minX = CGFloat.infinity, maxX = -CGFloat.infinity
         var minY = CGFloat.infinity, maxY = -CGFloat.infinity
         for p in placed {
@@ -390,16 +478,31 @@ enum SnakeChainLayout {
             minX = min(minX, p.x - halfX); maxX = max(maxX, p.x + halfX)
             minY = min(minY, p.y - halfY); maxY = max(maxY, p.y + halfY)
         }
-        let reach = markerDiameter / 2
-        minX = min(minX, headPos.x - reach, tailPos.x - reach)
-        maxX = max(maxX, headPos.x + reach, tailPos.x + reach)
-        minY = min(minY, headPos.y - reach, tailPos.y - reach)
-        maxY = max(maxY, headPos.y + reach, tailPos.y + reach)
 
         let contentW = maxX - minX
         let contentH = maxY - minY
 
-        return Metrics(placed: placed, headPosition: headPos, tailPosition: tailPos,
+        // The snake algorithm starts at the left edge of a column grid so
+        // that long chains have a stable row structure. For ordinary short
+        // chains that leaves the board visually off-center on a wide display.
+        // Translate the completed plane's bounding box to the table center
+        // whenever it already fits; oversized chains keep their established
+        // coordinates and rely on auto-fit plus camera pan.
+        var finalPlaced = placed
+        var finalHead = headPos
+        var finalTail = tailPos
+        if contentW <= W && contentH <= H {
+            let shiftX = midX - (minX + maxX) / 2
+            let shiftY = midY - (minY + maxY) / 2
+            finalPlaced = placed.map {
+                Placed(x: $0.x + shiftX, y: $0.y + shiftY,
+                       tile: $0.tile, vertical: $0.vertical)
+            }
+            finalHead = CGPoint(x: headPos.x + shiftX, y: headPos.y + shiftY)
+            finalTail = CGPoint(x: tailPos.x + shiftX, y: tailPos.y + shiftY)
+        }
+
+        return Metrics(placed: finalPlaced, headPosition: finalHead, tailPosition: finalTail,
                        contentWidth: contentW, contentHeight: contentH,
                        suggestedScale: fitScale(contentWidth: contentW, contentHeight: contentH,
                                                 availableSize: availableSize))
@@ -416,51 +519,63 @@ enum SnakeChainLayout {
     }
 }
 
-// MARK: - Endpoint marker
+// MARK: - Endpoint affordances
 
-/// A quiet brass ring carrying the matching pip value. Static by default;
-/// the brief pulse appears only when the CURRENTLY SELECTED tile can land
-/// here (§25: purposeful, calm). Never shown for invalid ends.
-private struct EndMarker: View {
-    let pip: Int?
+/// A thin mark on the open edge of an end tile. It exists only when a real
+/// move is available there, and brightens only when the selected tile can
+/// land on it. No ring, no pip badge, no pulse.
+private struct EndEdgeHighlight: View {
     let active: Bool
-    let size: CGFloat
-    let action: () -> Void
+    let leading: Bool
 
-    @State private var pulse = false
+    var body: some View {
+        Capsule()
+            .fill(IsolynTheme.ivory.opacity(active ? 0.8 : 0.3))
+            .frame(width: 2.25, height: SnakeChainLayout.tileShortAxis * 0.68)
+            .offset(x: leading ? -3 : 3)
+            .shadow(color: IsolynTheme.ivory.opacity(active ? 0.18 : 0), radius: 2)
+            .animation(.easeOut(duration: 0.14), value: active)
+            .allowsHitTesting(false)
+    }
+}
+
+/// The hit area stays large, but the visual is carried by the edge mark on
+/// the tile itself. This keeps placement reachable without adding UI.
+private struct EndTarget: View {
+    let side: ChainSide
+    let label: String
+    let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .strokeBorder(IsolynTheme.brass.opacity(active ? 0.95 : 0.55),
-                                  lineWidth: active ? 2 : 1.5)
-                    .background(Circle().fill(IsolynTheme.ebonyElevated.opacity(0.85)))
-                if let pip {
-                    Text("\(pip)")
-                        .font(IsolynTheme.display(15))
-                        .monospacedDigit()
-                        .foregroundStyle(active ? IsolynTheme.brass : IsolynTheme.ivoryMuted)
-                } else {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(active ? IsolynTheme.brass : IsolynTheme.ivoryMuted)
-                }
-            }
-            .frame(width: size, height: size)
-            .scaleEffect(active && pulse ? 1.08 : 1.0)
+            Color.clear
+                .frame(width: SnakeChainLayout.endTargetDiameter,
+                       height: SnakeChainLayout.endTargetDiameter)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulse)
-        .onChange(of: active) { _, newValue in pulse = newValue }
-        .onAppear { pulse = active }
-        .accessibilityLabel(accessibilityText)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: BoardDropTargetFrames.self,
+                    value: [side: proxy.frame(in: .named(GameSurfaceCoordinateSpace.name))]
+                )
+            }
+        )
+        .accessibilityLabel(label)
         .accessibilityHint("Places the selected domino here.")
     }
+}
 
-    private var accessibilityText: String {
-        if let pip { return "Open end showing \(pip)\(active ? ", accepts selected tile" : "")" }
-        return "Empty table — place the opening domino"
+enum GameSurfaceCoordinateSpace {
+    static let name = "gameSurface"
+}
+
+private struct BoardDropTargetFrames: PreferenceKey {
+    static let defaultValue: [ChainSide: CGRect] = [:]
+
+    static func reduce(value: inout [ChainSide: CGRect], nextValue: () -> [ChainSide: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }
 

@@ -99,6 +99,16 @@ public:
     static EvaluationTotals evaluateAll(GameMode mode,
                                         const GameState& state,
                                         const EvaluationWeights& weights = EvaluationWeights{});
+
+    // Same totals with the caller's already-computed closed-position fact.
+    // Closed internal search nodes use this after their early-termination
+    // check; horizon leaves use evaluateAll, which derives Closed from the
+    // mobility it already computes.
+    static EvaluationTotals evaluateAllWithClosed(
+        GameMode mode,
+        const GameState& state,
+        bool positionClosed,
+        const EvaluationWeights& weights = EvaluationWeights{});
 };
 
 } // namespace isolyn

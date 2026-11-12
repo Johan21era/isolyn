@@ -61,9 +61,9 @@ Every session tracks a monotonically increasing `stateVersion`, bumped on every 
 
 ## Snapshot model — hidden information
 
-`SnapshotDTO` is always taken from one specific player's point of view. Only that player's own hand carries real tile identities; every other player's hand is a size only (`otherHandSizes`), never contents. `legalMovesForRequestingPlayer` is populated only when it's actually that player's turn — there's no legitimate reason to compute or expose legal moves for a hand the requester can't see, so it isn't computed at all otherwise, not just hidden by convention.
+`SnapshotDTO` is always taken from one specific player's point of view. During play, only that player's own hand carries real tile identities; every other player's hand is a size only (`otherHandSizes`), never contents. When the round reaches a terminal outcome, `finalRevealedTiles` and `finalHandCounts` expose the actual remaining tiles for every seat, matching the physical table turning hands face up at the end. That is the only reveal path: all reveal entries are sentinels/zero while `roundOutcome == InProgress`. `legalMovesForRequestingPlayer` is populated only when it's actually that player's turn — there's no legitimate reason to compute or expose legal moves for a hand the requester can't see, so it isn't computed at all otherwise, not just hidden by convention.
 
-This mirrors how the engine itself keeps hidden and known information structurally separate (`BeliefState`/`ProbabilityEngine`) rather than trusting a caller not to look at something it was handed. Verified directly in `Tests/IsolynEngineBridgeTests/SmokeTest.cpp`: a snapshot requested by one player and a snapshot of the same session requested by the other both show only their own hand's real contents.
+This mirrors how the engine itself keeps hidden and known information structurally separate (`BeliefState`/`ProbabilityEngine`) rather than trusting a caller not to look at something it was handed. Verified directly in `Tests/IsolynEngineBridgeTests/SmokeTest.cpp`: mid-round snapshots requested by one player and by the other both show only their own hand's real contents; at round end, the reveal counts match the racks, the revealed tiles sum to `finalHandValues`, and unused slots remain sentinels.
 
 ## Why the DTOs are POD-only, fixed-size, no STL
 
@@ -95,6 +95,10 @@ source of truth), and this surface is data plumbing only:
 - `SnapshotDTO.finalHandValues[kMaxPlayers]` -- per-player remaining pip value,
   populated ONLY when roundOutcome != InProgress (reveal-on-end; zero during
   play, so no hidden information leaks mid-round).
+- `SnapshotDTO.finalRevealedTiles[kMaxPlayers * kTotalTileCount]` and
+  `finalHandCounts[kMaxPlayers]` -- the actual remaining tile identities and
+  counts, populated under the same terminal-outcome guard. This is what the
+  round-end card turns face up; it is never sent mid-round.
 - `bridge_match_record_round(match, finishedSession)` -- team-combines for 2v2,
   computes participant scores, applies them, derives nextRoundStarterIndex from
   that round's cachedDecidingPlayer via RulesEngine::determineNextRoundStarter.
@@ -109,5 +113,6 @@ the handle, publishes scores/winner/next-starter, drives
 serializes with the session's own command stream.
 
 Verified: SmokeTest match section (record/duplicate-reject/starter/
-accumulation/idempotent close) -- current bridge suite 68/68; ASan+UBSan clean
-over the new paths; Swift package currently 49 tests, 1 skipped, 0 failures.
+accumulation/idempotent close) plus the reveal-on-end assertions -- current
+bridge suite 73/73; ASan+UBSan clean over the new paths; Swift package
+currently 68 tests, 1 skipped, 0 failures.

@@ -2,6 +2,7 @@
 #include "IsolynEvaluationBatch.hpp"
 #include "IsolynPositionBatch.hpp"
 #include "EvaluationEngine.hpp"
+#include "MoveGenerator.hpp"
 #include "TestHarness.hpp"
 
 #include <algorithm>
@@ -56,6 +57,17 @@ GameState makeClosedState() {
     GameState state(GameMode::OneVsOne, hands, {});
     state.playTile(1, DominoTile(4, 4), GameState::ChainSide::Left);
     state.playTile(0, DominoTile(6, 4), GameState::ChainSide::Left);
+    return state;
+}
+
+GameState makeStuckWithBoneyardState() {
+    std::vector<std::vector<DominoTile>> hands = {
+        { DominoTile(6, 6) },
+        { DominoTile(5, 5) },
+    };
+    GameState state(GameMode::OneVsOne, hands,
+                    { DominoTile(1, 1), DominoTile(2, 2), DominoTile(3, 3) });
+    state.playTile(0, DominoTile(6, 6), GameState::ChainSide::Left);
     return state;
 }
 
@@ -282,6 +294,9 @@ int main() {
                       "compact position batch has one row");
                 check(encoded.playerCount == static_cast<std::size_t>(state.playerCount()),
                       "compact batch preserves player count");
+                check(encoded.rows[0].closed ==
+                          (MoveGenerator::isPositionClosed(state) ? 1u : 0u),
+                      "compact closed flag matches movegen");
 
                 std::vector<float> values(encoded.playerCount);
                 PositionBatchView view{encoded.rows.data(), 1,
@@ -299,6 +314,15 @@ int main() {
             const GameState closed = makeClosedState();
             const PositionBatch closedBatch =
                 encodePositionBatch(GameMode::OneVsOne, {closed});
+            check(closedBatch.rows[0].closed == 1u,
+                  "closed compact fixture is marked closed");
+
+            const GameState stuckWithBoneyard = makeStuckWithBoneyardState();
+            const PositionBatch boneyardBatch =
+                encodePositionBatch(GameMode::OneVsOne, {stuckWithBoneyard});
+            check(boneyardBatch.rows[0].closed == 0u,
+                  "nonempty boneyard keeps a stuck hand position open");
+
             std::vector<float> closedValues(2);
             PositionBatchView closedView{closedBatch.rows.data(), 1,
                                          closedValues.data(), 2};

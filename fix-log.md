@@ -530,3 +530,467 @@ the session; all earlier entries retain their original historical numbers.
   **68 checks** pass; `run.sh` syntax, `scripts/iso` syntax, `Info.plist`, and
   the renamed binary path were checked. `git diff --check` clean. This entry is
   committed and pushed separately; no production behavior changed.
+
+## PERF-03 — batch leaf Closed/mobility consolidation (2026-11-12)
+- **Files:** `Sources/IsolynEngine/include/EvaluationEngine.hpp`,
+  `Sources/IsolynEngine/EvaluationEngine.cpp`,
+  `Sources/IsolynEngine/SearchEngine.cpp`,
+  `Tests/IsolynEngineTests/EvaluationEngineTests.cpp`,
+  `Accelerator/src/PositionBatch.cpp`,
+  `Accelerator/tests/AcceleratorTests.mm`, and `docs/ACCELERATOR.md`.
+- **Problem:** the batch leaf path scanned each hand once for its value and again
+  for mobility, then scanned a one-tile hand a third time for an immediate win.
+  Search also computed `isPositionClosed` at every horizon leaf, even though the
+  evaluator was about to compute the same mobility information.
+- **Change:** `handFacts()` now produces hand value and legal-move count in one
+  hand scan. Immediate threats are derived from that count (`hand size == 1 &&
+  legalMoves > 0`), which is exactly the previous predicate. `evaluateAll`
+  derives Closed as `boneyard.drawableCount() == 0 && allPlayersStuck`, matching
+  `MoveGenerator::isPositionClosed` without another scan; a new
+  `evaluateAllWithClosed` entry point accepts a caller-known Closed fact for
+  internal closed nodes. Horizon leaves now skip
+  `isPositionClosed` entirely, while depth>0 and closed internal nodes retain the
+  early-termination scan.
+- **Controlled A/B:** a clean worktree at `c7153f0` (pre-change) and the working
+  tree were run alternately in the same thermal window, same seed 21, depth 4,
+  20 determinizations. Every workload visited identical nodes and decisions.
+
+  | Workload | Pre-change | New | Change |
+  |---|---:|---:|---:|
+  | 1v1, 200 games (median of 5) | 1.52s | **1.48s** | **−2.6%** |
+  | 1v1v1, 100 games (median of 3) | 1.97s | **1.60s** | **−18.8%** |
+  | 2v2, 100 games (median of 3) | 1.41s | **1.24s** | **−12.1%** |
+  | 1v1, 1,000 games | 7.56s | **7.23s** | **−4.4%** |
+
+  The 1,000-game runs remained 32,341,886 nodes / 16,822 decisions; 1v1v1
+  remained 12,205,946 / 2,186; 2v2 remained 5,369,331 / 2,105. Absolute times in
+  this A/B window were higher than the earlier PERF-02 run, so only the paired
+  deltas are claimed.
+- **Independent endurance (seed 777):** 5,000 1v1 games completed 163,242,746
+  nodes / 85,087 decisions in 34.98s at 12.9MB peak; 1,000 1v1v1 completed
+  122,267,994 / 21,932 in 15.53s at 7.1MB; 1,000 2v2 completed 53,141,099 /
+  20,640 in 12.20s at 7.4MB. All had zero incomplete rounds.
+- **Deadline pressure (seed 91, 1ms/move):** all runs completed with zero
+  incomplete rounds: 200 1v1 (6,105,954 nodes / 3,321 decisions), 100 1v1v1
+  (9,199,289 / 2,162), and 100 2v2 (4,897,506 / 2,041).
+- **Oversubscription:** 16 concurrent 1v1 processes (125 games each) completed
+  **65,843,572 nodes in 3.30s** aggregate (**19.95M nodes/s**) with zero
+  incomplete rounds. This is a stability result, not a scaling claim.
+- **Metal host encoding:** `encodePositionBatch` now derives each row's Closed
+  flag from the hand masks it already builds instead of calling
+  `MoveGenerator::isPositionClosed`, and computes pips only for rows that are
+  actually closed. Paired 5-run A/B against `c7153f0`, alternating binaries:
+  encoding **46.54M → 55.17M positions/s (+18.5%)**; the new paired range was
+  54.29-58.02M, and final post-soak runs measured 51.1-57.0M/s. Direct closed-flag
+  parity against `MoveGenerator::isPositionClosed` was added for all three modes,
+  the closed fixture, and a stuck-hand/nonempty-boneyard fixture.
+- **Metal kernel:** no kernel source changed. The final normal harness passed all
+  **100** checks with 65K throughput **196-209M positions/s** (313-334us). With
+  `MTL_DEBUG_LAYER=1` and `MTL_SHADER_VALIDATION=1`, all 100 checks still passed;
+  65K throughput was **80.4M/s** (815us) with validation enabled. Host encoding
+  plus one max-size dispatch is now roughly **41M positions/s**; encoding remains
+  the end-to-end bottleneck.
+- **Verification:** engine **19 executables / 429 checks**; bridge **2 / 68**;
+  ASan+UBSan **21 / 497**; TSan **2 / 82**; Swift **49 tests, 1 skipped, 0
+  failures**; standalone fuzz **75,000 executions**, zero findings; accelerator
+  **100 checks**. `git diff --check` clean. No commit or push.
+- **Limitation:** the Metal evaluator remains standalone and is not wired into
+  search, so no Metal search-speed claim is made.
+
+## UI-RESP-01 — centered responsive shell (2026-11-12)
+- **Files:** `Sources/IsolynApp/Theme/ResponsiveLayout.swift` (new),
+  `Views/EntryView.swift`, `Views/ModeSelectorView.swift`,
+  `Components/ModeCard.swift`, `Components/PrimaryCapsuleButtonStyle.swift`,
+  `Game/InteractiveGameBoardView.swift`, `Game/ChainAndZonesView.swift`,
+  `Game/RoundEndOverlay.swift`, `IsolynApp.swift`, `AppState.swift`, and
+  `Tests/IsolynAppTests/{BoardLayoutTests,ResponsiveLayoutTests}.swift`.
+- **Problem:** fixed 40/64pt leading gutters, an unconstrained three-card row,
+  a full-width game header, and a snake layout that started short chains at
+  the left edge of a wide column grid. The result drifted toward whichever
+  window width the app happened to launch at, and the floating settings
+  control competed with the board.
+- **Responsive rules:** `IsolynLayout` now defines a 900×620 minimum, a
+  1120pt centered content column, a 1600pt board cap, and 24/40/56pt
+  horizontal gutters at compact/medium/wide widths. `CenteredContent` is the
+  shared centering primitive.
+- **Screens:** Entry is a centered brand/action block with a centered
+  watermark. The lobby uses a centered adaptive mode grid, a centered setup
+  panel, and an equal-width Start action. The game header switches to a
+  two-row compact layout below 1040pt, centers the scoreboard geometrically,
+  moves appearance settings into the header, and puts the hand/action/status
+  bands inside the same centered column. The round overlay is capped at 680pt
+  and scrolls on short windows. The window opens centered.
+- **Board:** when the complete chain bounding box fits, `SnakeChainLayout`
+  translates it to the table center. Oversized chains retain their existing
+  serpentine coordinates and auto-fit/pan behavior; a regression test covers
+  the centered single-tile case.
+- **Verification:** `swift build` succeeds; `swift test` passes **53 tests, 1
+  skipped, 0 failures**; `git diff --check` clean. No commit or push.
+- **Limitation:** this was compile/test-verified, not visually inspected in a
+  running window. The next visual QA pass should check at least 900×620,
+  1280×800, 1440×932, and a full-screen 1440×932 MacBook display.
+
+## UI-MIN-01 — Offsuit-minimal table (2026-11-12)
+- **Reference:** the owner supplied the mobile poker game *Offsuit* and asked
+  for that level of simplicity: erase the dashboard, keep the dominoes facing
+  upright and make them bigger, and never fade unplayable dominoes to black.
+- **Play screen:** `InteractiveGameBoardView` is now a black field with a back
+  arrow, a quiet player row (monogram, name, score, hand-count badge), the
+  board, the hand, one short status chip, and a bottom action lane. Removed
+  the mode header, turn banner, score cards, opponent-count telemetry,
+  dividers, reset-view control, and floating edge brush. Appearance remains
+  available through a small top-right paintbrush.
+- **Player row:** 1v1 shows You/Rival; 1v1v1 shows You/Rival A/Rival B; 2v2
+  shows You/Rival A/Partner/Rival B with team scores repeated for partners.
+  The acting seat is the only one at full brightness.
+- **Dominoes:** hand short-axis **44pt** (88×44), table short-axis **38pt**
+  (76×38), still exact 2:1 canonical rectangles. Hand tiles are not rotated.
+  Unplayable hand tiles retain full ivory and are made non-hit-testable
+  instead of disabled, so SwiftUI cannot apply a dimming treatment.
+- **Actions:** a single wide Draw/Pass button, a small Analyze control, and a
+  short status chip (`Select a domino`, `Choose an end`, `Thinking…`, or the
+  engine's suggested tile). No fake probabilities or unsupported controls.
+- **Round end:** `RoundEndOverlay` now uses a black overlay, one headline, a
+  plain reveal list, simple score deltas, and one wide next-round/new-match
+  button instead of the bordered scorecard.
+- **Charter:** `docs/UI_UX_OVERHAUL.md` has a new §0 design correction that
+  supersedes the older panel/mode-wireframe guidance.
+- **Verification:** `swift build` succeeds; `swift test` passes **53 tests, 1
+  skipped, 0 failures**; `git diff --check` clean. No commit or push.
+- **Limitation:** still not visually inspected in a running window. The next
+  pass should compare the actual table against the reference at 1080×720 and
+  full screen, especially player-row spacing and hand size.
+
+## UI-MIN-02 — fullscreen match setup (2026-11-12)
+- **Problem:** the setup screen was a top-stacked dashboard with atmospheric
+  stars, warm brown cards, long mode descriptions, an eyebrow label, a blue
+  system segmented control, and a disabled Start button. At fullscreen it left
+  roughly the lower half of the window empty.
+- **Layout:** the lobby now uses the same black field as the table, equal
+  vertical spacers around the content, and exactly three equal mode columns.
+  The content stays centered at fullscreen and the 900×620 minimum instead of
+  hanging from the top.
+- **Simplification:** removed the star field, “MATCH SETUP” eyebrow, subtitle,
+  seat diagrams, long descriptions, panel border/background, and blue system
+  picker. The screen is now title → three compact mode cards → inline opponent
+  control → one wide Start button.
+- **Default state:** Duel is selected on entry, so Start Match is immediately
+  active. The selected card uses a single white border and checkmark.
+- **Verification:** temporary `NSHostingView` snapshots at 1600×1000 and
+  900×620 confirmed the centered setup composition visually; the temporary
+  harness was removed. `swift build` and the full Swift suite pass. No commit
+  or push.
+
+## UI-INSPECT-01 — manual family inspector (2026-11-12)
+- **Problem:** the number-family panel opened from incidental pointer hover,
+  stretched across the table as a brown dashboard, and had no deliberate
+  trigger. The owner asked for auto-hover to be erased (optional only), for a
+  configurable non-left mouse button to open it, and for the panel itself to
+  stop looking ugly.
+- **Trigger:** auto-hover is **off by default** and persisted under
+  `isolyn.inspection.v1`; Settings has a `Reveal on hover` switch. The default
+  manual trigger is **right-click while the pointer is over a domino**.
+  Settings can swap to middle click or an extra mouse button. Left click is
+  deliberately excluded because it is the play gesture.
+- **Routing:** `InspectionEventMonitor` is a local AppKit event monitor with a
+  pass-through background view, so it never participates in hit-testing. A
+  lightweight `InspectionHoverTracker` records the tile and half under the
+  pointer (left/right for horizontal tiles, top/bottom for vertical tiles)
+  without re-rendering the chain. The monitor consumes only the configured
+  button while a face is tracked; all other mouse events continue unchanged.
+- **Presentation:** `HoverChainOverlay` is now a **360pt black card** at the
+  top right: `Family N`, the active classification, one row of seven canonical
+  dominoes, and a tiny semantic legend. Removed the full-width panel, brown
+  treatment, `TARGET` telemetry header, long description, and ambient trigger.
+  Manual inspection stays open until close, play, or a state change; the
+  optional hover mode retains the grace-period dismissal.
+- **Default view:** the inspector opens on the complete classification instead
+  of the empty `Base` view, so the knowledge colors carry useful information.
+- **Settings fit:** the drawer body now scrolls at the 620pt minimum window
+  height, and the edge-highlight picker is a compact menu instead of a
+  four-segment control that forced the form wider than the 260pt drawer and
+  shifted every label off the left edge.
+- **Files:** `InspectionSettings.swift`, `InspectionHoverTracker.swift`,
+  `InspectionEventMonitor.swift`, `SettingsDrawer.swift`,
+  `InteractiveGameBoardView.swift`, `ChainAndZonesView.swift`,
+  `HoverChainController.swift`, `HoverChainOverlay.swift`, `InspectionTests.swift`.
+- **Verification:** `swift build` succeeds; `swift test` passes **60 tests, 1
+  skipped, 0 failures**; `git diff --check` clean. A synthetic `NSApp`
+  right-click confirmed the monitor consumes the configured button and reads
+  the hovered face; offscreen 420×160 and 260×620 renders confirmed the compact
+  inspector and the unclipped, scrollable settings drawer. No commit or push.
+- **Limitation:** the actual right/middle/extra mouse path was not physically
+  exercised in the running window; the event monitor and view are compiled and
+  unit-tested, and the app must be re-launched for manual QA.
+
+## UI-BOARD-01 — quiet ends, centered chain (2026-11-12)
+- **Problem:** playable ends were brass rings carrying pip numbers; they were
+  the loudest objects in an otherwise black table. Layout centering also used
+  the rings' clearance, so the actual domino chain sat left of the screen
+  center even though the hand and player row were centered.
+- **Endpoints:** removed `EndMarker` entirely — no rings, labels, plus sign,
+  or pulse. The open end is now a 2.25pt ivory tick just outside the end tile:
+  **0.30 opacity when the side is available**, **0.80 when the selected tile
+  can legally land there**. The 44pt tap target remains invisible. (The
+  hover-chain trigger was changed later, in UI-INSPECT-01.)
+- **Centering:** `SnakeChainLayout` now computes `contentWidth`/`contentHeight`
+  from visible domino bounds only. Endpoint hit targets are excluded, so the
+  visible chain bbox sits on the table centerline. A single 2:1 silhouette
+  marks the empty-table opening instead of a circle.
+- **Verification:** a controlled `NSHostingView` render of a three-tile chain
+  at 1600×700 measured the visible bbox at **x = 798.75 / 1600**, confirming
+  center. The endpoint tick was present at the open edge and no rings
+  rendered. Temporary harness removed. `swift build` and **54 Swift tests, 1
+  skipped** pass; `git diff --check` clean. No commit or push.
+
+## UI-MOTION-01 — paced turns, draw flight, round-end reveal (2026-11-12)
+- **Problem:** the table resolved computer turns and forced draws in the same
+  frame they were requested, so the engine was correct but the game felt
+  like a state dump. There was no draw motion at all, and the round-end card
+  showed only numeric pip totals, leaving the owner unable to see what the
+  opponents actually still held.
+- **Pacing:** computer turns now open with a **450ms think beat**, wait
+  **200ms before each forced draw** and **240ms after it**, wait **240ms after
+  analysis** before submitting, and wait **360ms after the move** before
+  refreshing. Human forced draws get a **240ms** beat per draw. The engine is
+  still synchronous; only presentation waits, and cancellation still unwinds
+  cleanly.
+- **Draw flight:** `GameViewModel` publishes a short-lived `DrawEvent` from the
+  boneyard delta. `DrawFlightView` sends one to three face-down dominoes from
+  the draw lane to the requesting hand (human) or the acting seat (computer).
+  Computer draws are published explicitly from the paced AI loop because a
+  draw followed immediately by a play has no net hand-size change in the final
+  snapshot. Opponent identities stay hidden; the flight is face-down.
+- **Hand and board motion:** hand tiles now use stable tile identity with a
+  rising insertion and a shrinking removal transition; new chain tiles scale
+  in and existing tiles settle with a restrained spring. No confetti, board
+  shake, or changing chrome.
+- **Round-end reveal:** the bridge's terminal snapshot now carries
+  `finalRevealedTiles` and `finalHandCounts` (all sentinel/zero during live
+  play). `GameSnapshot.revealedHands` parses them, and `RoundEndOverlay`
+  displays every seat's actual remaining dominoes with a staggered flip-in.
+  The overlay now waits **650ms** after the final move, then stages the
+  headline, each seat row, the score deltas, and the action. The winner's
+  empty hand reads `Went out`; closed rounds show every hand that was counted.
+- **Privacy tests:** the bridge suite asserts no reveal mid-round, counts equal
+  the racks, revealed tiles sum to `finalHandValues`, and unused slots are
+  sentinels. A new Swift integration test plays a real 1v1 round to completion
+  and checks that opening snapshots are empty, the end snapshot's revealed
+  tiles equal the requesting hand and the opponent's hand size, and every
+  revealed row sums to its final value.
+- **Files:** `IsolynBridge.hpp`, `IsolynBridge.cpp`, `EngineTypes.swift`,
+  `GameViewModel.swift`, `DrawFlightView.swift`, `HandRackView.swift`,
+  `ChainAndZonesView.swift`, `RoundEndOverlay.swift`,
+  `InteractiveGameBoardView.swift`, `RoundRevealTests.swift`, `run.sh`, plus
+  the bridge reveal assertions in `SmokeTest.cpp`.
+- **Verification:** bridge suite **73 checks passed, 0 failed**; Swift suite
+  **62 tests, 1 skipped, 0 failures**; `swift build` succeeds;
+  `git diff --check` clean. Graph refresh: **2,146 nodes / 3,973 edges**;
+  `scripts/build-graph-3d.py --check` passes. The app bundle was rebuilt and
+  relaunched; `run.sh` now clears bundle xattrs and ad-hoc signs the copied
+  executable, because macOS was killing the unsigned launch with
+  `Code Signature Invalid` before any game code ran. No commit or push.
+- **Limitation:** the flight path, stagger timing, and round-end layout were
+  compiled and covered by functional tests, but not yet reviewed in the
+  running window with a physical mouse. The owner's test remains the source of
+  truth for feel and spacing.
+
+## UI-DRAG-01 — larger hand, direct drag-to-play (2026-11-12)
+- **Problem:** the hand tiles were readable but still small, and the documented
+  "drag a tile to an end" interaction did not exist in the SwiftUI layer --
+  hand tiles were buttons only. The board's release-inertia path also received
+  `nil` because its separate `lastMouseLocation` state was never assigned.
+- **Size:** hand tiles moved from **44pt to 48pt half-axis** (88×44 → 96×48,
+  still exact 2:1). Seven tiles plus spacing still fit the 900pt minimum.
+- **Drag:** hand tiles now use a 3pt-threshold drag gesture in the shared
+  `gameSurface` coordinate space. The rack hides the source tile and emits
+  begin/change/end points; the table draws one floating canonical tile under
+  the pointer. A 150ms tap suppression prevents the click gesture from firing
+  after a short drag.
+- **Drop:** `ChainAndZonesView` reports the live, transformed frames of its
+  legal end targets through a preference key. `HandDropResolver` maps the
+  release point to the matching legal move; releasing outside an end leaves
+  the tile selected so tap-to-place still works. The empty-table opening
+  accepts any legal opening move for the dragged tile.
+- **Hit areas:** end targets grew from a 44pt circle to a **96pt invisible
+  square**, and the resolver adds **32pt of padding** around each one. That
+  makes the effective drop zone roughly 160pt across -- dropping on the end
+  domino itself counts. Overlapping zones resolve to the nearest end instead
+  of failing or picking arbitrarily.
+- **Smoothness:** pointer updates live in a small `@Observable HandDragModel`
+  read only by `HandDragPreview`, so a mouse move does not re-evaluate the
+  board layout or the whole game screen. No implicit animation is applied to
+  the drag position; it tracks the pointer directly.
+- **Board pan:** the camera release now receives the actual gesture endpoint,
+  so inertia has a velocity sample instead of always stopping dead.
+- **Tests:** `HandDropResolverTests` covers matching-end, generous padding,
+  nearest-of-overlapping-ends, outside, wrong-side, mismatched-tile, and
+  empty-chain drops.
+- **Files:** `HandRackView.swift`, `InteractiveGameBoardView.swift`,
+  `ChainAndZonesView.swift`, `EngineTypes.swift`, `HandDropResolver.swift`,
+  `HandDropResolverTests.swift`, `docs/UI_UX_OVERHAUL.md`.
+- **Verification:** `swift build` succeeds; `swift test` passes **68 tests,
+  1 skipped, 0 failures**; `git diff --check` clean. No commit or push.
+- **Graph:** refreshed to **2,191 nodes / 4,098 edges**;
+  `scripts/build-graph-3d.py --check` passes.
+- **Limitation:** the drag motion and drop targets were not physically
+  exercised in the running window; the owner's mouse test remains the source
+  of truth for pickup offset, tracking, and drop feel.
+
+## UI-BONEYARD-01 — real 1v1 draw pile, rules-aware locked tail, animated draws (2026-11-12)
+- **Problem:** the table had a Draw button and a generic face-down flight, but
+  no physical draw pile. Draws appeared from the action-dock lane, and the
+  Swift snapshot did not parse the bridge's locked-tail fields, so the rules'
+  permanent pair had no visual expression at all.
+- **Rules:** the boneyard exists only in 1v1. The deal leaves 14 undrawn tiles;
+  the engine's `drawableCount` deliberately excludes the final two, which can
+  never be drawn. The bridge exposes their identities only once at most two
+  remain. Three-Way and Partners deal the complete set, so they show no pile.
+  None of those rules were moved into Swift or inferred by the UI.
+- **Data:** `GameSnapshot` now parses `boneyardLockedTiles`/`boneyardLockedCount`
+  alongside the existing drawable count. The test construction seam gained a
+  defaulted locked-tile argument, so existing controlled snapshots stay valid.
+- **Pile:** `BoneyardView` is a quiet table object at the board's top-left:
+  a four-layer face-down stack, the exact drawable count, and a visually
+  separate two-tile locked tail. The tail stays face down while its identities
+  are hidden; when the bridge reveals it, the actual dominoes flip face up and
+  the small `LOCKED` label turns brass. The pile is absent outside 1v1.
+- **Draw motion:** the pile reports its live center through a preference key;
+  every human and computer draw flight now starts there. Flights use a lifted
+  arc, a longer eased curve, a subtle rotation, growth into the hand (or
+  shrink into the computer's seat), and a soft landing fade. The pile gives a
+  small compression pulse as each tile leaves.
+- **Every draw:** `GameViewModel` keeps a short window of active draw events
+  (while retaining the existing latest `drawEvent` API). Back-to-back forced
+  draws therefore animate independently instead of replacing one another. The
+  computer loop refreshes the human-facing snapshot after each forced draw
+  before publishing its face-down flight, so the shared pile count shrinks on
+  the same beat without exposing the computer's hand.
+- **Draw control:** unchanged. The existing contextual Draw/Pass button stays
+  in `actionDock`; the pile is purely an additional table object. Draw remains
+  enabled only when `canVoluntaryDraw`, and Pass only replaces it when the
+  engine says the turn is blocked and the drawable yard is dry.
+- **Files:** `BoneyardView.swift`, `DrawFlightView.swift`,
+  `InteractiveGameBoardView.swift`, `GameViewModel.swift`, `EngineTypes.swift`,
+  `BoneyardRulesTests.swift`, `RoundRevealTests.swift`,
+  `docs/UI_UX_OVERHAUL.md`.
+- **Tests:** `BoneyardRulesTests` proves the mode split through real deals
+  (1v1: 12 drawable + hidden locked pair; 1v1v1/2v2: no boneyard at all).
+  `RoundRevealTests` additionally asserts the opening 1v1 count and that
+  locked identities stay hidden while drawable tiles remain.
+- **Verification:** `swift build` succeeds; `swift test` passes **69 tests,
+  1 skipped, 0 failures**; `./run_bridge_tests.sh` passes **73 checks, 0
+  failed**; `git diff --check` clean. Graph refresh: **2,209 nodes / 4,142
+  edges**; `python3 scripts/build-graph-3d.py --check` passes. The app bundle
+  was rebuilt and relaunched through `run.sh`. No commit or push.
+- **Limitation:** the pile's final screen position, the takeoff/landing feel,
+  and the locked-pair flip were compiled and covered by rules tests, but not
+  visually reviewed with a physical mouse. The owner's run remains the source
+  of truth for spacing and feel.
+
+## UI-DOUBLE-01 — tight perpendicular doubles + equivalent-end double-click route (2026-11-12)
+- **Problem:** a vertical double is only 38pt wide, but `SnakeChainLayout`
+  advanced the chain center by the full 80pt horizontal cell after every
+  tile. Flat tiles therefore sat 4pt apart, while doubles had ~23pt of dead
+  air on both sides. Separately, double-clicking a tile that fit two equal
+  open ends did nothing useful: the two-click path only auto-played when
+  exactly one side was legal.
+- **Layout:** the chain now advances by the actual visual half-width of the
+  current tile plus the next tile plus `hGap`. A flat-to-double and
+  double-to-flat transition therefore keeps the normal 4pt gap instead of a
+  half-cell void. Corner detection and the serpentine row structure are
+  unchanged. Head/tail marker insets also use the end tile's real width.
+  This preserves the perpendicular-double rule; it only removes the unused
+  space around the narrow orientation.
+- **Double-click:** `HandRackView` now recognizes a second click inside
+  `NSEvent.doubleClickInterval`. It delegates to the pure `HandTapRouter`.
+  One legal side plays immediately. Two legal sides are resolved only when
+  both open chain ends show the same number; then either side is engine-
+  equivalent and a side is chosen at random. Two different open ends return
+  nil, so the player still makes the strategic choice.
+- **Discoverability:** after selecting an eligible tile, the status chip says
+  `Both ends show N — double-click to place`; the tile's accessibility hint
+  names the same gesture. Drag, tap-to-select, tap-the-end, and the existing
+  tap-tap single-move path remain intact.
+- **Files:** `ChainAndZonesView.swift`, `HandRackView.swift`,
+  `HandTapRouter.swift`, `InteractiveGameBoardView.swift`,
+  `BoardLayoutTests.swift`, `HandTapRouterTests.swift`,
+  `docs/UI_UX_OVERHAUL.md`.
+- **Tests:** `BoardLayoutTests` now pins the 4pt gap on both sides of a
+  vertical double. `HandTapRouterTests` covers one-side, both-equal-ends
+  (random selection always one of the legal sides), different-ends refusal,
+  no-move, and other-tile cases.
+- **Verification:** `swift build` succeeds; `swift test` passes **75 tests,
+  1 skipped, 0 failures**; `./run_bridge_tests.sh` passes **73 checks, 0
+  failed**; `git diff --check` clean. Graph refresh: **2,227 nodes / 4,179
+  edges**; `python3 scripts/build-graph-3d.py --check` passes. The app bundle
+  was rebuilt and relaunched.
+- **Limitation:** the actual double-click timing and the visual board gap were
+  not exercised in the running window. The owner's physical mouse test remains
+  the source of truth for gesture feel and spacing.
+
+## UI-BONEYARD-02 — physical face-down row, open draw end, sealed pair (2026-11-12)
+- **Problem:** the first boneyard build rendered a decorative four-layer mini-
+  stack plus a detached locked tail. That did not match the table rules: the
+  boneyard is a single straight row of face-down tiles, draws remove from one
+  open side, and the final two at the opposite side are closed off. The old
+  view also turned the reserved pair face up late in the round, which broke
+  the "all face down" physical contract.
+- **Layout:** `BoneyardView` now draws every remaining tile in one straight
+  horizontal row: the two closed tiles sit at the fixed left end behind a thin
+  rail, and the open draw end is the right edge. The row is 14 tiles at the
+  opening deal (12 drawable + 2 closed), shrinks from the right as tiles are
+  drawn, and ends as the same two face-down closed tiles. The closed pair never
+  moves; the draw rail stays at the live open edge. End labels read `CLOSED`
+  and `DRAW N`; the `DRAW` label is omitted once the yard is exhausted.
+- **Data boundary:** the row is driven only by `boneyardDrawableCount` plus the
+  rules-constant two closed tiles. It deliberately does not consume
+  `boneyardLockedTiles` for display: the bridge may expose those identities
+  for strategy once the pair is reached, but physical table tiles stay face
+  down. The snapshot field and its tests remain intact.
+- **Draw motion:** the flight anchor now comes from the actual open end of the
+  row, not a stack center. Draws still use the existing lifted face-down flight
+  into the hand or the computer seat.
+- **Files:** `BoneyardView.swift`, `DrawFlightView.swift`,
+  `InteractiveGameBoardView.swift`, `docs/UI_UX_OVERHAUL.md`.
+- **Verification:** offscreen `ImageRenderer` inspection of the real view at
+  12, 4, and 0 drawable tiles confirmed the full 14-tile opening row, correct
+  shrink direction, and the clean two-tile closed state. The temporary render
+  harness was removed afterward. `swift test` passes **75 tests, 1 skipped, 0
+  failures**; bridge regression passes **73 checks, 0 failed**; graph refresh:
+  **2,227 nodes / 4,175 edges**, and `git diff --check` is clean; the app was
+  rebuilt and relaunched.
+- **Limitation:** the in-game top-left placement and live draw feel were not
+  viewed in the running window; the owner's physical run remains the source of
+  truth.
+
+## UI-OPPONENT-HANDS-01 — face-down opponent hand rows (2026-11-12)
+- **Problem:** the player strip exposed an opponent only as a numeric count
+  badge. The player could not see the opponent's physical hand, and a draw that
+  changed six tiles into seven had no visual analogue at the rival's seat.
+- **View:** a new `OpponentHandRack` renders one identical face-down back per
+  hand tile (28×14pt) in a compact horizontal row. It receives only an `Int`
+  count, never tile data, so there is no identity information in the view to
+  leak. Insertions and removals animate quietly in place.
+- **Placement:** the hand rows live in a centered strip immediately below the
+  avatar row, not inside the avatar cells. The 1v1 seats therefore stay
+  symmetric as the opponent's hand grows, and the strip remains compact at the
+  900pt minimum window. Every non-requesting seat is shown: Rival in 1v1,
+  Rival A/B in Three-Way, and Rival A/Partner/Rival B in Partners.
+- **Count source:** `SeatItem.handCount` already comes from `ownHand.count` for
+  the requesting seat and `otherHandSizes[seat]` for every other seat. The new
+  view adds no state inference; a forced AI draw refreshes the human snapshot
+  before its flight is published, so 6→7 backs appears on the same beat as the
+  draw. A play removes a back.
+- **Boundary:** no tile identities or pips are rendered. The end-of-round
+  reveal remains the only place hidden faces become visible.
+- **Files:** `OpponentHandRack.swift`, `InteractiveGameBoardView.swift`,
+  `docs/UI_UX_OVERHAUL.md`.
+- **Verification:** an offscreen `ImageRenderer` inspection of the real rack at
+  7, 8, 9, and 14 tiles confirmed legibility and width; the temporary harness was
+  removed afterward. `swift test` passes **75 tests, 1 skipped, 0 failures**;
+  bridge regression passes **73 checks, 0 failed**; graph refresh:
+  **2,232 nodes / 4,182 edges**; `git diff --check` is clean; the app was
+  rebuilt and relaunched.
+- **Limitation:** the live strip's exact vertical placement was not viewed in
+  the running window; the owner's physical run remains the source of truth.

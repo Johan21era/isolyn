@@ -108,6 +108,11 @@ int main() {
         CHECK(snap.roundOutcome == RoundOutcomeDTO::InProgress, "round starts InProgress");
         CHECK(snap.decidingPlayerIndex == -1, "no deciding player yet");
         CHECK(snap.chain.count == 1, "the mandated opening tile has already been placed (dealFirstRound)");
+        bool hiddenRevealEmpty = true;
+        for (int p = 0; p < kMaxPlayers; ++p) {
+            if (snap.finalHandCounts[p] != 0) hiddenRevealEmpty = false;
+        }
+        CHECK(hiddenRevealEmpty, "no hand identities are revealed while the round is in progress");
 
         SnapshotDTO snapAsOpponent = bridge_get_snapshot(s, 1);
         CHECK(snapAsOpponent.ownHandCount == snap.otherHandSizes[1], "opponent's OWN snapshot hand count matches what player 0 saw as their size");
@@ -313,6 +318,27 @@ int main() {
             revealSumsMatch = (awardedSum == 0 && mx == 0) || (awardedSum == mx);
         }
         CHECK(revealSumsMatch, "awarded points consistent with the revealed hand values (min gets 0, others add their own)");
+
+        // Reveal-on-end must expose the actual physical tiles, not just sums,
+        // and only after the round is terminal.
+        CHECK(done1.finalHandCounts[0] == done1.ownHandCount,
+              "revealed hand count for the requester matches their visible rack size");
+        CHECK(done1.finalHandCounts[1] == done1.otherHandSizes[1],
+              "revealed opponent hand count matches the formerly hidden size");
+        bool revealedTilesMatchValues = true;
+        for (int p = 0; p < done1.playerCount; ++p) {
+            int revealedValue = 0;
+            for (int i = 0; i < done1.finalHandCounts[p]; ++i) {
+                const TileDTO t = done1.finalRevealedTiles[p * kTotalTileCount + i];
+                if (t.low < 0 || t.low > 6 || t.high < 0 || t.high > 6) revealedTilesMatchValues = false;
+                revealedValue += t.low + t.high;
+            }
+            if (revealedValue != done1.finalHandValues[p]) revealedTilesMatchValues = false;
+        }
+        CHECK(revealedTilesMatchValues,
+              "revealed tiles sum to the final hand values for every player");
+        CHECK(done1.finalRevealedTiles[1 * kTotalTileCount + done1.finalHandCounts[1]].low == -1,
+              "slots beyond a revealed hand remain explicit {-1,-1} sentinels");
         CHECK(!rec1.matchEnded && rec1.winnerParticipantIndex == -1,
               "match cannot be over after one round of 101");
 

@@ -1,119 +1,131 @@
 import SwiftUI
 import IsolynEngineBridge
 
-/// Visual overlay showing the hover chain for one target number.
-/// Displays all 7 number-family dominoes with their knowledge-classification
-/// edge treatment, plus the active node indicator.
-///
-/// Deliberately compact — this is an analytical lens, not a dashboard.
+/// A small, quiet number-family inspector. It is opened explicitly by the
+/// configured mouse button (right-click by default), never by incidental
+/// proximity unless the player turns auto-hover on in Settings.
 struct HoverChainOverlay: View {
     let chain: HoverChain
     let appearance: DominoAppearance
-    /// FIX-26 (N-3): explicit user-facing exit. The overlay previously
-    /// had no way to leave the screen at all.
     var onClose: (() -> Void)? = nil
 
-    // Semantic colors — centralized, distinct from user-customizable colors
+    // Semantic colors are intentionally distinct from the customizable
+    // domino body. They only communicate knowledge state.
     private static let semanticColors: [TileKnowledge: Color] = [
-        .historical: Color(red: 0.45, green: 0.42, blue: 0.38),  // restrained warm gray-brown
-        .mine: Color(red: 0.12, green: 0.55, blue: 0.20),         // dark vibrant green
-        .unknown: Color(red: 0.28, green: 0.28, blue: 0.30),      // dark gray
-        .lockedOff: Color(red: 0.15, green: 0.22, blue: 0.48),    // midnight creamy blue
-        // Predictive is dynamic per-probability, handled inline
+        .historical: Color(red: 0.62, green: 0.59, blue: 0.53),
+        .mine: Color(red: 0.25, green: 0.72, blue: 0.38),
+        .unknown: Color(red: 0.42, green: 0.44, blue: 0.48),
+        .lockedOff: Color(red: 0.36, green: 0.48, blue: 0.85),
     ]
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 9) {
             header
             tileRow
-            nodeIndicator
+            footer
         }
-        .padding(16)
+        .padding(12)
+        .frame(width: 360, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(IsolynTheme.ebonyElevated.opacity(0.96))
-                .shadow(color: .black.opacity(0.5), radius: 16, y: 6)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Color.black.opacity(0.94))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(IsolynTheme.ebonyLine, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
         )
+        .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
     }
-
-    // MARK: Header
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text("TARGET: \(chain.targetNumber)")
-                .font(IsolynTheme.title(14))
-                .foregroundStyle(IsolynTheme.brass)
+            Text("Family \(chain.targetNumber)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(IsolynTheme.ivory)
+
             Spacer()
-            Text("\(chain.activeNodeKind.label) — \(chain.activeNodeKind.rawValue + 1) / \(HoverChainNodeKind.allCases.count)")
-                .font(IsolynTheme.caption(11))
-                .foregroundStyle(IsolynTheme.ivoryMuted)
+
+            Text(chain.activeNodeKind == .complete ? "OVERVIEW" : chain.activeNodeKind.label.uppercased())
+                .font(.system(size: 9, weight: .medium))
+                .tracking(0.8)
+                .foregroundStyle(Color.white.opacity(0.38))
+
             if let onClose {
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10))
-                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.45))
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Close number family analysis")
+                .accessibilityLabel("Close number family inspector")
             }
         }
     }
 
-    // MARK: Tile row
-
     private var tileRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ForEach(chain.entries) { entry in
-                entryView(entry)
+                IsolynDominoTile(
+                    displayingLeft: entry.low,
+                    right: entry.high,
+                    isDouble: entry.isDouble,
+                    height: 20,
+                    appearance: appearance,
+                    semanticEdge: shouldShowEdge(for: entry.knowledge)
+                        ? edgeColor(for: entry.knowledge)
+                        : nil
+                )
+                .accessibilityLabel("\(entry.label), \(knowledgeLabel(entry.knowledge))")
             }
         }
     }
 
     @ViewBuilder
-    private func entryView(_ entry: HoverChainEntry) -> some View {
-        let edgeColor = edgeColor(for: entry.knowledge)
-        let showEdge = shouldShowEdge(for: entry.knowledge)
-
-        IsolynDominoTile(
-            displayingLeft: entry.low, right: entry.high,
-            isDouble: entry.isDouble,
-            height: 18,
-            semanticEdge: showEdge ? edgeColor : nil
-        )
-        .accessibilityLabel("\(entry.label) — \(knowledgeLabel(entry.knowledge))")
+    private var footer: some View {
+        if chain.activeNodeKind == .baseUninformed {
+            Text("All dominoes containing \(chain.targetNumber).")
+                .font(.system(size: 9, weight: .regular))
+                .foregroundStyle(Color.white.opacity(0.34))
+        } else {
+            HStack(spacing: 9) {
+                legend("played", color: Self.semanticColors[.historical] ?? .gray)
+                legend("yours", color: Self.semanticColors[.mine] ?? .gray)
+                legend("unknown", color: Self.semanticColors[.unknown] ?? .gray)
+                legend("locked", color: Self.semanticColors[.lockedOff] ?? .gray)
+                if chain.activeNodeKind == .predictive || chain.activeNodeKind == .complete {
+                    legend("predicted", color: Color(red: 0.94, green: 0.3, blue: 0.22))
+                }
+            }
+        }
     }
 
-
-    // MARK: Node indicator
-
-    private var nodeIndicator: some View {
-        Text(chain.activeNodeKind.description)
-            .font(IsolynTheme.caption(10))
-            .foregroundStyle(IsolynTheme.ivoryMuted.opacity(0.7))
-            .multilineTextAlignment(.center)
-            .lineLimit(2)
+    private func legend(_ title: String, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Capsule()
+                .fill(color)
+                .frame(width: 2, height: 8)
+            Text(title)
+                .font(.system(size: 9, weight: .regular))
+                .foregroundStyle(Color.white.opacity(0.42))
+        }
     }
-
-    // MARK: Edge color resolution
 
     private func edgeColor(for knowledge: TileKnowledge) -> Color {
         switch knowledge {
-        case .predictedOpponent(let prob):
-            // Bright tangy red, opacity scaled by confidence for honesty
-            return Color(red: 0.95, green: 0.25, blue: 0.15).opacity(min(prob / 0.7, 1.0))
+        case .predictedOpponent(let probability):
+            return Color(red: 0.94, green: 0.3, blue: 0.22)
+                .opacity(min(probability / 0.7, 1))
         default:
-            return Self.semanticColors[knowledge] ?? IsolynTheme.ivoryMuted
+            return Self.semanticColors[knowledge] ?? Color.white.opacity(0.4)
         }
     }
 
     private func shouldShowEdge(for knowledge: TileKnowledge) -> Bool {
         switch chain.activeNodeKind {
         case .baseUninformed:
-            return false // base shows no classification edges at all
+            return false
         case .historicalInformed:
             return knowledge == .historical
         case .presentInformed:
@@ -124,7 +136,7 @@ struct HoverChainOverlay: View {
             if case .predictedOpponent = knowledge { return true }
             return false
         case .complete:
-            return true // show every classification's edge
+            return true
         }
     }
 
@@ -134,7 +146,7 @@ struct HoverChainOverlay: View {
         case .mine: return "yours"
         case .unknown: return "unknown"
         case .lockedOff: return "locked off"
-        case .predictedOpponent(let p): return "predicted opponent (\(Int(p * 100))%)"
+        case .predictedOpponent(let probability): return "predicted opponent (\(Int(probability * 100))%)"
         }
     }
 }

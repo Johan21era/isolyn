@@ -268,15 +268,29 @@ SnapshotDTO buildSnapshot(EngineSessionImpl& impl, int requestingPlayerIndex) {
     out.chain.leftEnd = state.chain().isEmpty() ? -1 : state.chain().leftEnd();
     out.chain.rightEnd = state.chain().isEmpty() ? -1 : state.chain().rightEnd();
 
-    // Reveal-on-end: per-player remaining hand value, populated ONLY once the
-    // round has actually finished. During play every entry stays 0 -- hidden
-    // information is not leaked mid-round (see SnapshotDTO comment).
-    for (int p = 0; p < kMaxPlayers; ++p) out.finalHandValues[p] = 0;
+    // Reveal-on-end: per-player remaining hand value and actual tiles,
+    // populated ONLY once the round has actually finished. During play every
+    // count stays 0 and no hand identity is copied -- hidden information is
+    // not leaked mid-round (see SnapshotDTO comment).
+    for (int p = 0; p < kMaxPlayers; ++p) {
+        out.finalHandValues[p] = 0;
+        out.finalHandCounts[p] = 0;
+    }
+    for (int slot = 0; slot < kMaxPlayers * kTotalTileCount; ++slot) {
+        out.finalRevealedTiles[slot] = kNoTileDTO;
+    }
     if (impl.cachedRoundOutcome != RoundOutcomeDTO::InProgress) {
-        for (int p = 0; p < playerCount; ++p) {
+        for (int p = 0; p < playerCount && p < kMaxPlayers; ++p) {
             int v = 0;
-            for (const auto& tile : state.hand(p)) v += tile.value();
-            if (p < kMaxPlayers) out.finalHandValues[p] = static_cast<int32_t>(v);
+            const auto& hand = state.hand(p);
+            const std::size_t cap = static_cast<std::size_t>(kTotalTileCount);
+            const std::size_t count = hand.size() < cap ? hand.size() : cap;
+            out.finalHandCounts[p] = static_cast<int32_t>(count);
+            for (std::size_t i = 0; i < count; ++i) {
+                v += hand[i].value();
+                out.finalRevealedTiles[p * kTotalTileCount + static_cast<int>(i)] = fromEngine(hand[i]);
+            }
+            out.finalHandValues[p] = static_cast<int32_t>(v);
         }
     }
 

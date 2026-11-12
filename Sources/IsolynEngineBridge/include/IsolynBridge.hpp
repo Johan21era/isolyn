@@ -185,9 +185,12 @@ struct ChainDTO {
 };
 
 // A snapshot is always taken FROM one specific player's point of view
-// (requestingPlayerIndex). Only that player's own hand is populated with
-// real tile identities; every other player's hand is exposed as a SIZE
-// only. This is the mechanism that keeps hidden information hidden --
+// (requestingPlayerIndex). During play only that player's own hand is
+// populated with real tile identities; every other player's hand is exposed
+// as a SIZE only. When the round reaches a terminal outcome, the actual
+// remaining tiles are revealed together with scores (see finalRevealedTiles),
+// exactly as physical dominoes are turned face up at the end. This is the
+// mechanism that keeps hidden information hidden --
 // see docs/BRIDGE_ARCHITECTURE.md's "Snapshot model" section. This is
 // not a UI convenience choice: the shim has no way to know whether a
 // future caller intends to render another player's hand, so it never
@@ -223,6 +226,17 @@ struct SnapshotDTO {
     // reveal. Per-PLAYER values -- 2v2 team combination is the match layer's
     // job (see MatchResultDTO / RulesEngine::combineTeamValue).
     int32_t finalHandValues[kMaxPlayers];
+
+    // The actual remaining tiles, laid out as a flat
+    // [player][tile] table so this stays a one-dimensional fixed C array
+    // (Cxx interop imports nested arrays as tuples; the Swift side already has
+    // one proven conversion path for flat arrays). Populated ONLY when
+    // roundOutcome != InProgress, exactly like finalHandValues. Slots beyond
+    // finalHandCounts[p] are {-1,-1} sentinels. This is the reveal the round
+    // screen needs; during play every count is 0 and no hand identity crosses
+    // the boundary.
+    TileDTO finalRevealedTiles[kMaxPlayers * kTotalTileCount];
+    int32_t finalHandCounts[kMaxPlayers];
 
     // Deliberately NO running match score field here. An EngineSession
     // wraps exactly one ROUND -- the same scope MatchController itself

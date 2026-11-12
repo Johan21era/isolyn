@@ -1,36 +1,32 @@
 import SwiftUI
 import IsolynEngineBridge
+import Observation
 
-/// The game screen (dominoes_ui_fix_non_negotiable.md §28 composition):
+/// The play surface, reduced to the objects that matter: the players, the
+/// table, the hand, one draw/pass action, and analysis as a secondary choice.
 ///
-///     HEADER      mode · turn · scores            (compact, dense)
-///     BOARD       the snake chain                 (primary visual object)
-///     ACTIONS     Draw / Analyze / Reset view     (intentional controls)
-///     HAND        canonical dominoes              (immediately recognizable)
-///     STATUS      instruction · opponents         (secondary, quiet)
-///
-/// Integrates the hardened interaction systems unchanged: camera pan,
-/// gesture arbitration, hover-chain overlay, appearance settings.
+/// The board still owns the middle of the screen. Everything that used to
+/// compete with it -- mode labels, score cards, opponent-count telemetry,
+/// dividers, camera controls, and the floating appearance brush -- is gone.
 struct InteractiveGameBoardView: View {
     let format: MatchFormat
     let opponent: OpponentMode
 
-    // Core game state
-    @State private var viewModel: GameViewModel
+    @Environment(AppState.self) private var appState
 
-    // System 1: Camera
+    @State private var viewModel: GameViewModel
     @State private var camera = BoardCamera()
     @State private var arbiter = GestureArbiter()
-
-    // System 2: Hover chain
     @State private var hoverController = HoverChainController()
-
-    // System 3: Appearance + settings drawer
     @State private var appearanceManager = AppearanceManager()
+    @State private var inspectionSettings = InspectionSettings()
     @State private var settingsOpen = false
-
-    // Selection
     @State private var selectedTile: Tile?
+    @State private var roundOverVisible = false
+    @State private var handDragModel = HandDragModel()
+    @State private var dropTargets: [ChainSide: CGRect] = [:]
+    @State private var boardFrame: CGRect = .zero
+    @State private var boneyardAnchor: CGPoint?
 
     init(format: MatchFormat, opponent: OpponentMode, aiLevel: AILevel) {
         self.format = format
@@ -40,316 +36,527 @@ struct InteractiveGameBoardView: View {
 
     var body: some View {
         ZStack {
+            Color.black.ignoresSafeArea()
+
             if let error = viewModel.setupError {
                 setupFailure(error)
             } else if viewModel.phase == .loading && viewModel.snapshot == nil {
-                ProgressView("Dealing…").controlSize(.large).foregroundStyle(IsolynTheme.ivory)
+                ProgressView("Dealing…")
+                    .controlSize(.large)
+                    .tint(IsolynTheme.ivory)
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
             } else {
-                boardContent
+                gameContent
             }
 
-            if viewModel.phase == .roundOver || viewModel.phase == .matchOver {
-                RoundEndOverlay(viewModel: viewModel).transition(.opacity)
+            HandDragPreview(
+                model: handDragModel,
+                appearance: appearanceManager.appearance
+            )
+            .zIndex(80)
+
+            if (viewModel.phase == .roundOver || viewModel.phase == .matchOver), roundOverVisible {
+                RoundEndOverlay(
+                    viewModel: viewModel,
+                    appearance: appearanceManager.appearance
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
 
             settingsDrawerOverlay
         }
+        .coordinateSpace(name: GameSurfaceCoordinateSpace.name)
+        .preferredColorScheme(.dark)
         .animation(.easeInOut(duration: 0.3), value: viewModel.phase)
         .animation(.easeInOut(duration: 0.25), value: settingsOpen)
         .task { await viewModel.refresh() }
-        // FIX-16 contract: leaving the screen always cancels analyses and
-        // closes bridge handles.
+        .task(id: viewModel.phase) {
+            let isEnd = viewModel.phase == .roundOver || viewModel.phase == .matchOver
+            guard isEnd else {
+                roundOverVisible = false
+                return
+            }
+            roundOverVisible = false
+            try? await Task.sleep(nanoseconds: 650_000_000)
+            guard !Task.isCancelled else { return }
+            guard viewModel.phase == .roundOver || viewModel.phase == .matchOver else { return }
+            withAnimation(.easeInOut(duration: 0.35)) { roundOverVisible = true }
+        }
         .onDisappear { viewModel.shutdown() }
         .alert(alertTitle, isPresented: Binding(
             get: { viewModel.alertError != nil || viewModel.setupError != nil },
             set: { if !$0 { viewModel.dismissAlert() } }
-        )) { Button("OK", role: .cancel) { viewModel.dismissAlert() } } message: { Text(alertMessage) }
+        )) {
+            Button("OK", role: .cancel) { viewModel.dismissAlert() }
+        } message: {
+            Text(alertMessage)
+        }
     }
 
-    // MARK: - Layout skeleton (§28 hierarchy — order is law)
+    // MARK: - Table
 
-    private var boardContent: some View {
-        VStack(spacing: 0) {
-            header                                  // compact, info-dense
-            Divider().overlay(IsolynTheme.ebonyLine)
+    private var gameContent: some View {
+        GeometryReader { proxy in
+            let padding = IsolynLayout.horizontalPadding(for: proxy.size.width)
 
-            boardSurface                            // primary visual object
+            VStack(spacing: 0) {
+                topBar(padding: padding)
+                playerStrip
+                    .padding(.top, 6)
 
-            Divider().overlay(IsolynTheme.ebonyLine)
-            actionBar                               // intentional controls
-            handArea                                // the player's dominoes
-            Divider().overlay(IsolynTheme.ebonyLine.opacity(0.6))
-            statusStrip                             // secondary information
+                opponentHandsStrip
+
+                boardSurface
+                    .frame(maxHeight: .infinity)
+
+                handDock(padding: padding)
+                actionDock(padding: padding)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay { drawFlight(proxy: proxy) }
+        }
+    }
+
+    // MARK: - Hand drag / drop
+
+    private func beginHandDrag(tile: Tile, at point: CGPoint, grabOffset: CGSize = .zero) {
+        selectedTile = tile
+        handDragModel.begin(tile, at: point, grabOffset: grabOffset)
+        hoverController.dismiss()
+    }
+
+    private func updateHandDrag(at point: CGPoint) {
+        handDragModel.move(to: point)
+    }
+
+    private func endHandDrag(at point: CGPoint) {
+        guard let tile = handDragModel.end() else { return }
+
+        if let move = dropMove(for: tile, at: point) {
+            selectedTile = nil
+            Task { await viewModel.play(move) }
+        } else {
+            // Keep the fallback tap path alive when the release missed an end.
+            selectedTile = tile
+        }
+    }
+
+    private func dropMove(for tile: Tile, at point: CGPoint) -> Move? {
+        guard let snap = viewModel.snapshot else { return nil }
+        if let move = HandDropResolver.move(
+            for: tile,
+            at: point,
+            snapshot: snap,
+            targets: dropTargets
+        ) {
+            return move
+        }
+
+        // Resilience if an end target's live frame is momentarily stale
+        // (camera transform, resize): a release anywhere over the board is
+        // still a play when the tile has exactly one legal placement.
+        guard boardFrame.contains(point) else { return nil }
+        let matching = snap.legalMoves.filter { $0.tile == tile }
+        return matching.count == 1 ? matching[0] : nil
+    }
+
+    // MARK: - Draw flight
+
+    private func drawFlight(proxy: GeometryProxy) -> some View {
+        ZStack {
+            ForEach(viewModel.drawEvents) { event in
+                DrawFlightView(
+                    event: event,
+                    from: drawOrigin(in: proxy.size),
+                    to: drawDestination(for: event.seat, in: proxy.size),
+                    landsInHand: event.seat == viewModel.snapshot?.requestingPlayerIndex,
+                    appearance: appearanceManager.appearance
+                )
+                .id(event.id)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(IsolynTheme.ebony.ignoresSafeArea())
-        .overlay(alignment: .trailing) { settingsEdgeControl }
+        .allowsHitTesting(false)
     }
 
-    // MARK: Board surface
+    /// The pile reports its live center; the old action-dock point is only a
+    /// fallback for the first frame before that preference arrives.
+    private func drawOrigin(in size: CGSize) -> CGPoint {
+        boneyardAnchor ?? CGPoint(x: size.width / 2, y: size.height - 72)
+    }
+
+    private func drawDestination(for seat: Int, in size: CGSize) -> CGPoint {
+        if seat == viewModel.snapshot?.requestingPlayerIndex {
+            return CGPoint(x: size.width / 2, y: size.height - 154)
+        }
+        let count = max(viewModel.snapshot?.playerCount ?? 2, 1)
+        let slot = CGFloat(seat) - CGFloat(count - 1) / 2
+        return CGPoint(x: size.width / 2 + slot * 86, y: 98)
+    }
+
+    private func topBar(padding: CGFloat) -> some View {
+        HStack {
+            Button {
+                leaveGame()
+            } label: {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(IsolynTheme.ivory)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back to match setup")
+
+            Spacer()
+
+            Button {
+                settingsOpen.toggle()
+                arbiter.cancel()
+            } label: {
+                Image(systemName: settingsOpen ? "xmark" : "paintbrush")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(settingsOpen ? "Close appearance settings" : "Open appearance settings")
+        }
+        .padding(.horizontal, padding)
+        .padding(.top, 8)
+    }
+
+    private var playerStrip: some View {
+        HStack(alignment: .top, spacing: 26) {
+            ForEach(seatItems) { seat in
+                seatView(seat)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+    }
+
+    private func seatView(_ seat: SeatItem) -> some View {
+        VStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(seat.active ? 0.16 : 0.065))
+
+                Circle()
+                    .strokeBorder(
+                        seat.active ? Color.white.opacity(0.92) : Color.clear,
+                        lineWidth: 1.5
+                    )
+
+                Text(seat.monogram)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(seat.active ? IsolynTheme.ivory : IsolynTheme.ivoryMuted)
+            }
+            .frame(width: 42, height: 42)
+            .overlay(alignment: .bottomTrailing) {
+                Text("\(seat.handCount)")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.black)
+                    .frame(width: 16, height: 16)
+                    .background(Circle().fill(IsolynTheme.ivory))
+                    .offset(x: 2, y: 2)
+            }
+
+            Text(seat.name)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(seat.active ? IsolynTheme.ivory : IsolynTheme.ivoryMuted)
+
+            Text("\(seat.score)")
+                .font(.system(size: 17, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(seat.active ? IsolynTheme.ivory : IsolynTheme.ivoryMuted)
+        }
+        .frame(minWidth: 62)
+        .opacity(seat.active ? 1 : 0.58)
+        .animation(.easeOut(duration: 0.18), value: seat.active)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(seat.name), \(seat.handCount) tiles, score \(seat.score)\(seat.active ? ", acting now" : "")"
+        )
+    }
+
+    /// Every hidden hand as a physical row of face-down backs. This is a
+    /// separate strip rather than part of each avatar cell so the 1v1 seats
+    /// stay centered and symmetric as one opponent's hand grows.
+    private var opponentHandsStrip: some View {
+        let opponents = seatItems.filter { !$0.isSelf }
+        return Group {
+            if !opponents.isEmpty {
+                HStack(alignment: .top, spacing: 18) {
+                    ForEach(opponents) { seat in
+                        VStack(spacing: 3) {
+                            Text(seat.name.uppercased())
+                                .font(.system(size: 8.5, weight: .semibold))
+                                .tracking(0.8)
+                                .foregroundStyle(
+                                    seat.active
+                                        ? IsolynTheme.ivoryMuted
+                                        : IsolynTheme.ivoryMuted.opacity(0.6)
+                                )
+
+                            OpponentHandRack(
+                                count: seat.handCount,
+                                appearance: appearanceManager.appearance
+                            )
+                        }
+                        .opacity(seat.active ? 1 : 0.78)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.top, 5)
+                .accessibilityHidden(true)
+            }
+        }
+    }
 
     private var boardSurface: some View {
-        ChainAndZonesView(
-            snapshot: viewModel.snapshot,
-            canPlay: viewModel.canPlayTiles,
-            appearance: appearanceManager.appearance,
-            selectedTile: $selectedTile,
-            camera: camera,
-            arbiter: arbiter,
-            hoverController: hoverController,
-            onPlay: { move in Task { await viewModel.play(move) } }
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)   // board owns the main region (§26 P1)
+        ZStack(alignment: .topLeading) {
+            ChainAndZonesView(
+                snapshot: viewModel.snapshot,
+                canPlay: viewModel.canPlayTiles,
+                appearance: appearanceManager.appearance,
+                inspectionSettings: inspectionSettings,
+                selectedTile: $selectedTile,
+                camera: camera,
+                arbiter: arbiter,
+                hoverController: hoverController,
+                onPlay: { move in Task { await viewModel.play(move) } },
+                onDropTargetsChanged: { dropTargets = $0 }
+            )
+
+            if let snap = viewModel.snapshot, snap.mode == .oneVOne {
+                BoneyardView(
+                    drawableCount: snap.boneyardDrawableCount,
+                    appearance: appearanceManager.appearance
+                )
+                .padding(.leading, 18)
+                .padding(.top, 16)
+                .zIndex(4)
+            }
+        }
+        .frame(maxWidth: IsolynLayout.maxBoardWidth, maxHeight: .infinity)
         .clipped()
-    }
-
-    // MARK: Header (§11: mode · turn · player-score-score-player)
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(format.rawValue.uppercased()) · \(opponent == .computer ? "VS COMPUTER" : "HOT SEAT")")
-                    .font(IsolynTheme.caption(12)).tracking(2).foregroundStyle(IsolynTheme.brass)
-                turnBanner
-            }
-
-            Spacer()
-
-            scoreBar
-
-            Spacer()
-
-            EnvironmentTimeLabel()
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
-    }
-
-    private var turnBanner: some View {
-        Group {
-            if let snap = viewModel.snapshot, snap.roundOutcome == .inProgress {
-                Text(viewModel.turnLabel)
-                    .font(IsolynTheme.title(15)).foregroundStyle(IsolynTheme.ivory)
-            } else {
-                Text("Round complete")
-                    .font(IsolynTheme.title(15)).foregroundStyle(IsolynTheme.ivoryMuted)
-            }
-        }
-    }
-
-    /// Compact score containers flanking a shared brass label — the exact
-    /// `[ Player 1 ]  SCORE  [ Player 2 ]` hierarchy from §11/§12.
-    private var scoreBar: some View {
-        let scores = viewModel.participantScores
-        let names = participantNames(count: max(scores.count, 2))
-        return HStack(spacing: 12) {
-            if scores.isEmpty {
-                ForEach(Array(names.enumerated()), id: \.offset) { i, name in
-                    scoreChip(name: name, score: nil, highlight: i == currentParticipantIndex)
-                }
-            } else {
-                ForEach(Array(scores.enumerated()), id: \.offset) { i, score in
-                    scoreChip(name: names[i], score: score, highlight: i == currentParticipantIndex)
-                }
-            }
-        }
-    }
-
-    private var currentParticipantIndex: Int {
-        guard let s = viewModel.snapshot else { return 0 }
-        return viewModel.mode == .twoVTwo ? s.currentPlayerIndex % 2 : s.currentPlayerIndex
-    }
-
-    private func participantNames(count: Int) -> [String] {
-        viewModel.mode == .twoVTwo
-            ? (0..<max(count, 2)).map { $0 == 0 ? "TEAM A" : "TEAM B" }
-            : (0..<max(count, 2)).map { "PLAYER \($0 + 1)" }
-    }
-
-    private func scoreChip(name: String, score: Int?, highlight: Bool) -> some View {
-        VStack(spacing: 2) {
-            Text(name)
-                .font(IsolynTheme.caption(10)).tracking(1.5)
-                .foregroundStyle(highlight ? IsolynTheme.brass : IsolynTheme.ivoryMuted)
-            Text(score.map(String.init) ?? "0")
-                .font(IsolynTheme.display(20)).monospacedDigit()
-                .foregroundStyle(highlight ? IsolynTheme.ivory : IsolynTheme.ivoryMuted)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(IsolynTheme.ebonyElevated.opacity(highlight ? 1 : 0.55))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .strokeBorder(highlight ? IsolynTheme.brass.opacity(0.55) : IsolynTheme.ebonyLine,
-                              lineWidth: 1)
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(name) score \(score ?? 0)\(highlight ? ", acting now" : "")")
-    }
-
-    // MARK: Action bar (§13: icon + label + real hit areas)
-
-    private var actionBar: some View {
-        HStack(spacing: 12) {
-            actionButton(
-                title: viewModel.canVoluntaryDraw ? "Draw (\(viewModel.snapshot?.boneyardDrawableCount ?? 0))" : "Draw",
-                systemImage: "square.stack.3d.down.forward",
-                enabled: viewModel.canVoluntaryDraw
-            ) { Task { await viewModel.voluntaryDraw() } }
-
-            actionButton(
-                title: viewModel.analysisRunning ? "Cancel" : "Analyze",
-                systemImage: viewModel.analysisRunning ? "stop.circle" : "brain.head.profile",
-                enabled: viewModel.canPlayTiles || viewModel.analysisRunning
-            ) { Task { await toggleAnalysis() } }
-
-            actionButton(
-                title: "Reset View",
-                systemImage: "arrow.uturn.backward.center",
-                enabled: camera.offsetX != 0 || camera.offsetY != 0
-            ) {
-                camera.reset()
-                arbiter.cancel()
-            }
-
-            if viewModel.mustPass {
-                Button { Task { await viewModel.passTurn() } } label: {
-                    Label("Pass Turn", systemImage: "forward.end")
-                        .font(IsolynTheme.body(13))
-                }
-                .buttonStyle(PrimaryCapsuleButtonStyle())
-            }
-
-            Spacer()
-
-            if viewModel.analysisRunning || viewModel.aiThinking {
-                ProgressView().controlSize(.small)
-            }
-            analysisSummary
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 8)
-    }
-
-    /// One coherent control treatment for every gameplay action: icon +
-    /// label inside a fixed-height chip with hover/disabled states (§13).
-    private func actionButton(title: String, systemImage: String,
-                              enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(IsolynTheme.body(13))
-                .foregroundStyle(enabled ? IsolynTheme.ivory : IsolynTheme.ivoryMuted.opacity(0.4))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule().fill(IsolynTheme.ebonyElevated.opacity(enabled ? 0.9 : 0.45))
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: BoardFrameKey.self,
+                    value: proxy.frame(in: .named(GameSurfaceCoordinateSpace.name))
                 )
-                .overlay(
-                    Capsule().strokeBorder(
-                        enabled ? IsolynTheme.ebonyLine : IsolynTheme.ebonyLine.opacity(0.4),
-                        lineWidth: 1)
-                )
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(title)
-    }
-
-    @ViewBuilder
-    private var analysisSummary: some View {
-        if let outcome = viewModel.analysisOutcome {
-            HStack(spacing: 8) {
-                IsolynDominoTile(leftPips: outcome.recommendedMove.tile.low,
-                                 rightPips: outcome.recommendedMove.tile.high,
-                                 height: 14, state: .playable)
-                Text(outcome.completed ? "engine suggests" : "partial (\(outcome.samplesCompleted)/\(outcome.samplesConfigured))")
-                    .font(IsolynTheme.caption(12)).foregroundStyle(IsolynTheme.ivoryMuted)
             }
-        } else if viewModel.analysisWasCancelled {
-            Text("analysis cancelled").font(IsolynTheme.caption(12))
-                .foregroundStyle(IsolynTheme.ivoryMuted.opacity(0.7))
+        )
+        .onPreferenceChange(BoardFrameKey.self) { boardFrame = $0 }
+        .onPreferenceChange(BoneyardAnchorKey.self) { anchor in
+            boneyardAnchor = anchor == .zero ? nil : anchor
         }
     }
 
-    // MARK: Hand (§9)
-
-    private var handArea: some View {
+    private func handDock(padding: CGFloat) -> some View {
         Group {
             if let snap = viewModel.snapshot {
                 HandRackView(
                     hand: snap.ownHand,
                     legalMoves: viewModel.legalMoveSet,
+                    openEndsMatch: openEndsMatch,
                     selectedTile: $selectedTile,
-                    interactive: viewModel.isMyTurn
-                ) { move in Task { await viewModel.play(move) } }
+                    interactive: viewModel.isMyTurn,
+                    draggingTile: handDragModel.tile,
+                    onDragBegan: beginHandDrag,
+                    onDragChanged: updateHandDrag,
+                    onDragEnded: endHandDrag
+                ) { move in
+                    Task { await viewModel.play(move) }
+                }
             }
+        }
+        .frame(maxWidth: IsolynLayout.maxContentWidth)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, padding)
+    }
+
+    private func actionDock(padding: CGFloat) -> some View {
+        VStack(spacing: 9) {
+            Text(statusText)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.white.opacity(0.075)))
+
+            HStack(spacing: 9) {
+                Button {
+                    Task {
+                        if viewModel.mustPass {
+                            await viewModel.passTurn()
+                        } else {
+                            await viewModel.voluntaryDraw()
+                        }
+                    }
+                } label: {
+                    Text(primaryActionTitle)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(primaryActionEnabled ? IsolynTheme.ivory : IsolynTheme.ivoryMuted.opacity(0.45))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(primaryActionEnabled ? 0.12 : 0.055))
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!primaryActionEnabled)
+
+                Button {
+                    Task { await toggleAnalysis() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: viewModel.analysisRunning ? "stop.fill" : "sparkles")
+                        Text(viewModel.analysisRunning ? "Stop" : "Analyze")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(
+                        analysisEnabled ? IsolynTheme.ivory : IsolynTheme.ivoryMuted.opacity(0.4)
+                    )
+                    .padding(.horizontal, 15)
+                    .frame(height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.white.opacity(analysisEnabled ? 0.07 : 0.035))
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!analysisEnabled)
+                .accessibilityLabel(viewModel.analysisRunning ? "Stop analysis" : "Analyze position")
+            }
+            .frame(maxWidth: 720)
         }
         .frame(maxWidth: .infinity)
-        .padding(.bottom, 8)
+        .padding(.horizontal, padding)
+        .padding(.top, 7)
+        .padding(.bottom, 14)
     }
 
-    // MARK: Status strip (§14: secondary, centered instruction + opponents)
+    // MARK: - Seat projection
 
-    private var statusStrip: some View {
-        HStack(spacing: 16) {
-            opponentCounts
-            Spacer()
-            Text(hintText)   // §14: 12–13px, muted, centered by the spacer pair
-                .font(IsolynTheme.caption(12))
-                .foregroundStyle(IsolynTheme.ivoryMuted.opacity(0.85))
-                .multilineTextAlignment(.center)
-            Spacer()
-            Color.clear.frame(width: 120) // balances opponents block so the hint truly centers
+    private struct SeatItem: Identifiable {
+        let id: Int
+        let name: String
+        let monogram: String
+        let score: Int
+        let handCount: Int
+        let active: Bool
+        let isSelf: Bool
+    }
+
+    private var seatItems: [SeatItem] {
+        guard let snap = viewModel.snapshot else { return [] }
+        let scores = viewModel.participantScores
+
+        return (0..<snap.playerCount).map { seat in
+            let name = displayName(for: seat, mode: snap.mode)
+            let scoreIndex = snap.mode == .twoVTwo ? seat % 2 : seat
+            let score = scores.indices.contains(scoreIndex) ? scores[scoreIndex] : 0
+            let handCount = seat == snap.requestingPlayerIndex
+                ? snap.ownHand.count
+                : (snap.otherHandSizes.indices.contains(seat) ? snap.otherHandSizes[seat] : 0)
+
+            return SeatItem(
+                id: seat,
+                name: name,
+                monogram: monogram(for: name),
+                score: score,
+                handCount: handCount,
+                active: snap.roundOutcome == .inProgress && snap.currentPlayerIndex == seat,
+                isSelf: seat == snap.requestingPlayerIndex
+            )
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 8)
     }
 
-    private var opponentCounts: some View {
-        HStack(spacing: 12) {
-            ForEach(viewModel.opponentCounts, id: \.player) { entry in
-                HStack(spacing: 4) {
-                    Text("P\(entry.player + 1)")
-                        .font(IsolynTheme.caption(11)).tracking(1)
-                        .foregroundStyle(IsolynTheme.ivoryMuted)
-                    Text("\(entry.tiles)")
-                        .font(IsolynTheme.body(13)).monospacedDigit()
-                        .foregroundStyle(IsolynTheme.ivory)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Player \(entry.player + 1) holds \(entry.tiles) tiles")
+    private func displayName(for seat: Int, mode: MatchFormat) -> String {
+        if seat == 0 { return "You" }
+        if mode == .twoVTwo {
+            switch seat {
+            case 1: return "Rival A"
+            case 2: return "Partner"
+            case 3: return "Rival B"
+            default: return "Rival"
             }
         }
-    }
-
-    private var hintText: String {
-        if viewModel.aiThinking { return "Computer is thinking…" }
-        if viewModel.isComputerTurn { return "Computer's turn." }
-        if viewModel.mustPass { return "No moves and the boneyard is dry — pass." }
-        if !viewModel.isMyTurn { return "Another player is acting…" }
-        guard let s = viewModel.snapshot else { return "" }
-        if s.legalMoves.isEmpty { return "Drawing forced tiles…" }
-        return selectedTile == nil
-            ? "Select a glowing domino, then tap its end marker."
-            : "Tap the highlighted end marker to place."
-    }
-
-    // MARK: Settings edge control + drawer (unchanged systems)
-
-    private var settingsEdgeControl: some View {
-        Button { settingsOpen.toggle(); arbiter.cancel() } label: {
-            Image(systemName: settingsOpen ? "chevron.right" : "paintbrush")
-                .font(.system(size: 13))
-                .foregroundStyle(settingsOpen ? IsolynTheme.ivoryMuted : IsolynTheme.brass)
-                .padding(8)
+        if mode == .oneVOneVOne {
+            return seat == 1 ? "Rival A" : "Rival B"
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(settingsOpen ? "Close settings" : "Open appearance settings")
-        .padding(.vertical, 40)
+        return "Rival"
+    }
+
+    private func monogram(for name: String) -> String {
+        if name == "You" { return "Y" }
+        if name == "Partner" { return "P" }
+        if name == "Rival A" { return "A" }
+        if name == "Rival B" { return "B" }
+        if name.hasPrefix("Player ") { return String(name.suffix(1)) }
+        return "R"
+    }
+
+    // MARK: - Action state
+
+    private var primaryActionTitle: String {
+        if viewModel.mustPass { return "Pass turn" }
+        let count = viewModel.snapshot?.boneyardDrawableCount ?? 0
+        return viewModel.canVoluntaryDraw ? "Draw \(count)" : "Draw"
+    }
+
+    private var primaryActionEnabled: Bool {
+        viewModel.mustPass || viewModel.canVoluntaryDraw
+    }
+
+    private var analysisEnabled: Bool {
+        viewModel.analysisRunning || viewModel.canPlayTiles
+    }
+
+    /// When both open ends show the same value, placing a matching tile on
+    /// either side yields the same pair of new ends. That is the only case
+    /// where the hand may auto-route a double-click instead of asking the
+    /// player to choose a side.
+    private var openEndsMatch: Bool {
+        guard let snap = viewModel.snapshot,
+              let left = snap.chainLeftEnd,
+              let right = snap.chainRightEnd else { return false }
+        return left == right
+    }
+
+    private var statusText: String {
+        if let outcome = viewModel.analysisOutcome, !viewModel.analysisRunning {
+            return "Engine suggests \(outcome.recommendedMove.tile.high)–\(outcome.recommendedMove.tile.low)"
+        }
+        if viewModel.analysisWasCancelled { return "Analysis cancelled" }
+        if viewModel.aiThinking { return "Thinking…" }
+        if viewModel.isComputerTurn { return "Rival's turn" }
+        if viewModel.mustPass { return "Pass to continue" }
+        if !viewModel.isMyTurn { return "Waiting" }
+        if let selected = selectedTile,
+           openEndsMatch,
+           let snap = viewModel.snapshot,
+           snap.legalMoves.filter({ $0.tile == selected }).count > 1 {
+            let end = snap.chainLeftEnd.map(String.init) ?? ""
+            return "Both ends show \(end) — double-click to place"
+        }
+        return selectedTile == nil ? "Select a domino" : "Choose an end"
+    }
+
+    // MARK: - Navigation / settings
+
+    private func leaveGame() {
+        withAnimation(.easeInOut(duration: 0.25)) {
+            appState.screen = .modeSelect
+        }
     }
 
     @ViewBuilder
@@ -357,7 +564,11 @@ struct InteractiveGameBoardView: View {
         if settingsOpen {
             HStack(spacing: 0) {
                 Spacer().allowsHitTesting(false)
-                SettingsDrawer(isOpen: $settingsOpen, appearanceManager: appearanceManager) {
+                SettingsDrawer(
+                    isOpen: $settingsOpen,
+                    appearanceManager: appearanceManager,
+                    inspectionSettings: inspectionSettings
+                ) {
                     withAnimation(.easeInOut(duration: 0.25)) { settingsOpen = false }
                 }
                 .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -366,9 +577,12 @@ struct InteractiveGameBoardView: View {
         }
     }
 
-    // MARK: Alerts / failure (unchanged)
+    // MARK: - Alerts / failure
 
-    private var alertTitle: String { viewModel.setupError != nil ? "Match setup failed" : "Engine said no" }
+    private var alertTitle: String {
+        viewModel.setupError != nil ? "Match setup failed" : "Engine said no"
+    }
+
     private var alertMessage: String {
         if let e = viewModel.setupError { return e }
         switch viewModel.alertError {
@@ -387,14 +601,85 @@ struct InteractiveGameBoardView: View {
 
     private func setupFailure(_ message: String) -> some View {
         VStack(spacing: 14) {
-            Image(systemName: "exclamationmark.triangle").font(.system(size: 34)).foregroundStyle(IsolynTheme.brass)
-            Text(message).font(IsolynTheme.body(14)).foregroundStyle(IsolynTheme.ivoryMuted)
-                .multilineTextAlignment(.center).frame(maxWidth: 380)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity).background(IsolynTheme.ebony.ignoresSafeArea())
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 34))
+                .foregroundStyle(IsolynTheme.brass)
+            Text(message)
+                .font(IsolynTheme.body(14))
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.ignoresSafeArea())
     }
 
     private func toggleAnalysis() async {
         let believer = viewModel.snapshot?.currentPlayerIndex ?? 0
         await viewModel.toggleAnalysis(believer: believer)
+    }
+}
+
+/// Pointer updates live in this tiny observable object so moving a hand tile
+/// only refreshes `HandDragPreview`, not the board layout or the game view.
+@MainActor
+@Observable
+private final class HandDragModel {
+    private(set) var tile: Tile?
+    private(set) var location: CGPoint = .zero
+    private(set) var grabOffset: CGSize = .zero
+
+    func begin(_ tile: Tile, at point: CGPoint, grabOffset: CGSize) {
+        self.tile = tile
+        location = point
+        self.grabOffset = grabOffset
+    }
+
+    func move(to point: CGPoint) {
+        guard tile != nil else { return }
+        location = point
+    }
+
+    @discardableResult
+    func end() -> Tile? {
+        let result = tile
+        tile = nil
+        return result
+    }
+}
+
+private struct HandDragPreview: View {
+    let model: HandDragModel
+    let appearance: DominoAppearance
+
+    var body: some View {
+        ZStack {
+            if let tile = model.tile {
+                IsolynDominoTile(
+                    leftPips: tile.low,
+                    rightPips: tile.high,
+                    height: HandRackView.tileHeight,
+                    appearance: appearance,
+                    state: .selected
+                )
+                .shadow(color: .black.opacity(0.45), radius: 10, y: 5)
+                .position(
+                    CGPoint(
+                        x: model.location.x + model.grabOffset.width,
+                        y: model.location.y + model.grabOffset.height
+                    )
+                )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(false)
+    }
+}
+
+private struct BoardFrameKey: PreferenceKey {
+    static let defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
     }
 }

@@ -119,7 +119,7 @@ struct Tile: Sendable, Equatable, Hashable {
     }
 }
 
-enum ChainSide: Sendable {
+enum ChainSide: Sendable, Hashable {
     case left
     case right
 
@@ -178,11 +178,12 @@ enum RoundOutcome: Sendable, Equatable {
 
 // MARK: - Snapshot
 
-/// A player-scoped view of a session at one point in time. Only ever
-/// shows the requesting player's OWN hand -- other players' hands are
+/// A player-scoped view of a session at one point in time. During play only
+/// the requesting player's OWN hand is visible; other players' hands are
 /// sizes only, matching SnapshotDTO exactly (see IsolynBridge.hpp's
-/// "Snapshot model" comment for why this is enforced on the C++ side,
-/// not just by UI convention on this side).
+/// "Snapshot model" comment for why this is enforced on the C++ side). At
+/// round end, `revealedHands` carries the actual remaining tiles for every
+/// player -- the bridge's explicit reveal-on-end path.
 struct GameSnapshot: Sendable {
     let stateVersion: UInt64
     let mode: MatchFormat
@@ -197,9 +198,16 @@ struct GameSnapshot: Sendable {
     let chainLeftEnd: Int?
     let chainRightEnd: Int?
     let boneyardDrawableCount: Int
+    /// The permanently locked tail, exposed by the bridge only once the
+    /// boneyard is down to its final two tiles. Empty while more than two
+    /// remain: their identities stay hidden, exactly like a face-down pile.
+    let boneyardLockedTiles: [Tile]
     /// Reveal-on-end: per-player remaining pip values, ALL ZERO while the
     /// round is live -- mirrors SnapshotDTO's reveal semantics exactly.
     let finalHandValues: [Int]
+    /// Reveal-on-end: actual remaining tiles per player, populated only when
+    /// the round has finished. Empty while play is live.
+    let revealedHands: [[Tile]]
     let roundOutcome: RoundOutcome
     /// Populated only when currentPlayerIndex == requestingPlayerIndex --
     /// empty otherwise, matching SnapshotDTO (there's no legitimate
@@ -244,6 +252,12 @@ struct GameSnapshot: Sendable {
 
         boneyardDrawableCount = Int(dto.boneyardDrawableCount)
 
+        var mutableLocked = dto
+        let lockedTiles: [isolyn.bridge.TileDTO] = withTupleAsArray(
+            &mutableLocked.boneyardLockedTiles, capacity: 2,
+            count: Int(dto.boneyardLockedCount), as: isolyn.bridge.TileDTO.self)
+        boneyardLockedTiles = lockedTiles.map { Tile(dto: $0) }
+
         var mutableReveal = dto
         finalHandValues = withTupleAsArray(
             &mutableReveal.finalHandValues,
@@ -251,6 +265,29 @@ struct GameSnapshot: Sendable {
             count: Int(isolyn.bridge.kMaxPlayers),
             as: Int32.self
         ).map { Int($0) }
+
+        let revealCounts = withTupleAsArray(
+            &mutableReveal.finalHandCounts,
+            capacity: Int(isolyn.bridge.kMaxPlayers),
+            count: Int(isolyn.bridge.kMaxPlayers),
+            as: Int32.self
+        ).map { Int($0) }
+        let revealFlat: [isolyn.bridge.TileDTO] = withTupleAsArray(
+            &mutableReveal.finalRevealedTiles,
+            capacity: Int(isolyn.bridge.kMaxPlayers * isolyn.bridge.kTotalTileCount),
+            count: Int(isolyn.bridge.kMaxPlayers * isolyn.bridge.kTotalTileCount),
+            as: isolyn.bridge.TileDTO.self
+        )
+        var hands: [[Tile]] = Array(repeating: [], count: Int(isolyn.bridge.kMaxPlayers))
+        for p in 0..<Int(isolyn.bridge.kMaxPlayers) {
+            let count = revealCounts[p]
+            guard count > 0 else { continue }
+            let start = p * Int(isolyn.bridge.kTotalTileCount)
+            let end = min(start + count, revealFlat.count)
+            guard start < end else { continue }
+            hands[p] = revealFlat[start..<end].map { Tile(dto: $0) }
+        }
+        revealedHands = hands
 
         roundOutcome = RoundOutcome(dto: dto.roundOutcome, decidingPlayerIndex: dto.decidingPlayerIndex)
 
@@ -302,9 +339,11 @@ extension GameSnapshot {
          chainLeftEnd: Int?,
          chainRightEnd: Int?,
          boneyardDrawableCount: Int,
+         boneyardLockedTiles: [Tile] = [],
          finalHandValues: [Int],
          roundOutcome: RoundOutcome,
-         legalMoves: [Move]) {
+         legalMoves: [Move],
+         revealedHands: [[Tile]] = []) {
         self.stateVersion = stateVersion
         self.mode = mode
         self.playerCount = playerCount
@@ -316,7 +355,9 @@ extension GameSnapshot {
         self.chainLeftEnd = chainLeftEnd
         self.chainRightEnd = chainRightEnd
         self.boneyardDrawableCount = boneyardDrawableCount
+        self.boneyardLockedTiles = boneyardLockedTiles
         self.finalHandValues = finalHandValues
+        self.revealedHands = revealedHands
         self.roundOutcome = roundOutcome
         self.legalMoves = legalMoves
     }

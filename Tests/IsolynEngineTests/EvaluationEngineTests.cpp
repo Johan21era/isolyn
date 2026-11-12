@@ -239,6 +239,7 @@ int main() {
                               GameMode::TwoVsTwo}) {
             int mismatches = 0;
             int countMismatches = 0;
+            int hintedMismatches = 0;
             double maxDelta = 0.0;
             constexpr int kTrials = 250;
             for (int trial = 0; trial < kTrials; ++trial) {
@@ -247,8 +248,15 @@ int main() {
                     (trial % 5 == 0) ? customWeights : EvaluationWeights{};
                 const EvaluationTotals batch =
                     EvaluationEngine::evaluateAll(mode, state, weights);
+                const EvaluationTotals hinted =
+                    EvaluationEngine::evaluateAllWithClosed(
+                        mode, state, MoveGenerator::isPositionClosed(state), weights);
                 if (batch.playerCount != state.playerCount()) ++countMismatches;
                 for (int p = 0; p < state.playerCount(); ++p) {
+                    if (std::fabs(batch.totals[static_cast<std::size_t>(p)] -
+                                  hinted.totals[static_cast<std::size_t>(p)]) > 1e-9) {
+                        ++hintedMismatches;
+                    }
                     const double scalar =
                         EvaluationEngine::evaluate(mode, state, p, weights).total;
                     const double delta =
@@ -266,6 +274,9 @@ int main() {
                       " (max delta " + std::to_string(maxDelta) + ")");
             check(maxDelta <= 1e-9,
                   "randomized maximum numerical delta stays below 1e-9, mode " +
+                      std::to_string(static_cast<int>(mode)));
+            check(hintedMismatches == 0,
+                  "closed-hint batch path matches the default path, mode " +
                       std::to_string(static_cast<int>(mode)));
         }
     }

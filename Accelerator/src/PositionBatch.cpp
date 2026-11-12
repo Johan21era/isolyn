@@ -1,8 +1,8 @@
 #include "IsolynPositionBatch.hpp"
 
-#include "MoveGenerator.hpp"
 #include "RulesEngine.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -10,11 +10,11 @@
 namespace isolyn::accelerator {
 namespace {
 
-int handValue(const GameState& state, int player) {
-    int total = 0;
-    for (const DominoTile& tile : state.hand(player)) total += tile.value();
-    return total;
-}
+// One bit per tile carrying each face; the same layout as the Metal shader.
+constexpr std::array<std::uint32_t, 7> kFaceMasks = {
+    0x0020844bu, 0x00410896u, 0x00821138u, 0x010423c0u,
+    0x02087c00u, 0x041f8000u, 0x0fe00000u,
+};
 
 } // namespace
 
@@ -49,7 +49,36 @@ PositionBatch encodePositionBatch(GameMode mode,
         row.currentPlayer = static_cast<std::uint32_t>(state.currentPlayerIndex());
         row.playerCount = static_cast<std::uint32_t>(playerCount);
         row.mode = static_cast<std::uint32_t>(mode);
-        row.closed = MoveGenerator::isPositionClosed(state) ? 1u : 0u;
+
+        // Reuse the masks instead of rescanning every hand through
+        // MoveGenerator::isPositionClosed. A hand is stuck when none of its
+        // tiles carries either chain end; an empty chain accepts every tile.
+        // Match isPositionClosed's early exit: a drawable boneyard means the
+        // position cannot be closed, so the hand masks need not be checked.
+        bool positionClosed = false;
+        if (state.boneyard().drawableCount() == 0) {
+            bool allPlayersStuck = true;
+            if (state.chain().isEmpty()) {
+                for (std::size_t player = 0; player < playerCount; ++player) {
+                    if (row.handMasks[player] != 0) {
+                        allPlayersStuck = false;
+                        break;
+                    }
+                }
+            } else {
+                const std::uint32_t playable =
+                    kFaceMasks[static_cast<std::size_t>(row.leftEnd)] |
+                    kFaceMasks[static_cast<std::size_t>(row.rightEnd)];
+                for (std::size_t player = 0; player < playerCount; ++player) {
+                    if ((row.handMasks[player] & playable) != 0) {
+                        allPlayersStuck = false;
+                        break;
+                    }
+                }
+            }
+            positionClosed = allPlayersStuck;
+        }
+        row.closed = positionClosed ? 1u : 0u;
 
         if (row.closed != 0) {
             if (!state.playHistory().empty()) {
@@ -57,19 +86,28 @@ PositionBatch encodePositionBatch(GameMode mode,
                     RulesEngine::determineCloser(mode, state.playHistory()));
             }
 
+            std::array<int, 4> handValues{};
+            for (std::size_t player = 0; player < playerCount; ++player) {
+                int value = 0;
+                for (const DominoTile& tile : state.hand(static_cast<int>(player))) {
+                    value += tile.value();
+                }
+                handValues[player] = value;
+            }
+
             std::vector<int> participantValues;
             if (mode == GameMode::TwoVsTwo) {
                 const auto team0 = RulesEngine::playersOnTeam(0);
                 const auto team1 = RulesEngine::playersOnTeam(1);
                 participantValues = {
-                    RulesEngine::combineTeamValue(handValue(state, team0.first),
-                                                  handValue(state, team0.second)),
-                    RulesEngine::combineTeamValue(handValue(state, team1.first),
-                                                  handValue(state, team1.second)),
+                    RulesEngine::combineTeamValue(handValues[static_cast<std::size_t>(team0.first)],
+                                                  handValues[static_cast<std::size_t>(team0.second)]),
+                    RulesEngine::combineTeamValue(handValues[static_cast<std::size_t>(team1.first)],
+                                                  handValues[static_cast<std::size_t>(team1.second)]),
                 };
             } else {
                 for (int player = 0; player < static_cast<int>(playerCount); ++player) {
-                    participantValues.push_back(handValue(state, player));
+                    participantValues.push_back(handValues[static_cast<std::size_t>(player)]);
                 }
             }
 

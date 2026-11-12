@@ -1,19 +1,14 @@
 import SwiftUI
 
-/// Describes one selectable entry on the mode selector. `pipCounts` has
-/// one entry per side, and each number IS the player count on that side
-/// -- e.g. `[1, 1]` for a 1v1 duel, `[2, 2]` for 2v2 partners -- so the
-/// pip glyphs drawn from it are literally true, not decorative.
+/// One selectable entry on the simplified match-setup screen.
 struct ModeOption: Identifiable {
     let id: String
     let title: String
     let subtitle: String
-    let detail: String
-    let pipCounts: [Int]
 }
 
-/// A single tappable mode card. The whole card is the button -- no
-/// separate "select" control buried inside it.
+/// A compact mode choice. The whole card is the button; selected state is a
+/// single bright rule, not a second control.
 struct ModeCard: View {
     let option: ModeOption
     let isSelected: Bool
@@ -23,56 +18,49 @@ struct ModeCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 10) {
-                    ForEach(Array(option.pipCounts.enumerated()), id: \.offset) { index, count in
-                        if index > 0 {
-                            Text("vs")
-                                .font(IsolynTheme.caption(11))
-                                .foregroundStyle(IsolynTheme.ivoryMuted)
-                        }
-                        PipGlyph(count: count, color: isSelected ? IsolynTheme.brass : IsolynTheme.ivory)
-                            .frame(width: 32, height: 32)
-                    }
-                    Spacer(minLength: 0)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
                     Text(option.title)
-                        .font(IsolynTheme.title(18))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(IsolynTheme.ivory)
-                    Text(option.subtitle)
-                        .font(IsolynTheme.caption(12))
-                        .foregroundStyle(IsolynTheme.ivoryMuted)
+
+                    Spacer(minLength: 0)
+
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(IsolynTheme.ivory)
+                            .transition(.opacity)
+                    }
                 }
 
-                Text(option.detail)
-                    .font(IsolynTheme.body(13))
+                Text(option.subtitle)
+                    .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: 0)
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
+            .padding(18)
+            .frame(maxWidth: .infinity, minHeight: 86, alignment: .topLeading)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(IsolynTheme.ebonyElevated)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.white.opacity(isSelected ? 0.06 : 0.035))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: isSelected ? 1.5 : 1)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: isSelected ? 1.25 : 1)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.15), value: isHovering)
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 
     private var borderColor: Color {
-        if isSelected { return IsolynTheme.brass }
-        if isHovering { return IsolynTheme.ivoryMuted }
-        return IsolynTheme.ebonyLine
+        if isSelected { return Color.white.opacity(0.8) }
+        if isHovering { return Color.white.opacity(0.28) }
+        return Color.white.opacity(0.1)
     }
 }

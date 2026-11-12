@@ -85,7 +85,6 @@ public struct IsolynDominoTile: View {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .strokeBorder(borderColor, lineWidth: borderWidth)
             )
-            .opacity(state == .dimmed ? 0.38 : 1.0)
             .scaleEffect(state == .selected ? 1.04 : 1.0)
             .animation(.easeOut(duration: 0.14), value: state)   // §25: 100–180ms
     }

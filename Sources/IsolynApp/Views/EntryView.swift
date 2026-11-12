@@ -8,65 +8,63 @@ struct EntryView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        ZStack {
-            // Background is `EnvironmentView`, rendered once behind the
-            // screen switcher in `RootView`. This used to be a flat
-            // `IsolynTheme.ebony.ignoresSafeArea()` fill here; the
-            // legibility scrim built into `EnvironmentView` is what now
-            // keeps the ivory text below readable against it.
+        GeometryReader { proxy in
+            let watermarkSide = min(proxy.size.width, proxy.size.height) * 1.08
 
-            // The signature element: an oversized, almost-invisible
-            // six-pip watermark, off-center and partially cropped --
-            // texture and atmosphere, not a competing visual.
-            GeometryReader { geo in
-                PipGlyph(count: 6, color: IsolynTheme.ivory.opacity(0.035))
-                    .frame(width: geo.size.height * 1.1, height: geo.size.height * 1.1)
-                    .position(x: geo.size.width * 0.86, y: geo.size.height * 0.92)
-            }
-            .ignoresSafeArea()
+            ZStack {
+                // A centered watermark, not an off-screen decoration. On a
+                // wide display it stays behind the wordmark and keeps the
+                // screen balanced instead of pulling the eye to an edge.
+                PipGlyph(count: 6, color: IsolynTheme.ivory.opacity(0.032))
+                    .frame(width: watermarkSide, height: watermarkSide)
+                    .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                    .allowsHitTesting(false)
 
-            VStack(spacing: 0) {
-                Spacer()
+                VStack(spacing: 0) {
+                    Spacer(minLength: 40)
 
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("ISOLYN")
-                        .font(IsolynTheme.display(60))
-                        .tracking(4)
-                        .foregroundStyle(IsolynTheme.ivory)
+                    VStack(spacing: 30) {
+                        VStack(spacing: 12) {
+                            Text("ISOLYN")
+                                .font(IsolynTheme.display(56))
+                                .tracking(7)
+                                .foregroundStyle(IsolynTheme.ivory)
 
-                    Text("A game of memory, math, and misdirection.")
-                        .font(IsolynTheme.body(16))
-                        .foregroundStyle(IsolynTheme.ivoryMuted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 64)
-
-                Spacer().frame(height: 48)
-
-                VStack(alignment: .leading, spacing: 18) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.35)) {
-                            appState.screen = .modeSelect
+                            Text("A game of memory, math, and misdirection.")
+                                .font(IsolynTheme.body(16))
+                                .foregroundStyle(IsolynTheme.ivoryMuted)
+                                .multilineTextAlignment(.center)
                         }
-                    } label: {
-                        Text("Play")
-                    }
-                    .buttonStyle(PrimaryCapsuleButtonStyle())
 
-                    HStack(spacing: 24) {
-                        secondaryLink("Training") {
-                            appState.screen = .comingSoon("Training")
-                        }
-                        secondaryLink("Sandbox") {
-                            appState.screen = .comingSoon("Sandbox")
+                        VStack(spacing: 16) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.35)) {
+                                    appState.screen = .modeSelect
+                                }
+                            } label: {
+                                Text("Play")
+                            }
+                            .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 240))
+
+                            HStack(spacing: 28) {
+                                secondaryLink("Training") {
+                                    appState.screen = .comingSoon("Training")
+                                }
+                                secondaryLink("Sandbox") {
+                                    appState.screen = .comingSoon("Sandbox")
+                                }
+                            }
                         }
                     }
-                }
-                .padding(.horizontal, 64)
+                    .frame(maxWidth: 560)
+                    .padding(.horizontal, 24)
+                    .multilineTextAlignment(.center)
 
-                Spacer()
-                Spacer()
+                    Spacer(minLength: 40)
+                }
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -75,6 +73,7 @@ struct EntryView: View {
             Text(title)
                 .font(IsolynTheme.body(14))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
+                .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
     }

@@ -33,6 +33,16 @@ final class GameViewModel {
         case matchOver
     }
 
+    /// One boneyard draw worth animating at the table. Human draws carry the
+    /// actual new tile(s); computer draws carry the seat and count only -- the
+    /// opponent's identities stay hidden until the round-end reveal.
+    struct DrawEvent: Identifiable, Equatable {
+        let id: UUID
+        let seat: Int
+        let tiles: [Tile]
+        let count: Int
+    }
+
     // MARK: - Published state
 
     private(set) var phase: Phase = .loading
@@ -40,6 +50,14 @@ final class GameViewModel {
     let mode: MatchFormat
     let opponent: OpponentMode
     let aiLevel: AILevel
+
+    /// Most recent boneyard draw. Kept as the latest-event convenience that
+    /// tests and simple callers already use.
+    private(set) var drawEvent: DrawEvent?
+    /// Every draw still worth animating. Consecutive forced draws would
+    /// otherwise cancel each other's flight; keeping a short overlapping
+    /// window lets each one leave the pile visibly.
+    private(set) var drawEvents: [DrawEvent] = []
 
     /// Scores BEFORE vs AFTER the most recent recording -- powers the
     /// "+N points" animation on the reveal overlay. Empty until first record.
@@ -78,6 +96,7 @@ final class GameViewModel {
     /// reference types, so identity is a sufficient key; no bridge surface
     /// had to widen for this.
     private var recordedSessions: Set<ObjectIdentifier> = []
+    @ObservationIgnored private var drawEventClearTasks: [UUID: Task<Void, Never>] = [:]
     /// Stable across refreshes: whose turn the board believes it is.
     private var knownCurrentPlayerIndex = 0
     /// The outcome captured when we transitioned into .roundOver.
@@ -112,6 +131,7 @@ final class GameViewModel {
     /// from synchronous teardown contexts like test defer blocks.
     func shutdown() {
         cancelAITurn()
+        clearDrawEvents()
         analysisTask?.cancel()
         session = nil
         match?.close()
@@ -143,10 +163,13 @@ final class GameViewModel {
                 knownCurrentPlayerIndex = snap.currentPlayerIndex
                 snap = try await session.snapshot(for: knownCurrentPlayerIndex)
             }
+            let previousSnapshot = snapshot
             snapshot = snap
             knownCurrentPlayerIndex = snap.currentPlayerIndex
+            publishDrawIfNeeded(from: previousSnapshot, to: snap)
 
             if snap.roundOutcome != .inProgress {
+                clearDrawEvents()
                 finishedOutcome = snap.roundOutcome
                 phase = .roundOver
                 await recordRoundIfFresh(session)
@@ -164,6 +187,7 @@ final class GameViewModel {
             if snap.currentPlayerIndex == snap.requestingPlayerIndex && snap.legalMoves.isEmpty {
                 if snap.boneyardDrawableCount > 0, forcedDrawAttempts < 32 {
                     _ = try await session.resolveForcedDraw(expecting: snap.stateVersion)
+                    await pace(240_000_000)
                     await refresh(forcedDrawAttempts: forcedDrawAttempts + 1)
                     return
                 } else if snap.boneyardDrawableCount == 0 {
@@ -186,6 +210,59 @@ final class GameViewModel {
     }
 
     // MARK: - Derived helpers (views read these, never raw digging)
+
+    /// Detects only the requesting player's own draw. Hidden opponent hand
+    /// identities never cross the bridge, and an opponent's draw can be
+    /// immediately followed by a play (same final hand size), so computer
+    /// draws are published explicitly from `performAITurn` instead.
+    private func publishDrawIfNeeded(from previous: GameSnapshot?, to next: GameSnapshot) {
+        guard let previous,
+              previous.requestingPlayerIndex == next.requestingPlayerIndex,
+              previous.roundOutcome == .inProgress,
+              next.roundOutcome == .inProgress,
+              next.stateVersion > previous.stateVersion else { return }
+
+        let boneyardDrop = previous.boneyardDrawableCount - next.boneyardDrawableCount
+        guard boneyardDrop > 0, next.ownHand.count > previous.ownHand.count else { return }
+
+        let oldTiles = Set(previous.ownHand)
+        let newTiles = next.ownHand.filter { !oldTiles.contains($0) }
+        guard !newTiles.isEmpty else { return }
+        publishDraw(
+            seat: next.requestingPlayerIndex,
+            tiles: newTiles,
+            count: max(boneyardDrop, newTiles.count)
+        )
+    }
+
+    private func publishDraw(seat: Int, tiles: [Tile], count: Int) {
+        let event = DrawEvent(id: UUID(), seat: seat, tiles: tiles, count: max(1, count))
+        drawEvent = event
+        drawEvents.append(event)
+
+        drawEventClearTasks[event.id] = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_300_000_000)
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            self.drawEvents.removeAll { $0.id == event.id }
+            if self.drawEvent?.id == event.id { self.drawEvent = nil }
+            self.drawEventClearTasks[event.id] = nil
+        }
+    }
+
+    private func clearDrawEvents() {
+        for task in drawEventClearTasks.values { task.cancel() }
+        drawEventClearTasks.removeAll()
+        drawEvents.removeAll()
+        drawEvent = nil
+    }
+
+    /// A short beat for the opponent's visible turn and for chained forced
+    /// draws. The engine stays synchronous; only the presentation waits.
+    private func pace(_ nanoseconds: UInt64) async {
+        guard !Task.isCancelled else { return }
+        try? await Task.sleep(nanoseconds: nanoseconds)
+    }
 
     var isMyTurn: Bool {
         guard let s = snapshot, s.roundOutcome == .inProgress else { return false }
@@ -333,6 +410,7 @@ final class GameViewModel {
         if let oldSession = session { await oldSession.close() }
         session = next
         invalidateAnalysis()
+        clearDrawEvents()
         phase = .loading
         await refresh()
         return true
@@ -347,6 +425,7 @@ final class GameViewModel {
         match.reset()
         recordedSessions.removeAll()
         scoreDeltas = []
+        clearDrawEvents()
         invalidateAnalysis()
         do {
             guard let firstRound = EngineSession.createFirstRound(mode: mode) else {
@@ -458,6 +537,10 @@ final class GameViewModel {
             aiTask = nil
         }
 
+        // Give the acting seat a visible beat before the engine result lands.
+        await pace(450_000_000)
+        guard !Task.isCancelled else { return }
+
         let seat = visible.currentPlayerIndex
         let profile = AIProfile(level: aiLevel)
 
@@ -480,8 +563,18 @@ final class GameViewModel {
 
                 if view.legalMoves.isEmpty {
                     if view.boneyardDrawableCount > 0 {
+                        await pace(200_000_000)
+                        guard !Task.isCancelled else { return }
                         _ = try await session.resolveForcedDraw(expecting: view.stateVersion)
+                        // The human-facing snapshot intentionally hides the
+                        // computer's hand, but it still carries the shared
+                        // boneyard count. Refresh before publishing the
+                        // flight so the pile shrinks on the same beat.
+                        await refresh()
+                        publishDraw(seat: seat, tiles: [], count: 1)
+                        await pace(300_000_000)
                     } else {
+                        await pace(260_000_000)
                         _ = try await session.endTurnWithNoPlay(expecting: view.stateVersion)
                     }
                     continue
@@ -512,7 +605,11 @@ final class GameViewModel {
                     return
                 }
 
+                await pace(240_000_000)
+                guard !Task.isCancelled else { return }
                 _ = try await session.submitMove(move, expecting: view.stateVersion)
+                await pace(360_000_000)
+                guard !Task.isCancelled else { return }
                 await refresh()
                 return
             } catch let error as BridgeError {

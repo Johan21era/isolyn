@@ -58,7 +58,7 @@ final class BoardLayoutTests: XCTestCase {
 
         let pitchX = SnakeChainLayout.tileShortAxis * 2 + SnakeChainLayout.hGap
         let cols = max(3, Int((800 - 24) / pitchX))
-        XCTAssertEqual(cols, 13, "documented column count for an 800pt plane")
+        XCTAssertEqual(cols, 9, "documented column count for an 800pt plane with the larger table tiles")
 
         XCTAssertTrue(m.placed[cols - 1].vertical,
                       "the tile ending the first run renders as the perpendicular corner cap")
@@ -66,7 +66,46 @@ final class BoardLayoutTests: XCTestCase {
                        "the run continues exactly one row-pitch below")
     }
 
-    func test_compute_extent_includesMarkerClearance_andDoubleProtrusion() {
+    func test_compute_shortChain_isCenteredInTheAvailablePlane() {
+        let plane = CGSize(width: 800, height: 500)
+        let m = SnakeChainLayout.compute(
+            orientedTiles: [SnakeChainLayout.Oriented(left: 6, right: 4, isDouble: false)],
+            availableSize: plane)
+
+        XCTAssertEqual(m.placed[0].x, plane.width / 2, accuracy: 0.0001,
+                       "a single tile sits at the horizontal center of the table")
+        XCTAssertEqual(m.placed[0].y, plane.height / 2, accuracy: 0.0001,
+                       "a single tile sits at the vertical center of the table")
+    }
+
+    func test_compute_visibleBounds_areCentered_ignoringEndpointTargets() {
+        let plane = CGSize(width: 1200, height: 700)
+        let tiles = [
+            SnakeChainLayout.Oriented(left: 4, right: 6, isDouble: false),
+            SnakeChainLayout.Oriented(left: 5, right: 5, isDouble: true),
+        ]
+        let m = SnakeChainLayout.compute(orientedTiles: tiles, availableSize: plane)
+
+        let minX = m.placed.map {
+            $0.x - ($0.vertical ? SnakeChainLayout.tileShortAxis / 2 : SnakeChainLayout.tileShortAxis)
+        }.min() ?? 0
+        let maxX = m.placed.map {
+            $0.x + ($0.vertical ? SnakeChainLayout.tileShortAxis / 2 : SnakeChainLayout.tileShortAxis)
+        }.max() ?? 0
+        let minY = m.placed.map {
+            $0.y - ($0.vertical ? SnakeChainLayout.tileShortAxis : SnakeChainLayout.tileShortAxis / 2)
+        }.min() ?? 0
+        let maxY = m.placed.map {
+            $0.y + ($0.vertical ? SnakeChainLayout.tileShortAxis : SnakeChainLayout.tileShortAxis / 2)
+        }.max() ?? 0
+
+        XCTAssertEqual((minX + maxX) / 2, plane.width / 2, accuracy: 0.0001,
+                       "visible dominoes, not the invisible tap targets, sit on the centerline")
+        XCTAssertEqual((minY + maxY) / 2, plane.height / 2, accuracy: 0.0001,
+                       "visible dominoes, not the invisible tap targets, sit on the centerline")
+    }
+
+    func test_compute_extent_usesTileGeometry_andDoubleProtrusion() {
         let flat = SnakeChainLayout.Oriented(left: 5, right: 6, isDouble: false)
         let dbl = SnakeChainLayout.Oriented(left: 5, right: 5, isDouble: true)
         let plane = CGSize(width: 800, height: 500)
@@ -74,14 +113,36 @@ final class BoardLayoutTests: XCTestCase {
         let flatHeight = SnakeChainLayout.compute(orientedTiles: [flat], availableSize: plane).contentHeight
         let doubleHeight = SnakeChainLayout.compute(orientedTiles: [dbl], availableSize: plane).contentHeight
 
-        // Hand-derived: a lone horizontal tile spans ±shortAxis/2 = ±13 on Y,
-        // but its end markers' clearance rings span ±markerDiameter/2 = ±17 --
-        // so MARKERS dominate: 34.
-        XCTAssertEqual(flatHeight, SnakeChainLayout.markerDiameter, accuracy: 0.0001)
-        // A lone vertical double spans ±shortAxis = ±26 on Y, dominating the
-        // markers' ±17: 52 -- the perpendicular-double protrusion is real.
+        // Endpoint marks have no visual clearance ring, so a lone horizontal
+        // tile spans its canonical short axis exactly.
+        XCTAssertEqual(flatHeight, SnakeChainLayout.tileShortAxis, accuracy: 0.0001)
+        // A lone vertical double still spans the full long axis on Y: the
+        // perpendicular-double protrusion is real.
         XCTAssertEqual(doubleHeight, SnakeChainLayout.tileShortAxis * 2, accuracy: 0.0001)
         XCTAssertGreaterThan(doubleHeight, flatHeight)
+    }
+
+    func test_compute_verticalDouble_sitsAtTheSameTightGapAsFlatTiles() {
+        let plane = CGSize(width: 800, height: 500)
+        let m = SnakeChainLayout.compute(
+            orientedTiles: [
+                SnakeChainLayout.Oriented(left: 4, right: 5, isDouble: false),
+                SnakeChainLayout.Oriented(left: 5, right: 5, isDouble: true),
+                SnakeChainLayout.Oriented(left: 5, right: 6, isDouble: false),
+            ],
+            availableSize: plane
+        )
+
+        XCTAssertEqual(m.placed.count, 3)
+        let firstRight = m.placed[0].x + SnakeChainLayout.tileShortAxis
+        let doubleLeft = m.placed[1].x - SnakeChainLayout.tileShortAxis / 2
+        XCTAssertEqual(doubleLeft - firstRight, SnakeChainLayout.hGap, accuracy: 0.0001,
+                       "a vertical double must not leave a half-cell of dead air after a flat tile")
+
+        let doubleRight = m.placed[1].x + SnakeChainLayout.tileShortAxis / 2
+        let thirdLeft = m.placed[2].x - SnakeChainLayout.tileShortAxis
+        XCTAssertEqual(thirdLeft - doubleRight, SnakeChainLayout.hGap, accuracy: 0.0001,
+                       "the flat tile after a double must also sit at the normal visual gap")
     }
 
     // MARK: - fitScale()

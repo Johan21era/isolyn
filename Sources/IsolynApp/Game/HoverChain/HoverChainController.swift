@@ -9,7 +9,7 @@ import IsolynEngineBridge
 final class HoverChainController {
     private(set) var activeTarget: Int?
     private(set) var entries: [HoverChainEntry] = []
-    private(set) var activeNodeKind: HoverChainNodeKind = .baseUninformed
+    private(set) var activeNodeKind: HoverChainNodeKind = .complete
     private(set) var isVisible = false
     private(set) var isSuspended = false // true during camera drag
 
