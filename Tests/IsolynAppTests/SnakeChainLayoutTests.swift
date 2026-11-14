@@ -70,6 +70,19 @@ final class SnakeChainLayoutTests: XCTestCase {
         }
     }
 
+    func test_wideDesktopWindow_stillCoilsTheChain() {
+        // Regression: a run used to continue to the window edge, so an
+        // 18-tile game on a 1600pt-wide window laid out as ONE straight line
+        // across the screen and never turned. A real table turns.
+        let size = CGSize(width: 1600, height: 900)
+        let metrics = SnakeChainLayout.compute(orientedTiles: chain(18), availableSize: size)
+        let widths = Dictionary(grouping: metrics.placed, by: { $0.y }).values.map { $0.count }
+        XCTAssertGreaterThanOrEqual(widths.count, 2,
+                                    "an 18-tile chain on a desktop window must use more than one run")
+        XCTAssertLessThanOrEqual(widths.max() ?? 0, 10,
+                                 "a run holds about nine tiles; it turns at the table edge")
+    }
+
     func test_consecutiveTilesAreAdjacent() {
         let size = CGSize(width: 900, height: 620)
         for count in 2...40 {
@@ -82,11 +95,12 @@ final class SnakeChainLayoutTests: XCTestCase {
                 let gapX = max(0, max(a.minX - b.maxX, b.minX - a.maxX))
                 let gapY = max(0, max(a.minY - b.maxY, b.minY - a.maxY))
                 let separation = max(gapX, gapY)
-                // A crosswise double stands half a tile proud of the run, so
-                // its neighbour legitimately sits that much further away.
-                let crosswise = metrics.placed[i - 1].vertical || metrics.placed[i].vertical
+                // A crosswise double stands half a tile proud of its run, and
+                // the run continuing past it is offset by exactly that much.
+                // So one gap plus half a tile is the honest maximum between
+                // neighbours; anything larger means the chain came apart.
                 let allowance = SnakeChainLayout.hGap
-                    + (crosswise ? SnakeChainLayout.tileShortAxis / 2 : 0) + 0.5
+                    + SnakeChainLayout.tileShortAxis / 2 + 0.5
                 XCTAssertLessThanOrEqual(
                     separation, allowance,
                     "tiles \(i - 1)/\(i) are \(separation)pt apart at count=\(count)")

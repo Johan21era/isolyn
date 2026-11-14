@@ -1317,3 +1317,39 @@ predicts. The engine always could draw; the UI simply never asked it to.
 **Not done, deliberately.** Analyze still runs depth 4 / 20 samples rather than
 the elite 8 / 64; that is a latency choice, not a draw bug, and is now visible
 as such. The engine's own `Config` default for `maxVoluntaryDraws` remains 0.
+
+## OPS-15 — The chain only turns at the edge of the TABLE, not the window (2026-11-14)
+
+**Trigger.** Owner live test after OPS-13, with a screenshot of a real game: the
+chain was still one straight row 1400pt wide. "this is still garbage. what
+happened to ur ui updates and or fixes".
+
+**What was NOT wrong.** The running bundle was current: `build/IsolynV2.0.app`
+was stamped 00:13, after the layout rewrite at 23:51, and the screenshot shows
+doubles lying crosswise (vertical) exactly as the rewrite intends. The change was
+deployed and simply had no visible effect.
+
+**Root cause.** Runs continued until the *window* edge. On the owner's ~1600pt
+window an 18-tile chain (18 x 80 = 1440pt) fits in a single run, so the chain
+never turned -- identical to the old behaviour. My verification canvases were
+900x620, where the same chain must wrap, so every test and the rendered SVG
+passed while the real desktop case was untested. This is the actual process
+failure: the test size was chosen where the behaviour was already correct.
+
+**Fix.** `SnakeChainLayout.maxRunWidth = 760` (~9 tiles) bounds the table, so a
+run turns where a real table ends. Chains longer than nine tiles now coil on any
+window size; shorter ones stay in one line, as they should.
+
+**Tests changed.** New `test_wideDesktopWindow_stillCoilsTheChain` (1600x900,
+18 tiles: at least two runs, at most ten tiles per run). The adjacency allowance
+was corrected to one gap plus half a tile for every pair, because a run that
+continues past a crosswise double is offset by that double's protrusion -- a
+19pt step is physical, not a break.
+
+**Verification.** `swift test` **82 tests, 0 failures**; `swift build` complete;
+bundle re-copied and re-signed at 00:19. Rendered 18 tiles at 1600x900 and
+inspected it: two runs joined by a corner, doubles crosswise.
+
+**Lesson recorded.** A layout invariant tested only at a canvas size that forces
+the interesting branch has not been tested. Width-dependent behaviour needs at
+least one case at the size the product actually runs at.
