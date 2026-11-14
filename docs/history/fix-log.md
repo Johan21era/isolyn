@@ -2666,3 +2666,53 @@ failed in about two seconds with `steps: 0` and the same “recent account payme
 have failed or your spending limit needs to be increased” annotation. No hosted
 test ran for the receipt commit either; the local gate remains the only executed
 evidence.
+
+## OPS-41 — Verify the Kaggle code snapshot on both sides (2026-11-14)
+
+**Scope:** close the remaining trust gap in the cloud bridge after OPS-40. The
+worker previously trusted its mounted dataset and wrote the plan's commit/hash
+labels into its receipt. A modified dataset could therefore run different code
+under labels the local verifier would accept. This change makes the mounted code
+prove itself before it can start a session.
+
+### Change
+
+- Added `cloud_verify.code_digest` and `cloud_verify.verify_code_snapshot`.
+  The verifier rejects a wrong schema, commit, digest, missing file, hash/byte
+  mismatch, symlink, duplicate path, absolute path, `..` escape, or non-regular
+  file before returning the checked manifest. Push rejects extra upload files.
+- `cloud/run_session.py` now verifies the dataset snapshot against the session
+  spec before creating a receipt or running the build.
+- `cloud.py push` re-verifies the prepared snapshot, rejects unexpected files or
+  symlinks in the dataset and kernel directories, and refuses notebook metadata
+  unless it is private, CPU-only and internet-disabled.
+- The shared digest function is used by both the local driver and the worker, so
+  the two sides cannot drift.
+- Added a worker tamper test and a push unexpected-file test.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 42 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| `./scripts/ci/test_engine.sh` | `Executables run: 20`, `TOTAL CHECKS PASSED: 497`, `TOTAL CHECKS FAILED: 0` |
+| `./scripts/ci/test_bridge.sh` | `Executables run: 2`, `TOTAL CHECKS PASSED: 133`, `TOTAL CHECKS FAILED: 0` |
+| `swift test` | `Executed 120 tests, with 0 failures` |
+| `cloud plan` dry run | `cloud-smoke2: plan only (dry run; nothing written)`; source `4670d09b...`, code `181af3d364e2`, 10,000 games in 4 shards, 1 session |
+| `cloud prepare` | `cloud-smoke2: prepared .../dataset`; `dataset files: 66`; `snapshot_files 63`; plan and snapshot commit/code matched; `forbidden []` |
+| Prepared-snapshot worker | `snapshot_worker_status=0`; receipt `{'status': 'complete', 'total_games': 1, 'total_rows': 22, 'error': None}` |
+| Tampered-worker test | `test_worker_refuses_a_tampered_code_snapshot` passed; the worker exits nonzero before writing a receipt |
+| `python3 scripts/docs_audit.py` | `RESULT: PASS` |
+
+### Limits, stated plainly
+
+- No live Kaggle upload, notebook execution, poll, fetch or assembly was run;
+  the environment still has no Kaggle CLI or account token. The first 10,000-game
+  session remains the acceptance gate.
+- Actual Linux compilation is still unproven here; the snapshot worker ran on
+  macOS. The first Kaggle build is the Linux proof.
+- Hosted CI for code commit `4670d09` is run `43655762388`: both jobs failed in
+  about two seconds with `steps: 0`, no runner, and the same billing annotation.
+  It is not a test result and must not be called green.
+- No game-rule or search change; no strength claim.
