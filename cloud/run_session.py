@@ -31,7 +31,11 @@ ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 MAX_SESSION_SECONDS = 43_200  # Kaggle's hard 12-hour limit.
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lab" / "src"))
-from isolyn_lab.cloud_verify import inspect_csv, sha256_file  # noqa: E402
+from isolyn_lab.cloud_verify import (  # noqa: E402
+    inspect_csv,
+    sha256_file,
+    verify_code_snapshot,
+)
 
 
 def utc_now() -> str:
@@ -173,6 +177,10 @@ def run(root: Path, spec_path: Path, output: Path) -> int:
     output = output.resolve()
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     validate_spec(spec)
+    try:
+        verify_code_snapshot(root, spec["source_commit"], spec["code_sha256"])
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"code snapshot failed verification: {exc}") from exc
 
     output.mkdir(parents=True, exist_ok=True)
     receipt_path = output / "session.json"

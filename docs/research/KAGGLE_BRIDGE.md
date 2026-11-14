@@ -153,6 +153,11 @@ files, validates the copy, and only then renames it into place. `assemble`
 re-verifies every session immediately before writing, so a hand-edited ledger or
 a stale receipt cannot silently enter the corpus.
 
+Before a session starts, the worker verifies every file against the dataset's
+`snapshot.json` and the plan's code digest. `push` repeats that check, rejects
+unexpected files or symlinks in the dataset/kernel directories, and refuses any
+notebook metadata that is not private, CPU-only and internet-disabled.
+
 Operational details and the exact commands live in
 [`cloud/README.md`](../../cloud/README.md). The local worker and verifier are
 covered by `lab/tests/test_cloud.py`, `lab/tests/test_cloud_worker.py` and

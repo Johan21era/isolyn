@@ -45,7 +45,7 @@ FAILING_BUILD = FAKE_BUILD.replace(
 )
 
 
-def _make_root(root: Path, build_script: str = FAKE_BUILD) -> None:
+def _make_root(root: Path, build_script: str = FAKE_BUILD) -> str:
     (root / "cloud").mkdir(parents=True)
     shutil.copy2(ROOT / "cloud" / "run_session.py", root / "cloud" / "run_session.py")
     verifier = root / "lab" / "src" / "isolyn_lab"
@@ -58,9 +58,22 @@ def _make_root(root: Path, build_script: str = FAKE_BUILD) -> None:
     (harness / "build.sh").chmod(0o755)
     (harness / "main.cpp").write_text("// fake harness\n", encoding="utf-8")
     (harness / "README.md").write_text("fake\n", encoding="utf-8")
+    files = []
+    for relative in ("cloud/run_session.py", "lab/src/isolyn_lab/__init__.py",
+                     "lab/src/isolyn_lab/cloud_verify.py",
+                     "tools/selfplay/build.sh", "tools/selfplay/main.cpp",
+                     "tools/selfplay/README.md"):
+        path = root / relative
+        files.append({"path": relative, "bytes": path.stat().st_size,
+                      "sha256": cloud_verify.sha256_file(path)})
+    digest = cloud_verify.code_digest(files)
+    (root / "snapshot.json").write_text(json.dumps({
+        "schema": 1, "source_commit": "a" * 40, "code_sha256": digest, "files": files,
+    }), encoding="utf-8")
+    return digest
 
 
-def _spec() -> dict:
+def _spec(code_digest: str = "b" * 64) -> dict:
     config = {
         "mode": "1v1",
         "depth": 2,
@@ -79,7 +92,7 @@ def _spec() -> dict:
         "run_id": "worker-test",
         "session_id": "0000",
         "source_commit": "a" * 40,
-        "code_sha256": "b" * 64,
+        "code_sha256": code_digest,
         "dataset_ref": "tester/isolyn-code",
         "config": config,
         "parallel": 2,
@@ -106,8 +119,8 @@ class WorkerTests(unittest.TestCase):
     def test_worker_builds_runs_and_writes_a_verifiable_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "code"
-            _make_root(root)
-            spec = _spec()
+            digest = _make_root(root)
+            spec = _spec(digest)
             output = Path(tmp) / "out"
             result = self._run(root, spec, output)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -130,8 +143,8 @@ class WorkerTests(unittest.TestCase):
     def test_worker_writes_a_failed_receipt_and_returns_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "code"
-            _make_root(root, FAILING_BUILD)
-            spec = _spec()
+            digest = _make_root(root, FAILING_BUILD)
+            spec = _spec(digest)
             output = Path(tmp) / "out"
             result = self._run(root, spec, output)
             self.assertNotEqual(result.returncode, 0)
@@ -142,13 +155,24 @@ class WorkerTests(unittest.TestCase):
     def test_worker_refuses_a_spec_without_a_real_code_digest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "code"
-            _make_root(root)
-            spec = _spec()
+            digest = _make_root(root)
+            spec = _spec(digest)
             spec["code_sha256"] = "not-a-digest"
             output = Path(tmp) / "out"
             result = self._run(root, spec, output)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("invalid code_sha256", result.stderr)
+            self.assertFalse((output / "session.json").exists())
+
+    def test_worker_refuses_a_tampered_code_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "code"
+            digest = _make_root(root)
+            (root / "tools/selfplay/main.cpp").write_text("// altered\n", encoding="utf-8")
+            output = Path(tmp) / "out"
+            result = self._run(root, _spec(digest), output)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("code snapshot failed verification", result.stderr)
             self.assertFalse((output / "session.json").exists())
 
 

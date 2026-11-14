@@ -16,7 +16,12 @@ engine. The C++ harness remains the only source of game truth.
   allowlisted: engine, self-play harness, lab Python and the worker only. The
   app, Accelerator, tests, build output and `lab/data` cannot be uploaded.
 - The planned commit and SHA-256 code digest are recorded in every session spec
-  and receipt, and are checked again locally.
+  and receipt, and are checked again locally. Before building, the worker also
+  verifies every file against the dataset's `snapshot.json`; a tampered snapshot
+  fails before a session starts.
+- `push` verifies the prepared snapshot again, rejects unexpected files or
+  symlinks in the upload directories, and requires the generated notebook
+  metadata to be private, CPU-only and internet-disabled.
 - Datasets are private by default (`kaggle datasets create` without `--public`).
   Kernels are explicitly private, CPU-only, and have internet disabled.
 - `push` is an external action and refuses to run without `--yes`. It does not

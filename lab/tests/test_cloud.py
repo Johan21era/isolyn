@@ -206,7 +206,7 @@ class ReceiptTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ws, plan_data, session, receipt, target = self._fixture(Path(tmp))
             ledger = {"schema": 1, "sessions": {
-                session["id"]: {"verified_at": "now", "pushed_at": "now", "kernel_id": "tester/k-0000"}
+                session["id"]: {"verified_at": "now", "pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"}
             }}
             (ws.run_dir("plan-test") / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
             output = ws.run_dir("plan-test") / "assembled.csv"
@@ -232,7 +232,7 @@ class ReceiptTests(unittest.TestCase):
                 cloud.fetch(ws, "plan-test", session["id"])
 
             ledger = {"schema": 1, "sessions": {
-                session["id"]: {"pushed_at": "now", "kernel_id": "tester/k-0000"}
+                session["id"]: {"pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"}
             }}
             (ws.run_dir("plan-test") / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
             with self.assertRaises(SystemExit):
@@ -247,7 +247,7 @@ class FetchTests(unittest.TestCase):
             shutil.copytree(target, source)
             shutil.rmtree(target)
             ledger = {"schema": 1, "sessions": {
-                session["id"]: {"pushed_at": "now", "kernel_id": "tester/k-0000"}
+                session["id"]: {"pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"}
             }}
             (ws.run_dir("plan-test") / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
 
@@ -292,6 +292,18 @@ class PushTests(unittest.TestCase):
             ledger = json.loads((ws.run_dir("plan-test") / "ledger.json").read_text(encoding="utf-8"))
             self.assertIn("0000", ledger["sessions"])
             self.assertIn("pushed_at", ledger["sessions"]["0000"])
+
+    def test_push_refuses_an_unexpected_file_in_the_upload_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = _make_workspace(Path(tmp))
+            cloud.plan(ws, _args("--games", "5000", "--games-per-shard", "2500"))
+            cloud.prepare(ws, "plan-test")
+            (ws.run_dir("plan-test") / "dataset" / "extra.txt").write_text("secret\n", encoding="utf-8")
+            calls = []
+            ws.kaggle_fn = lambda args: calls.append(args) or "ok"
+            with self.assertRaises(SystemExit):
+                cloud.push(ws, "plan-test", "0000", "auto", True)
+            self.assertEqual(calls, [])
 
     def test_a_failed_kernel_push_is_recorded_and_retried_as_a_dataset_version(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 SESSION_SCHEMA = 1
 SHARD_NAME = re.compile(r"^shard-(\d{4})\.csv$")
@@ -27,6 +28,63 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def code_digest(files: list[dict]) -> str:
+    """Hash the allowlisted path/hash manifest exactly as the driver does."""
+    digest = hashlib.sha256()
+    for entry in sorted(files, key=lambda item: item["path"]):
+        digest.update(entry["path"].encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(entry["sha256"].encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def verify_code_snapshot(root: Path, source_commit: str, expected_digest: str) -> list[dict]:
+    """Prove the code beside the worker is the exact code the plan authorized.
+
+    The worker otherwise trusts its input mount. Checking the manifest here makes
+    a tampered or stale dataset fail before it can spend a session running
+    different code under the planned commit/hash labels.
+    """
+    root = root.resolve()
+    snapshot_path = root / "snapshot.json"
+    if snapshot_path.is_symlink() or not snapshot_path.is_file():
+        raise ValueError("missing safe snapshot.json")
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    _require(snapshot.get("schema") == SESSION_SCHEMA,
+             "unsupported code snapshot schema")
+    _require(snapshot.get("source_commit") == source_commit,
+             "code snapshot source commit mismatch")
+    _require(snapshot.get("code_sha256") == expected_digest,
+             "code snapshot digest mismatch")
+    declared = snapshot.get("files")
+    _require(isinstance(declared, list) and declared, "code snapshot has no files")
+
+    checked = []
+    seen = set()
+    for entry in declared:
+        _require(isinstance(entry, dict), "code snapshot entry is not an object")
+        relative = entry.get("path")
+        _require(isinstance(relative, str) and relative, "code snapshot path is invalid")
+        pure = PurePosixPath(relative)
+        _require(not pure.is_absolute() and ".." not in pure.parts and "\\" not in relative,
+                 f"unsafe code snapshot path: {relative!r}")
+        _require(relative not in seen, f"duplicate code snapshot path: {relative}")
+        seen.add(relative)
+        raw_path = root / relative
+        _require(not raw_path.is_symlink(), f"symlinked code snapshot file: {relative}")
+        path = raw_path.resolve()
+        _require(root in path.parents, "code snapshot path escapes its root")
+        _require(path.is_file() and not path.is_symlink(), f"missing code snapshot file: {relative}")
+        actual_hash = sha256_file(path)
+        _require(entry.get("sha256") == actual_hash, f"code snapshot hash mismatch: {relative}")
+        _require(entry.get("bytes") == path.stat().st_size,
+                 f"code snapshot byte count mismatch: {relative}")
+        checked.append({"path": relative, "sha256": actual_hash, "bytes": path.stat().st_size})
+    _require(code_digest(checked) == expected_digest, "code snapshot manifest digest mismatch")
+    return checked
 
 
 def safe_relative_name(name: str, pattern: re.Pattern[str]) -> str:

@@ -203,13 +203,7 @@ def _code_manifest(root: Path) -> list[dict]:
 
 
 def _code_digest(manifest: list[dict]) -> str:
-    digest = hashlib.sha256()
-    for entry in sorted(manifest, key=lambda item: item["path"]):
-        digest.update(entry["path"].encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(entry["sha256"].encode("ascii"))
-        digest.update(b"\n")
-    return digest.hexdigest()
+    return cloud_verify.code_digest(manifest)
 
 
 def _validate_config(args: argparse.Namespace) -> dict:
@@ -568,6 +562,29 @@ def _kernel_dir(ws: Workspace, run_id: str, session: dict) -> Path:
     return ws.run_dir(run_id) / "kernels" / session["id"]
 
 
+def _verify_upload_layout(dataset: Path, kernel: Path, plan_data: dict) -> None:
+    """Reject files a human or stray process added after preparation."""
+    snapshot = json.loads((dataset / "snapshot.json").read_text(encoding="utf-8"))
+    declared = {entry["path"] for entry in snapshot.get("files", [])}
+    allowed_dataset = declared | {"snapshot.json", "dataset-metadata.json"}
+    allowed_dataset |= {
+        f"session_specs/{session['id']}.json" for session in plan_data["sessions"]
+    }
+    for path in dataset.rglob("*"):
+        _require(not path.is_symlink(), f"refusing symlink in upload: {path}")
+        if path.is_file():
+            relative = path.relative_to(dataset).as_posix()
+            _require(relative in allowed_dataset,
+                     f"refusing unexpected dataset file: {relative}")
+    allowed_kernel = {"notebook.ipynb", "kernel-metadata.json"}
+    for path in kernel.rglob("*"):
+        _require(not path.is_symlink(), f"refusing symlink in upload: {path}")
+        if path.is_file():
+            relative = path.relative_to(kernel).as_posix()
+            _require(relative in allowed_kernel,
+                     f"refusing unexpected kernel file: {relative}")
+
+
 def push(
     ws: Workspace,
     run_id: str,
@@ -590,11 +607,26 @@ def push(
              "dataset is not prepared; run `lab cloud prepare` first")
     _require((kernel / "kernel-metadata.json").is_file(),
              "kernel directory is not prepared")
-    snapshot = json.loads((dataset / "snapshot.json").read_text(encoding="utf-8"))
-    _require(snapshot.get("source_commit") == plan_data["source_commit"],
-             "prepared dataset does not match the plan commit")
-    _require(snapshot.get("code_sha256") == plan_data["code_sha256"],
-             "prepared dataset does not match the plan code digest")
+    _verify_upload_layout(dataset, kernel, plan_data)
+    try:
+        cloud_verify.verify_code_snapshot(
+            dataset, plan_data["source_commit"], plan_data["code_sha256"]
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"prepared dataset failed code verification: {exc}") from exc
+    dataset_metadata = json.loads((dataset / "dataset-metadata.json").read_text(encoding="utf-8"))
+    _require(dataset_metadata.get("id") == plan_data["dataset_ref"],
+             "prepared dataset metadata does not match the plan")
+    kernel_metadata = json.loads((kernel / "kernel-metadata.json").read_text(encoding="utf-8"))
+    _require(kernel_metadata.get("id") == _kernel_id(plan_data, session),
+             "prepared kernel metadata has the wrong id")
+    _require(kernel_metadata.get("dataset_sources") == [plan_data["dataset_ref"]],
+             "prepared kernel metadata has the wrong dataset source")
+    _require(kernel_metadata.get("is_private") is True, "refusing a non-private notebook")
+    _require(kernel_metadata.get("enable_gpu") is False,
+             "refusing a GPU notebook for CPU-only work")
+    _require(kernel_metadata.get("enable_internet") is False,
+             "refusing a notebook with internet enabled")
 
     if dataset_mode == "auto":
         dataset_mode = (
@@ -668,6 +700,8 @@ def fetch(ws: Workspace, run_id: str, session_id: str) -> int:
     entry = ledger["sessions"].get(session_id)
     _require(entry is not None and entry.get("pushed_at"),
              f"session {session_id} has not been pushed by this driver")
+    _require(entry.get("kernel_id") == _kernel_id(plan_data, session),
+             f"ledger kernel id for session {session_id} does not match the plan")
     target = ws.run_dir(run_id) / "sessions" / session_id
     _require(not target.exists(), f"refusing to overwrite fetched session {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
