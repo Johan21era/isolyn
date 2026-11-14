@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from .dataset import GameRecord, initial_value_for_participant, participant_for_player
@@ -83,6 +84,48 @@ def spearman(xs: list[float], ys: list[float]) -> float | None:
     return numerator / denominator
 
 
+def _weighted_ranks(counts: Counter[int]) -> dict[int, float]:
+    """Average ranks for tied values from occurrence counts."""
+    ranks: dict[int, float] = {}
+    before = 0
+    for value in sorted(counts):
+        count = counts[value]
+        ranks[value] = before + (count + 1) / 2.0
+        before += count
+    return ranks
+
+
+def _spearman_counts(pairs: Counter[tuple[int, int]]) -> float | None:
+    """Exact Spearman rho from a contingency table of (x, y) counts.
+
+    The report only needs the rank correlation, not the original rows. Counting
+    distinct pairs keeps memory bounded by the value range instead of by the
+    number of games, which is what makes a multi-million-row evaluation
+    possible. The rank formula is the same average-rank definition as
+    `spearman`, including ties.
+    """
+    samples = sum(pairs.values())
+    if samples < 2:
+        return None
+    x_counts: Counter[int] = Counter()
+    y_counts: Counter[int] = Counter()
+    for (x, y), count in pairs.items():
+        x_counts[x] += count
+        y_counts[y] += count
+    ranks_x = _weighted_ranks(x_counts)
+    ranks_y = _weighted_ranks(y_counts)
+    mean_rank = (samples + 1) / 2.0
+    numerator = 0.0
+    for (x, y), count in pairs.items():
+        numerator += count * (ranks_x[x] - mean_rank) * (ranks_y[y] - mean_rank)
+    denom_x = sum(count * (ranks_x[x] - mean_rank) ** 2 for x, count in x_counts.items())
+    denom_y = sum(count * (ranks_y[y] - mean_rank) ** 2 for y, count in y_counts.items())
+    denominator = (denom_x * denom_y) ** 0.5
+    if denominator == 0:
+        return None
+    return numerator / denominator
+
+
 def wilson_interval(wins: int, games: int, z: float = 1.96) -> tuple[float, float]:
     """95% Wilson score interval for a binomial win rate."""
     if games <= 0:
@@ -112,7 +155,8 @@ def participant_label(mode: str, participant: int) -> str:
     return f"Player {participant + 1}"
 
 
-def analyze(games: list[GameRecord]) -> CalibrationReport:
+def analyze(games: Iterable[GameRecord]) -> CalibrationReport:
+    """Aggregate one pass; a generator is accepted so large files stream."""
     outcomes: Counter[str] = Counter()
     wins: Counter[int] = Counter()
     points: Counter[int] = Counter()
@@ -122,62 +166,53 @@ def analyze(games: list[GameRecord]) -> CalibrationReport:
     side_wins: Counter[int] = Counter()
     side_points: Counter[int] = Counter()
     side_initial: Counter[int] = Counter()
-    xs: list[float] = []
-    ys_points: list[float] = []
-    ys_win: list[float] = []
+    points_pairs: Counter[tuple[int, int]] = Counter()
+    win_pairs: Counter[tuple[int, int]] = Counter()
+    game_count = 0
+    decision_count = 0
+    first: GameRecord | None = None
 
     for game in games:
+        game_count += 1
+        decision_count += game.decisions
+        if first is None:
+            first = game
         outcomes[game.outcome] += 1
         if game.outcome == "in_progress":
             continue
         winner = participant_for_player(game.mode, game.deciding_player)
         for participant in range(game.participant_count):
+            initial_pips = initial_value_for_participant(game, participant)
+            score = game.participant_scores[participant]
             participant_games[participant] += 1
-            points[participant] += game.participant_scores[participant]
-            initial[participant] += initial_value_for_participant(game, participant)
+            points[participant] += score
+            initial[participant] += initial_pips
             if participant == winner:
                 wins[participant] += 1
 
             side = game.participant_sides[participant] if participant < len(game.participant_sides) else 0
             side_games[side] += 1
-            side_points[side] += game.participant_scores[participant]
-            side_initial[side] += initial_value_for_participant(game, participant)
+            side_points[side] += score
+            side_initial[side] += initial_pips
             if participant == winner:
                 side_wins[side] += 1
 
             # Correlation is computed only for complete games; an unfinished
-            # round has no legitimate outcome label to learn from.
-            xs.append(float(initial_value_for_participant(game, participant)))
-            ys_points.append(float(game.participant_scores[participant]))
-            ys_win.append(1.0 if participant == winner else 0.0)
+            # round has no legitimate outcome label to learn from. Count pairs
+            # instead of retaining one tuple per participant per game.
+            points_pairs[(initial_pips, score)] += 1
+            win_pairs[(initial_pips, 1 if participant == winner else 0)] += 1
 
-    first = games[0] if games else None
-    side_by_id = {
-        side.participant: side
-        for side in (
-            ParticipantStats(
-                participant=s,
-                games=side_games[s],
-                wins=side_wins[s],
-                points=side_points[s],
-                initial_pips=side_initial[s],
-            )
-            for s in sorted(side_games)
-        )
-    }
     elo = None
     elo_low = None
     elo_high = None
-    if 0 in side_by_id and 1 in side_by_id:
-        side_a = side_by_id[0]
-        side_b = side_by_id[1]
-        if side_a.games == side_b.games and side_a.games > 0:
-            total = side_a.games
-            elo = elo_from_score(side_a.wins / total)
-            elo_low, elo_high = elo_interval(side_a.wins, total)
+    if 0 in side_games and 1 in side_games and side_games[0] == side_games[1] > 0:
+        total = side_games[0]
+        elo = elo_from_score(side_wins[0] / total)
+        elo_low, elo_high = elo_interval(side_wins[0], total)
     return CalibrationReport(
-        games=len(games),
-        decisions=sum(game.decisions for game in games),
+        games=game_count,
+        decisions=decision_count,
         outcomes=dict(sorted(outcomes.items())),
         participants=tuple(
             ParticipantStats(
@@ -204,9 +239,9 @@ def analyze(games: list[GameRecord]) -> CalibrationReport:
         elo_a_vs_b=elo,
         elo_low=elo_low,
         elo_high=elo_high,
-        initial_vs_points=spearman(xs, ys_points),
-        initial_vs_win=spearman(xs, ys_win),
-        correlation_samples=len(xs),
+        initial_vs_points=_spearman_counts(points_pairs),
+        initial_vs_win=_spearman_counts(win_pairs),
+        correlation_samples=sum(points_pairs.values()),
     )
 
 

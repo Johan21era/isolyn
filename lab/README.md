@@ -1,6 +1,6 @@
 # IsolynV2.0 Offline Lab
 
-**Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` produces a real calibration report with Wilson intervals and Spearman correlations. `./scripts/lab run` drives resumable sharded multi-million-game runs. The Python trainer and weight export are still scaffolds; the Elo report itself is implemented.
+**Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` streams a CSV once and produces a real calibration report with Wilson intervals and Spearman correlations. `./scripts/lab run` drives resumable sharded multi-million-game runs. The Python trainer and weight export are still scaffolds; the Elo report itself is implemented.
 
 This directory is the home for offline self-play, calibration, and (later) learned-evaluation experiments. It is deliberately **outside the shipped app**: Python is a tooling language here, never a runtime dependency of IsolynV2.0.
 
@@ -23,7 +23,7 @@ lab/
 ├── data/                       # generated datasets/weights (gitignored)
 ├── src/isolyn_lab/
 │   ├── __init__.py
-│   ├── dataset.py              # per-move CSV -> per-game records
+│   ├── dataset.py              # streaming per-move CSV -> per-game records
 │   ├── calibration.py          # win rates, score deltas, Spearman report
 │   └── cli.py                  # selfplay guidance + evaluate command
 ├── pyproject.toml              # no runtime deps; optional training extras
@@ -48,6 +48,9 @@ The engine-side harness lives separately at `tools/selfplay/`; it is C++ so it c
   --seed 7 --output lab/data/h2h.csv
 
 PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/h2h.csv
+
+# Lab unit tests (no third-party runner required).
+PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests
 
 # Optional Python environment for future training work.
 python3 -m venv lab/.venv
@@ -81,9 +84,26 @@ report per input (games, decisions, outcomes, per-player win rates with Wilson
 intervals, Elo with a confidence interval when both sides are present, and the
 starting-hand correlations). Without `--json` the same report prints as text.
 
-Measured on the development M3 with **both sides** at depth 8 / 64
-determinizations: ~23 games/s with eight single-worker shards. Five million games
-is therefore roughly 61 hours and about 9.5 GB of CSV (~1.95 KB per game).
+The read path is now linear. `dataset.iter_games` keeps one game in memory, and
+`calibration.analyze` accepts that iterator instead of requiring a list. The
+correlations are exact weighted-rank results over `(starting pips, result)`
+counts, so memory scales with the distinct value pairs, not with the number of
+games. Measured on the development M3, reading and analyzing a synthetic
+200,000-game / 1,000,000-row CSV (55 MB) took **3.27 s** with **12.6 MB** peak
+RSS. The old read-and-analyze path took **2.64 s** for a 1,000-game / 17,038-row
+CSV; the new path takes **0.08 s** on the same file. These are pipeline timings,
+not self-play throughput and not a strength claim.
+
+Shard merge copies each CSV line and rewrites only `game,seed` instead of
+re-serializing every column, then replaces `merged.csv` atomically. On a
+synthetic 1.6-million-row / 84 MB merge: **2.46 s → 1.17 s**, line-identical
+output. `evaluate` streams the merged file, so the old 2 GiB in-memory warning
+no longer applies.
+
+Self-play throughput is unchanged and remains the dominant cost. Measured on
+the development M3 with **both sides** at depth 8 / 64 determinizations: ~23
+games/s with eight single-worker shards. Five million games is therefore roughly
+61 hours and about 9.5 GB of CSV (~1.95 KB per game).
 
 **Side B defaults to side A.** The C++ harness on its own defaults the opponent
 to depth 4 / 20 samples, which silently makes a "depth 8 / 64 self-play" run a

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from itertools import chain
 from pathlib import Path
 
 from . import calibration, dataset
@@ -53,12 +54,14 @@ def _evaluate(args: argparse.Namespace) -> int:
     reports = []
     for path in inputs:
         try:
-            games = dataset.load_games(path)
+            games = dataset.iter_games(path)
+            first = next(games, None)
+            mode = first.mode if first is not None else "unknown"
+            report = calibration.analyze(chain((first,), games) if first is not None else ())
         except (OSError, ValueError) as exc:
             print(f"could not read {path}: {exc}", file=sys.stderr)
             return 2
-        mode = games[0].mode if games else "unknown"
-        reports.append((path, mode, calibration.analyze(games)))
+        reports.append((path, mode, report))
 
     if args.json:
         payload = [

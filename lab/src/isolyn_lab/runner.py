@@ -473,6 +473,55 @@ def _list_runs() -> int:
     return 0
 
 
+def _merge_csv_shard(
+    source, destination, header: str, offset: int, seed: int
+) -> int:
+    """Fallback for a schema whose first two columns are not game,seed."""
+    fields = next(csv.reader([header]))
+    try:
+        game_col = fields.index("game")
+        seed_col = fields.index("seed")
+    except ValueError as exc:
+        raise SystemExit(f"shard header has no game/seed column: {header.strip()!r}") from exc
+    writer = csv.writer(destination, lineterminator="\n")
+    rows = 0
+    for row in csv.reader(source):
+        if not row:
+            continue
+        try:
+            row[game_col] = str(offset + int(row[game_col]))
+            row[seed_col] = str(seed)
+        except (IndexError, ValueError) as exc:
+            raise SystemExit(f"shard has an invalid game/seed field: {row!r}") from exc
+        writer.writerow(row)
+        rows += 1
+    return rows
+
+
+def _merge_fast_shard(source, destination, offset: int, seed: int, csv_path: Path) -> int:
+    """Rewrite the first two numeric columns without parsing every field.
+
+    The self-play schema is comma-free CSV with `game,seed` first. Splitting
+    only those two fields keeps the human-readable format and turns a merge
+    that would otherwise re-serialize every column into a line copy.
+    """
+    rows = 0
+    for line in source:
+        if not line.endswith("\n"):
+            raise SystemExit(f"{csv_path}: row does not end with a newline")
+        first = line.find(",")
+        second = line.find(",", first + 1)
+        if first < 0 or second < 0:
+            raise SystemExit(f"{csv_path}: row has no game,seed prefix: {line.rstrip()!r}")
+        try:
+            game = int(line[:first])
+        except ValueError as exc:
+            raise SystemExit(f"{csv_path}: invalid game id: {line[:first]!r}") from exc
+        destination.write(f"{offset + game},{seed},{line[second + 1:]}")
+        rows += 1
+    return rows
+
+
 def _merge(run_id: str, output: Path | None) -> int:
     manifest = _load_manifest(run_id)
     run_dir = _run_dir(run_id)
@@ -487,28 +536,35 @@ def _merge(run_id: str, output: Path | None) -> int:
         offsets[shard["index"]] = total
         total += shard["games"]
 
+    # Write beside the destination, then replace in one step. An interrupted
+    # merge must not leave a truncated file that looks like a finished one.
+    temporary = output.with_name(output.name + ".tmp")
     rows = 0
-    with output.open("w", newline="", encoding="utf-8") as destination:
-        writer = csv.writer(destination)
-        wrote_header = False
-        for shard in manifest["shards"]:
-            with (shard_dir / shard["csv"]).open(newline="", encoding="utf-8") as source:
-                reader = csv.reader(source)
-                header = next(reader)
-                game_col = header.index("game")
-                seed_col = header.index("seed")
-                if not wrote_header:
-                    writer.writerow(header)
-                    wrote_header = True
-                offset = offsets[shard["index"]]
-                for row in reader:
-                    row[game_col] = str(offset + int(row[game_col]))
-                    row[seed_col] = str(shard["seed"])
-                    writer.writerow(row)
-                    rows += 1
+    try:
+        with temporary.open("w", newline="", encoding="utf-8") as destination:
+            first_header: str | None = None
+            for shard in manifest["shards"]:
+                csv_path = shard_dir / shard["csv"]
+                with csv_path.open("r", newline="", encoding="utf-8") as source:
+                    header = source.readline()
+                    if not header:
+                        raise SystemExit(f"{csv_path}: empty CSV")
+                    if first_header is None:
+                        first_header = header
+                        destination.write(header)
+                    elif header != first_header:
+                        raise SystemExit(f"{csv_path}: header differs from the first shard")
+                    offset = offsets[shard["index"]]
+                    if header.startswith("game,seed,"):
+                        rows += _merge_fast_shard(source, destination, offset, shard["seed"], csv_path)
+                    else:
+                        rows += _merge_csv_shard(source, destination, header, offset, shard["seed"])
+        os.replace(temporary, output)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+
     print(f"wrote {output} ({total} games, {rows} move rows)")
-    if output.stat().st_size > 2 * 1024 ** 3:
-        print("warning: larger than 2 GiB; `isolyn-lab evaluate` loads a CSV into memory", file=sys.stderr)
     return 0
 
 

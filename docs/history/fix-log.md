@@ -2438,3 +2438,61 @@ three-seat ritual round.
   seats) remains visible during the duel.
 - The old match-orchestration tie assertion was corrected to accept a genuine
   equal-hand tie (nobody is awarded points), rather than only a zero-value tie.
+
+## OPS-38 — Offline lab streaming fold and merge optimization (2026-11-14)
+
+### What changed
+
+- **The dataset fold is linear, not quadratic.** `dataset.iter_games` now reads
+  the self-play CSV once, keeps only the current game's first row, counts its
+  move rows, and yields a `GameRecord` when the game changes. The old
+  `load_games` built `list(reader)` and then re-scanned every row once per game
+  (`sum(1 for r in rows if game == ...)`), which made evaluation O(games × rows).
+  `load_games` remains as a list wrapper; the CLI uses the iterator directly.
+- **Calibration no longer retains one tuple per participant per game.** It
+  accepts any iterable and computes the same Spearman correlations from exact
+  `(initial pips, result)` count tables. Average ranks, tie handling, and the
+  reported `correlation_samples` are unchanged; memory is bounded by distinct
+  value pairs instead of corpus size.
+- **Shard merge copies lines instead of re-serializing every column.** The
+  self-play schema has `game,seed` first, so the fast path rewrites only those
+  two fields and preserves each row's remaining bytes. A generic CSV fallback
+  remains for reordered schemas. `merged.csv` is written to a sibling temporary
+  file and atomically replaced; an interrupted merge can no longer leave a
+  truncated file that looks complete. The obsolete 2 GiB in-memory warning is
+  removed because `evaluate` streams the merged file.
+- `lab/tests/test_dataset.py` and `lab/tests/test_runner_merge.py` cover the
+  fold, ordering rejection, reordered headers, empty/header-only input, merge
+  renumbering/seeds, atomic output, and the generic fallback.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | **Ran 12 tests**, OK |
+| Old/new record equivalence on `lab/data/ladder-100-3000-1000.csv` | `compared 1000 games 17038 decisions`, no report-field diffs |
+| Weighted-rank check vs list Spearman | matches on **200** randomized tie-heavy cases |
+| Old/new read+analyze benchmark, same CSV | **2.64 s → 0.08 s** |
+| Synthetic 200,000-game / 1,000,000-row read+analyze | **3.27 s**, **12,648,448 bytes** maximum resident set size |
+| Synthetic 1.6 M-row shard merge | **2.46 s → 1.17 s**; `rows 1600001 1600001 identical True` |
+| Real 4-game / 2-shard run, merge, evaluate | `wrote ... (4 games, 63 move rows)`; report reads `games: 4`, `decisions: 63` |
+| `./scripts/ci/local.sh` | **LOCAL CI: PASS — 6 step(s), 0 failed** |
+| `swift test` | **112 tests**, 0 failures |
+| `./scripts/ci/test_engine.sh` | **490 passed**, 0 failed |
+| `./scripts/ci/test_bridge.sh` | **133 passed**, 0 failed |
+| `python3 scripts/rules_audit.py` | **RESULT: PASS**, 19 enforced / 2 declared gaps |
+| `python3 scripts/docs_audit.py` | **RESULT: PASS** |
+
+### Limits
+
+- No C++ engine or self-play change. Search cost still dominates a real run;
+  the recorded ~23 games/s self-play rate and its ~61-hour / ~9.5 GB projection
+  for five million games are unchanged.
+- The 200,000-game benchmark is synthetic read-path evidence, not a finished
+  five-million-game run and not a strength result. Lab data remains **VOID**
+  under the 2026-11-14 rules; no Elo is claimed here.
+- The fast merge path relies on the documented comma-free `game,seed` prefix.
+  Reordered schemas take the CSV fallback; a malformed numeric prefix fails
+  loudly rather than emitting a guessed row.
+- Merge output now uses LF line endings (the shards already do), so it is
+  line-identical to the old output rather than byte-identical.

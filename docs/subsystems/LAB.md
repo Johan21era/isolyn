@@ -57,8 +57,8 @@ tools/selfplay/  ── CSV/JSONL ──▶  lab/ (Python)
 ### `lab/` — Python lab
 
 - `configs/` — experiment shape (TOML).
-- `src/isolyn_lab/` — CSV loading, calibration reports, the resumable sharded
-  runner (`runner.py`), and training/evaluation scaffolding.
+- `src/isolyn_lab/` — streaming CSV folding, calibration reports, the resumable
+  sharded runner (`runner.py`), and training/evaluation scaffolding.
 - `data/` — CLI-generated datasets/weights (gitignored). Runs started from the
   app live in `~/Library/Application Support/IsolynV2.0/runs` instead, so the
   app never reads the Desktop checkout.
@@ -80,7 +80,9 @@ The Lab screen removes the terminal from the loop without changing what a run is
   active instead of starting a second process.
 - The run library is read from a cached, once-a-second directory scan rather
   than on every redraw, and shows Started / Games / Mode / Depth / Worlds /
-  Seed / Progress / Status as columns. Analyses read finished CSVs only.
+  Seed / Progress / Status as columns. Analyses read finished CSVs only, and
+  stream them one game at a time; a multi-million-row report no longer requires
+  holding the CSV in memory.
 - A minimized window is restored by the app delegate on Dock reopen or
   activation; `Window ▸ Show Isolyn Window` (⌘0) is the manual fallback.
 
@@ -97,6 +99,14 @@ Every dataset must eventually carry:
 The current generator emits seeds and configuration but not an engine commit
 or timestamp yet; those remain lab packaging requirements, not claims already
 met by the CSV.
+
+Rows for one game are contiguous and game ids increase within a shard. The
+streaming reader relies on that shape and rejects a file whose ids go backwards
+rather than folding it incorrectly; `runner merge` renumbers shards into the
+same shape. The calibration report uses exact weighted-rank counts, so its
+memory is bounded by distinct hand/result values rather than by corpus size.
+Measured pipeline timings live in [`lab/README.md`](../../lab/README.md), not
+duplicated here.
 
 Game-level fields (repeated on every move row):
 
