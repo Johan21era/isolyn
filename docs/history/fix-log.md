@@ -1889,3 +1889,38 @@ quieter than the action.
 - `swift test`: `Executed 98 tests, with 0 failures`.
 - Python lab tests: `Ran 5 tests ... OK`.
 - `test_hundredAnalysisPressesLaunchOneProcess`: 100 presses → 1 process.
+
+## OPS-28 — Kaggle bridge: design, arithmetic, and two verified blockers
+
+**Scope:** analysis only. No engine, app or runner behaviour changed; one
+document added and registered.
+
+**Added.** `docs/research/KAGGLE_BRIDGE.md`, registered in `docs/README.md`. It
+records Kaggle's current free-tier shape (12 h CPU sessions, 4 cores / 30 GB RAM,
+20 GB saved output, 30 h/week GPU, 20 h/week TPU), the session arithmetic for a
+5M-game corpus, a five-piece bridge design (`cloud/` dataset + env-driven
+notebook + `scripts/lab cloud` driver + assembly + determinism policy), the
+risks, and a one-session first step.
+
+**Findings from reading this tree, not from Kaggle's docs.**
+
+1. `tools/selfplay/build.sh` hardcodes `-framework Security`; Linux rejects it.
+   `EntropySource.cpp` already contains a `getrandom()` path, so the build flag is
+   the only thing standing between this code and a Kaggle CPU session.
+2. `dealSeeded`, `Determinizer` and `SimulationEngine` use `std::shuffle` and
+   `std::uniform_*_distribution`, whose output is implementation-defined. A seed
+   that reproduces on libc++ will not necessarily reproduce on libstdc++, so a
+   Kaggle-generated corpus is not seed-reproducible against a local one unless a
+   stable in-tree shuffle replaces those calls.
+
+**The number the founders should see.** Local symmetric self-play is 22.7
+games/s; a Kaggle CPU session has half the cores and slower ones, so 6–11
+games/s. A 5M corpus is therefore 11–20 sessions, i.e. one to three weeks at one
+or two sessions a day — **not faster than the owner's machine**, only off it.
+Kaggle buys breadth and a free machine, not speed.
+
+**Evidence.** `python3 scripts/docs_audit.py`:
+`RESULT: PASS — links, paths, status headers, register, banners and figures are consistent`.
+Kaggle limits quoted from `https://www.kaggle.com/docs/notebooks` (Technical
+Specifications) on 2026-11-14; GPU weekly quota from Kaggle's 30 h/week
+announcement.

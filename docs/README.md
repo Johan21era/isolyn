@@ -58,6 +58,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `research/BENCHMARK_BASELINE.md` | Pre-rulebook ladder and timings — **VOID**, kept for audit only | VOID measurements | 2026-11-14 |
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
+| `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, blockers, first session | Proposed design | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | **Current factual baseline** | Authoritative | 2026-11-13 |
 | `audits/2026-11-13-documentation-audit.md` | Why each document exists; contradiction register | Authoritative for doc status | 2026-11-13 |
 | `audits/2026-08-24-audit.md` (+`.pdf`) | First audit; 12 findings and their fixes | Historical | 2026-08-24 |
