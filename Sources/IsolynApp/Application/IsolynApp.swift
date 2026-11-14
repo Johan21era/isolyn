@@ -4,6 +4,9 @@ import SwiftUI
 struct IsolynApp: App {
     @State private var appState = AppState()
     @State private var environmentManager = EnvironmentManager()
+    // Owned at app scope so a run keeps its handle while the owner moves
+    // between screens; a per-view service would lose the ability to stop it.
+    @State private var labService = LabService()
 
     public init() {}
 
@@ -12,6 +15,7 @@ struct IsolynApp: App {
             RootView()
                 .environment(appState)
                 .environment(environmentManager)
+                .environment(labService)
                 .frame(minWidth: IsolynLayout.minWindowWidth,
                        minHeight: IsolynLayout.minWindowHeight)
                 .background(IsolynTheme.ebony)

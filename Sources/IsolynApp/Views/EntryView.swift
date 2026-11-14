@@ -47,8 +47,8 @@ struct EntryView: View {
                             .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 240))
 
                             HStack(spacing: 28) {
-                                secondaryLink("Training") {
-                                    appState.screen = .comingSoon("Training")
+                                secondaryLink("Lab") {
+                                    appState.screen = .lab
                                 }
                                 secondaryLink("Sandbox") {
                                     appState.screen = .comingSoon("Sandbox")

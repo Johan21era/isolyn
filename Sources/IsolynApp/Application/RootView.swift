@@ -24,6 +24,8 @@ struct RootView: View {
                     ModeSelectorView()
                 case .game(let format, let opponent, let aiLevel):
                     InteractiveGameBoardView(format: format, opponent: opponent, aiLevel: aiLevel)
+                case .lab:
+                    LabView()
                 case .comingSoon(let title):
                     ComingSoonView(title: title)
                 }

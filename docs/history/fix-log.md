@@ -1748,3 +1748,61 @@ different configuration.
 **Not done, deliberately.** No trainer, no weight export, no app UI for Training
 or Sandbox. Those remain scaffolds; this change only makes the existing lab
 runnable at volume.
+
+## OPS-25 — The lab in the app, with the Start button made idempotent
+
+**Scope.** Reach the offline lab from the app, and make repeated presses of a
+run button harmless. No engine, rule or scoring behaviour changed.
+
+**What the app can now do.** `Entry → Lab` (the old "Training" link, renamed to
+what it actually is) opens a screen that starts a sharded run, shows live games,
+shards, rate and ETA from the run manifest, stops it, resumes any unfinished run,
+merges a finished one, and reveals the run folder. Presets are Smoke 200, 10K,
+1M and 5M.
+
+**Why a service and not just a button.** A SwiftUI button can be pressed again
+before its disabled state renders, and key repeat bypasses intent entirely. All
+launch decisions therefore live in `LabService`, which owns at most one child:
+
+- a second Start while a run is active is refused with a message, never spawned;
+- a repeat of the same configuration inside a two-second window is treated as
+  noise (double-click, key repeat);
+- the runner's own `run.lock` is the last line of defence when the app is
+  bypassed entirely;
+- the service is owned by the app, not the screen, so navigating away does not
+  lose the ability to stop the run.
+
+**Two details that would have bitten later.**
+
+- **Repository discovery from inside the bundle.** The app runs from
+  `build/IsolynV2.0.app`, so neither the working directory nor `Bundle.main`
+  points at the source tree. `LabPaths` walks up from
+  `Contents/MacOS` until `lab/src/isolyn_lab/runner.py` appears; a test builds a
+  fake bundle tree and asserts the walk finds the root.
+- **Reattaching to a run from a previous app session.** Quitting the app does not
+  kill the runner — that is what makes a 32-hour run practical. On reopen the
+  service reads the lock pid, verifies via `ps` that it really is a Python
+  process, and shows the run as active with a working Stop.
+
+**Stress evidence (literal).**
+
+- `test_twoHundredStartPressesLaunchExactlyOneProcess`: 200 `start()` calls →
+  exactly 1 launch.
+- `test_aDifferentConfigurationWhileRunningIsRejected`: 50 different
+  configurations while one is active → still 1 launch, message
+  "One run at a time — stop the active run first."
+- `test_stopTerminatesTheChildAndAllowsANewRun`: Stop sets `terminated` on the
+  child and a new run is then allowed.
+- `test_pressesDuringTheRepeatWindowAfterAStopDoNotRelaunch`: 50 presses after a
+  Stop inside the window → no second process.
+- `test_realRunnerCompletesASmokeRun`: the real `/bin/bash scripts/lab` child
+  runs 5 games and the service reports `finished` with `doneGames == 5`.
+- Two shell runners on one run id: the second prints
+  `run is already active (pid 11289); use 'lab status' to watch it` and the first
+  completes `4 verified done`.
+- `swift test`: `Executed 91 tests, with 0 failures`.
+- `./scripts/ci/local.sh`: `LOCAL CI: PASS — 6 step(s), 0 failed`.
+
+**Not done, deliberately.** No trainer and no Sandbox screen. The Lab screen
+drives the existing runner; it does not invent capabilities the lab does not
+have.

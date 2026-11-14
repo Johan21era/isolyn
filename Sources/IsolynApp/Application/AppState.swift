@@ -37,6 +37,7 @@ final class AppState {
         case entry
         case modeSelect
         case game(MatchFormat, OpponentMode, AILevel)
+        case lab
         case comingSoon(String)
     }
 
