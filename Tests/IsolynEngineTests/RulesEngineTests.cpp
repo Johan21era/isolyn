@@ -98,6 +98,10 @@ int main() {
         check(oneVsOneVsOne == std::vector<int>({0, 12, 41}), "1v1v1: hands of 6, 12, 41 -> 0-12-41, the rulebook's own example");
         auto oneVsOneVsOneWorked = RulesEngine::computeRoundScores({10, 24, 31});
         check(oneVsOneVsOneWorked == std::vector<int>({0, 24, 31}), "1v1v1: A=10 -> 0, B=24 -> 24, C=31 -> 31");
+        // R-04: the closer is not exempt when his hand is above the lowest.
+        auto closerWithHighest = RulesEngine::computeRoundScores({41, 6, 12});
+        check(closerWithHighest == std::vector<int>({41, 0, 12}),
+              "1v1v1: the closer is not exempt -- 41, 6, 12 -> 41-0-12, only the lowest is spared");
 
         // R-05: 2v2 combines partners, then the losing team's total moves over.
         int teamA = RulesEngine::combineTeamValue(20, 6);
