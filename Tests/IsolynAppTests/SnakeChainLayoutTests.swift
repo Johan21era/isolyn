@@ -70,20 +70,19 @@ final class SnakeChainLayoutTests: XCTestCase {
         }
     }
 
-    func test_wideDesktopWindow_laysTheChainAcrossTheTable() {
-        // The table is the window's board area, not a fixed 760pt block: an
-        // 18-tile chain on a 1600pt board is one line across it, the way it
-        // looks on a real table. A chain longer than the table still turns.
+    func test_wideDesktopWindow_coilsWithinTheTable() {
+        // A run stretched edge to edge reads as a stripe, however correct the
+        // geometry (live report). Runs take about two thirds of the table, so
+        // a chain forms a mass in the middle and turns well before the edge.
         let size = CGSize(width: 1600, height: 900)
-        let short = SnakeChainLayout.compute(orientedTiles: chain(18), availableSize: size)
-        XCTAssertEqual(Set(short.placed.map { $0.y }).count, 1,
-                       "an 18-tile chain fits one run on a 1600pt table")
-
-        for count in [24, 40] {
-            let metrics = SnakeChainLayout.compute(
-                orientedTiles: chain(count), availableSize: size)
-            XCTAssertGreaterThanOrEqual(Set(metrics.placed.map { $0.y }).count, 2,
-                                        "a \(count)-tile chain must use more than one run")
+        for count in [18, 24, 40] {
+            let m = SnakeChainLayout.compute(orientedTiles: chain(count), availableSize: size)
+            XCTAssertLessThanOrEqual(m.contentWidth, size.width * 0.75,
+                                     "\(count) tiles must not stretch across the whole table")
+            XCTAssertGreaterThanOrEqual(m.contentWidth, size.width * 0.5,
+                                        "\(count) tiles must not collapse into a narrow column")
+            XCTAssertGreaterThan(Set(m.placed.map { $0.y }).count, 1,
+                                 "\(count) tiles must turn instead of running as a stripe")
         }
     }
 

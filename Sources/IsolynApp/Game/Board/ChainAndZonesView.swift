@@ -461,10 +461,14 @@ enum SnakeChainLayout {
         // so the chain stays regular instead of staggering tile by tile.
         let rowPitch = long + gap
         let minX = margin
-        // A run turns where the TABLE ends, which is the board the player is
-        // looking at. No fixed cap and no fitting: the chain is a physical
-        // object laid across the surface, turning when it reaches the edge.
-        let tableWidth = W - margin * 2
+        // A chain laid edge to edge reads as a stripe, however correct its
+        // geometry -- a live report of exactly that. A real game coils in the
+        // middle of the table: runs get about two thirds of the width, bounded
+        // so a run is never fewer than six tiles nor absurd on an ultrawide
+        // board. Tiles themselves never change size.
+        let tilePitch = short * 2 + gap
+        let idealRun = W * 0.66
+        let tableWidth = min(max(idealRun, tilePitch * 6), tilePitch * 14, W - margin * 2)
         let maxX = minX + tableWidth
 
         var rowY = margin + short / 2
