@@ -55,6 +55,31 @@ removing it costs 16, so its dominance is earned, but the engine has **no graded
 notion of winning chance** between "threat exists" and "threat does not"
 (E-018, E-019). That is the most promising remaining evaluation gap.
 
+### Missing action: voluntary draw
+
+**This is the largest structural gap found so far, and it is a missing move, not
+a missing weight.**
+
+The rules allow a player to draw from the boneyard voluntarily:
+`MatchController::voluntaryDraw()` exists, and `MatchController.hpp` states that
+"WHETHER to voluntarily draw" is a strategic choice belonging to search. Search
+never makes it. `Move` deliberately cannot represent a draw (its header says so),
+`MoveGenerator` emits placements only, and the search's `resolveForcedDraws`
+flies tiles in solely to escape a stuck position.
+
+Meanwhile `docs/design/STRATEGY_NOTES.md` treats drawing as a first-class axis —
+it argues that drawing *heavily*, even emptying the boneyard, is the high-skill
+inversion of conventional wisdom, and that opponents counter by forcing extra
+draws. The engine therefore cannot play the strategy its own design documents
+describe, and no amount of samples, depth or weight tuning reaches it: **the
+action is absent from the game tree.**
+
+Implementation is a real project, not a patch: a draw must enter `Move` (or a
+sibling action type), `MoveGenerator`, `MoveExecutor`/undo, the transposition-key
+scheme, and the belief updates that observe a draw. It also needs a bound on
+consecutive draws to keep the tree finite. It is the top candidate for the next
+block of work.
+
 1. **The difficulty ladder is ordered but the separation is modest.** At 4,000
    games the 2/8 → 3/16 and 3/16 → 4/24 steps resolve at −14.8 and −14.9 Elo,
    and 4/24 → 5/40 resolves at −39.5. Every adjacent step tested is separable,
@@ -82,8 +107,8 @@ notion of winning chance** between "threat exists" and "threat does not"
 
 | # | Action | Why it is next |
 |---|---|---|
-| 1 | **Calibrate the eight evaluation weights against tournament results** | E-007–E-009 show compute scaling is exhausted; evaluation is now the binding constraint |
-| 2 | Re-derive difficulty tiers from measured head-to-head results | five labels currently overstate five strengths |
+| 1 | **Model voluntary drawing in the search** | the action is absent from the game tree; the design notes call it the high-skill axis |
+| 2 | Build a budgeted joint weight optimizer | single-weight effects sit below the ~15 Elo resolution of ablation (E-015 – E-017) |
 | 3 | Replace the TT key and add depth-preferred replacement | the stated blocker on deeper search: tables are diluted across lanes |
 | 4 | Add pruning to 1v1v1 | the weakest mode, and the fix is well understood |
 | 5 | Add a tactical-stability (quiescence) pass | removes a whole class of blunder |
