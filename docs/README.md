@@ -24,7 +24,8 @@ evidence about higher ones.**
 
 | Tier | Source | Treat as |
 |---:|---|---|
-| 1 | Running code and its output | Ground truth; reproducible |
+| 0 | [`rules/RULEBOOK.md`](rules/RULEBOOK.md) | **The rules of the game.** The implementation is judged against it; where they differ, the code is wrong |
+| 1 | Running code and its output | Ground truth about *behaviour*; reproducible |
 | 2 | [`audits/2026-11-13-audit.md`](audits/2026-11-13-audit.md) | Current measured state (2026-11-13) |
 | 3 | `architecture/`, `engineering/`, `subsystems/`, `design/UI_CHARTER.md` | Living; must change with the code |
 | 4 | `roadmaps/` | Intent, never status |
@@ -40,6 +41,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 |---|---|---|---|
 | `README.md` (root) | Identity, run, status, entry links | Living | 2026-11-13 |
 | `docs/README.md` | This map | Living | 2026-11-13 |
+| `rules/RULEBOOK.md` | Numbered rules of the game, each with the assertion that enforces it | Normative, tier 0 | 2026-11-14 |
 | `architecture/BRIDGE_ARCHITECTURE.md` | C++/Swift boundary and its invariants | Living | 2026-11-13 |
 | `architecture/FEATURE_SPECS.md` | Training and Sandbox intent | Specification (unimplemented) | 2026-11-13 |
 | `architecture/PROJECT_INVENTORY.md` | Identity, LOC, caller map | Living | 2026-11-13 |
@@ -82,6 +84,7 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 | 1v1 strength ladder | `subsystems/LAB.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |
 | Completion %, defects, priorities | `audits/2026-11-13-audit.md` | the commands in its §13.1 |
 | Design intent per mode | `architecture/FEATURE_SPECS.md` | — (no implementation yet) |
+| Rules and the assertion behind each | `rules/RULEBOOK.md` | `python3 scripts/rules_audit.py` |
 | Rules decisions and open questions | `engineering/OPEN_DECISIONS.md` | — |
 
 ## Conventions

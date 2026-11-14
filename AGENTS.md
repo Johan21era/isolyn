@@ -23,6 +23,14 @@ Never claim a strength improvement without a measured effect and its confidence
 interval. Never claim a test passed that was not run. Never call CI green when the
 jobs did not execute (see §7).
 
+**The rulebook outranks the code.** `docs/rules/RULEBOOK.md` is tier 0: it defines
+the game, and the implementation is judged against it. Where code and the rulebook
+disagree, the code is wrong — say so, and fix the code, not the document. A rule
+may not be changed by editing code: change the rulebook, then its assertion, then
+the implementation. `python3 scripts/rules_audit.py` enforces that every rule
+names real code and at least one real assertion, and that declared holes are
+visible.
+
 ---
 
 ## 1. The "Closeout Initiative" trigger
@@ -44,6 +52,7 @@ continuing. Do not skip a failing step and continue as if it passed.
 ./scripts/ci/test_bridge.sh        # expect: 2 executables, 73 checks, 0 failed
 swift build                        # expect: Build complete!
 swift test                         # expect: 75 tests, 1 skipped, 0 failures
+python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
 python3 scripts/docs_audit.py      # expect: RESULT: PASS
 ```
 

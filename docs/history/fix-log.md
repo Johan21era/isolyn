@@ -1488,3 +1488,44 @@ one-tile double-blank hand scores 10 to the winner. `./scripts/ci/test_bridge.sh
 made. Leaf evaluation heuristics (`EvaluationEngine` pip sums) deliberately still
 treat 0-0 as 0 pips -- that is a static evaluation weight, not the scoring rule,
 and changing it would alter playing strength with no measurement.
+
+## OPS-19 — The rulebook exists, and it is mechanically enforced
+
+**Scope.** Create the missing rulebook and make it tier 0: the authoritative
+statement of the game, against which the implementation is judged.
+
+**Why it was missing.** The rules came from two external documents ("Rules Spec",
+"Concept Spec") that were never committed. They survived only as twelve
+ambiguity resolutions in `history/legacy-handoff.md` §5.3. The test suite had
+therefore been written by reading the code, so every test agreed with the
+implementation -- including the double-blank-worth-zero mistake fixed in the
+preceding entry, which no test could have caught because no rule said otherwise.
+
+**What was built.**
+
+- `docs/rules/RULEBOOK.md` -- 28 numbered rules, each with a status, the code
+  that enforces it, and the single assertion that fails if the rule breaks.
+  Statuses: 24 `ENFORCED`, 1 `VARIANT` (voluntary draw), 1 `GAP`
+  (mandatory play is not enforced by `MatchController::endTurnWithNoPlay`), and
+  2 `OPEN` (the 1v1 One Domino Rule; all-doubles closes).
+- `scripts/rules_audit.py` -- fails when a rule has no assertion anchor, when an
+  anchor does not resolve to real text in a real test file, when named code does
+  not exist, when an ID is duplicated or the numbering skips, and when a
+  declared hole is absent from Known gaps. `--strict` fails if any gap remains.
+- Wired into `.github/workflows/ci.yml` (before the docs gate), `AGENTS.md` §0
+  and §2, and the `docs/README.md` authority table, where the rulebook now sits
+  at tier 0 above running code.
+
+**Evidence (literal).** `python3 scripts/rules_audit.py`:
+`RESULT: PASS — every enforced rule names real code and a real assertion; 3 declared hole(s)`,
+exit 0. The gate was then tested against four deliberately broken copies of the
+rulebook, each rejected with exit 1: a non-existent assertion anchor
+(`R-01: ... does not contain 'a test that does not exist'`), a hidden gap
+(`R-10: GAP rule is not listed under Known gaps`), a duplicate ID
+(`R-02: duplicate id`), and a missing code file
+(`R-09: Sources/IsolynEngine/NoSuchFile.cpp does not exist`).
+`python3 scripts/docs_audit.py`: `RESULT: PASS`.
+
+**Not done, deliberately.** R-10 is declared, not fixed: refusing the pass needs
+a bridge status the app can display rather than an `assert` that release builds
+discard. R-26 and R-27 need an owner ruling before any code.

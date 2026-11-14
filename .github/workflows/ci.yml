@@ -9,6 +9,10 @@ name: CI
 # The weekly scheduled job additionally re-runs the bridge fuzzer so
 # adversarial-input coverage stays fresh without slowing everyday merges.
 #
+# The rules gate runs before it: docs/rules/RULEBOOK.md is tier 0, so a rule
+# with no assertion, or a declared hole that went missing from Known gaps, is
+# a build failure rather than a review note.
+#
 # The documentation gate runs as its own cheap Linux job on every push and PR.
 # It fails on a broken link or docs/ path, a living document without a status
 # header, a document missing from the register, a history file without a
@@ -28,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Rulebook gate (every rule names real code and a real assertion)
+        run: python3 scripts/rules_audit.py
 
       - name: Documentation consistency (links, paths, status, register, stale figures)
         run: python3 scripts/docs_audit.py
