@@ -73,7 +73,7 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 
 | Claim | Home | Reproduce with |
 |---|---|---|
-| Engine checks (429, 19 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
+| Engine checks (432, 19 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
 | Bridge checks (73, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
 | Swift tests (75, 1 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
 | Sanitizer (502 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |

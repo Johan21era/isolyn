@@ -1143,3 +1143,35 @@ gate that OPS-10 recorded as missing and therefore **SKIPPED**.
   regenerated — it still records the pre-reorganisation tree. Code comments
   C24/C25 (`IsolynBridge.hpp`, `EngineSession.swift`) still contradict the
   documents and are left for an engineering pass.
+
+## OPS-12 — Closeout Initiative (2026-11-14: Overdrive closeout, graph refresh, push)
+
+**Scope:** close out the Project Overdrive round (E-020 – E-026), refresh the
+structural graph, and commit/push the whole tree.
+
+- **Verification sweep (macOS arm64, Apple silicon, 2026-11-14):**
+  - `./scripts/ci/test_engine.sh` → 19 executables, **432 checks passed, 0 failed**
+    (was 429; +3 are the new voluntary-draw contract checks in
+    `SearchEngineTests.cpp`).
+  - `./scripts/ci/test_bridge.sh` → 2 executables, **73 checks passed, 0 failed**
+  - `swift build` → `Build complete!`; `swift test` → **75 tests, 1 skipped,
+    0 failures** (same known vacuous skip, not counted as a pass)
+  - `python3 scripts/docs_audit.py` → **PASS**
+- **Strength state recorded this round:** parallel root search **+17.6 Elo**
+  (1v1); partnership weight **+15.8 Elo** (2v2, pooled n=15,000); depth ladder
+  5-vs-4 **+16.9**, 8-vs-5 **+20.9**; voluntary draws **+2.5 at depth 4, +9.4 at
+  depth 5, +44.3 at depth 8** (pooled n=1,207, two seeds). Full detail in
+  `docs/research/EXPERIMENT_REGISTRY.md`; nothing here is a shipped default
+  change.
+- **Graph refreshed (was stale from before the restructure):**
+  `graphify update . --force` → **2,381 nodes, 4,418 edges, 161 communities**;
+  `graph.json`, `graph.html` (the 3D view) and `GRAPH_REPORT.md` rebuilt. The
+  prior curated graph was auto-backed up to `graphify-out/2026-11-13/`.
+- **CI is RED and it is not the change.** Both jobs fail in under 50 seconds with
+  zero steps executed and no retrievable logs (`log not found`) on two
+  consecutive docs-only SHAs, while the three preceding SHAs were green and no
+  workflow file changed between them. Re-running reproduced the identical
+  instant failure. Recorded as runner infrastructure, NOT as a verified pass.
+- **Not done, deliberately:** the `SearchDecision::isDraw` bridge/app wiring —
+  the measured +44 Elo is unreachable until a draw is executable end-to-end, and
+  that is a cross-language ABI change that deserves its own pass. No tag cut.

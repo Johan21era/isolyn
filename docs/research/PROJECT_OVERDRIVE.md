@@ -26,7 +26,7 @@ does not pay.
 2. Fixed seeds, alternating seats, ≥1,000 games before believing anything.
 3. Report the CI, not just the win rate. A 52% result with a ±20 Elo interval is
    not a result.
-4. Correctness suites run before any strength number is trusted: 429 engine
+4. Correctness suites run before any strength number is trusted: 432 engine
    checks, 73 bridge checks, 75 Swift tests.
 5. Never overwrite the baseline configuration that produced a published number.
 
@@ -43,7 +43,7 @@ does not pay.
 | Draws on vs off **at depth 8** | **+44.3 Elo**, 95% CI [+24.6, +64.2], n=1,207, two seeds |
 | 2v2 vs the old 0.25 partnership weight | **+15.8 Elo**, 95% CI [+10.2, +21.3], pooled n=15,000 across 5 seeds |
 | 1v1 control for the 2v2 weight change | −1.0 Elo [−16.3, +14.2] — no effect, as constructed |
-| Correctness | 429 engine, 73 bridge, 75 Swift — all passing |
+| Correctness | 432 engine, 73 bridge, 75 Swift — all passing |
 
 ## What is known to be weak
 
