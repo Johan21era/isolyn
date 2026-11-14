@@ -38,15 +38,15 @@ final class BoardLayoutTests: XCTestCase {
 
     // MARK: - compute() — structure
 
-    func test_compute_singleTile_placesExactlyOneAndNeverTriggersAutoFit() {
+    func test_compute_singleTile_placesExactlyOneAndUsesTheTable() {
         let m = SnakeChainLayout.compute(
             orientedTiles: [SnakeChainLayout.Oriented(left: 6, right: 4, isDouble: false)],
             availableSize: CGSize(width: 800, height: 500))
         XCTAssertEqual(m.placed.count, 1)
         XCTAssertNotNil(m.headPosition, "an open head end exists even for a one-tile chain")
         XCTAssertNotNil(m.tailPosition)
-        XCTAssertEqual(m.suggestedScale, 1, accuracy: 0.0001,
-                       "a lone tile must never trigger auto-fit scaling")
+        XCTAssertEqual(m.suggestedScale, SnakeChainLayout.maxScale, accuracy: 0.0001,
+                       "a lone tile grows to fill the table rather than sitting tiny")
     }
 
     func test_compute_turn_isMadeByTheCurrentTile_acrossTheIncomingRun() {
@@ -162,10 +162,17 @@ final class BoardLayoutTests: XCTestCase {
 
     // MARK: - fitScale()
 
-    func test_fitScale_isExactlyOneWhileContentFits() {
-        let s = SnakeChainLayout.fitScale(contentWidth: 400, contentHeight: 300,
-                                          availableSize: CGSize(width: 800, height: 500))
-        XCTAssertEqual(s, 1, accuracy: 0.0001)
+    func test_fitScale_growsIntoSlackButNeverPastMaximum() {
+        // Content that fits is enlarged to use the table; the tighter axis governs:
+        // height 0.94 × 500 / 300 = 1.567 beats width 0.94 × 800 / 400 = 1.88.
+        let fits = SnakeChainLayout.fitScale(contentWidth: 400, contentHeight: 300,
+                                             availableSize: CGSize(width: 800, height: 500))
+        XCTAssertEqual(fits, 0.94 * 500 / 300, accuracy: 0.001)
+
+        // Growth is capped: a tiny element on a huge plane does not inflate forever.
+        let tiny = SnakeChainLayout.fitScale(contentWidth: 20, contentHeight: 10,
+                                             availableSize: CGSize(width: 4000, height: 3000))
+        XCTAssertEqual(tiny, SnakeChainLayout.maxScale, accuracy: 0.0001)
     }
 
     func test_fitScale_engagesPastThreshold_coversTighterAxis_floorsAtMinimum() {

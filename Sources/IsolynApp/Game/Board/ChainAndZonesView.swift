@@ -262,7 +262,7 @@ private struct SnakeChainBoard: View {
         }
         .onAppear {
             #if DEBUG
-            LayoutProbe.record(availableSize: availableSize,
+            LayoutProbe.shared.record(availableSize: availableSize,
                                tileCount: metrics.placed.count,
                                scale: metrics.suggestedScale,
                                content: CGSize(width: metrics.contentWidth,
@@ -287,6 +287,16 @@ private struct SnakeChainBoard: View {
         .onChange(of: snapshot.stateVersion) { _, _ in hoverTracker.clearAll() }
         .onChange(of: camera.offsetX) { _, _ in hoverTracker.clearAll() }
         .onChange(of: camera.offsetY) { _, _ in hoverTracker.clearAll() }
+        .onChange(of: metrics.placed.count) { _, _ in
+            #if DEBUG
+            LayoutProbe.shared.record(availableSize: availableSize,
+                               tileCount: metrics.placed.count,
+                               scale: metrics.suggestedScale,
+                               content: CGSize(width: metrics.contentWidth,
+                                               height: metrics.contentHeight),
+                               placed: metrics.placed.map { ($0.x, $0.y, $0.vertical) })
+            #endif
+        }
         .onDisappear { hoverTracker.clearAll() }
     }
 
@@ -387,6 +397,10 @@ enum SnakeChainLayout {
     /// Auto-fit floor -- never shrink tiles past readability (§17 order:
     /// reduce spacing, reduce scale WITHIN LIMITS, then pan).
     static let minScale: CGFloat = 0.62
+
+    /// The board also grows to use the table it has. Without this a short
+    /// chain sat as a small block in the middle of a wide window.
+    static let maxScale: CGFloat = 1.9
 
     /// Walks the raw chain left-to-right, flipping each tile to match its
     /// neighbour so displayed pips physically touch. Orientation is never
@@ -584,7 +598,7 @@ enum SnakeChainLayout {
         guard contentWidth > 0, contentHeight > 0 else { return 1 }
         let widthRatio = availableSize.width * fitThreshold / contentWidth
         let heightRatio = availableSize.height * fitThreshold / contentHeight
-        return min(1, max(minScale, widthRatio), max(minScale, heightRatio))
+        return min(maxScale, max(minScale, widthRatio), max(minScale, heightRatio))
     }
 }
 
