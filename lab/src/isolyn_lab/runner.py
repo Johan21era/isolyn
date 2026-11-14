@@ -259,8 +259,16 @@ def _execute(args: argparse.Namespace) -> int:
         "seed": args.seed,
         "shards": shard_count,
         "games_per_shard": per_shard,
-        "opponent_depth": args.opponent_depth,
-        "opponent_determinizations": args.opponent_determinizations,
+        # The C++ harness defaults side B to 4 / 20, not to side A's values.
+        # Left alone, a "depth 8 / 64 self-play" run would really be 8/64 against
+        # 4/20: half its moves weaker, and its Elo report a config comparison
+        # rather than self-play. Resolve B to A unless the caller says otherwise.
+        "opponent_depth": args.opponent_depth if args.opponent_depth is not None else args.depth,
+        "opponent_determinizations": (
+            args.opponent_determinizations
+            if args.opponent_determinizations is not None
+            else args.determinizations
+        ),
         "opponent_workers": args.opponent_workers,
         "time_ms": args.time_ms,
         "voluntary_draw": args.voluntary_draw,

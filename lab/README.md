@@ -69,12 +69,28 @@ finish.
 ./scripts/lab status 1v1-d8x64-n5000000-s1
 ./scripts/lab list
 ./scripts/lab merge 1v1-d8x64-n5000000-s1
+
+# Calibration reports: one or several CSVs in a single run.
+./scripts/lab evaluate --json \
+  --input lab/data/runs/a/merged.csv \
+  --input lab/data/runs/b/merged.csv
 ```
 
-Measured on the development M3 at depth 8 / 64 determinizations: ~33 games/s
-with four parallel shards and ~43 games/s with eight single-worker shards. Five
-million games is therefore roughly 32 hours and about 9.5 GB of CSV (~1.95 KB per
-game).
+`evaluate --json` is what the app's **Analyses** tab reads: an array with one
+report per input (games, decisions, outcomes, per-player win rates with Wilson
+intervals, Elo with a confidence interval when both sides are present, and the
+starting-hand correlations). Without `--json` the same report prints as text.
+
+Measured on the development M3 with **both sides** at depth 8 / 64
+determinizations: ~23 games/s with eight single-worker shards. Five million games
+is therefore roughly 61 hours and about 9.5 GB of CSV (~1.95 KB per game).
+
+**Side B defaults to side A.** The C++ harness on its own defaults the opponent
+to depth 4 / 20 samples, which silently makes a "depth 8 / 64 self-play" run a
+comparison of two configurations — half its moves weaker. The runner passes B's
+configuration explicitly, resolving it to A unless `--opponent-depth` or
+`--opponent-determinizations` says otherwise. Earlier throughput numbers taken
+before this was fixed were measured against the weaker default and were too fast.
 
 - Run ids default to `<mode>-d<depth>x<det>-n<games>-s<seed>`, so re-issuing the
   same command **resumes** the same run instead of starting a second one.

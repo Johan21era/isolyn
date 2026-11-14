@@ -1828,3 +1828,64 @@ per the append-only rule.
 **Still not done.** No click-through of the native screen: this machine has no
 UI-automation harness attached to the app, so the render test is the strongest
 check available without a human at the window.
+
+## OPS-27 — Analyses in the app, and the opponent default they exposed
+
+**Scope.** Make the lab technical but readable in the app, add multi-report
+calibration analyses, and fix a real configuration trap the first analysis
+report exposed. No engine rules changed.
+
+### The finding
+
+The first JSON report showed every CSV carrying `config B: depth=4,
+determinizations=20` when the runner had been asked for depth 8 / 64. The cause
+is in the C++ harness: `opponentDepth` and `opponentDeterminizations` default to
+**4 and 20**, not to side A's values, and its `--help` claimed otherwise. Every
+run before this fix was therefore 8/64 against 4/20 — half its moves searched by
+a weaker configuration — and the `+29.6` and `+38.0` Elo figures those reports
+produced were that mismatch, not noise.
+
+Fixes:
+
+- `lab/src/isolyn_lab/runner.py` resolves side B to side A unless the caller
+  passes `--opponent-depth` / `--opponent-determinizations`, and always sends
+  both explicitly.
+- `tools/selfplay/main.cpp` now states the real defaults in `--help`
+  (`default: 4, NOT --depth`, `20, NOT --determinizations`).
+
+**This invalidates the throughput numbers in OPS-24.** Those were measured with
+the weaker default. Re-measured with both sides at 8/64: **22.7 games/s** with
+eight single-worker shards, so 5M games is ~61 hours, not ~32.
+
+### Analyses
+
+- `calibration.report_to_dict` emits one JSON object per input: games, decisions,
+  outcomes, per-player win rate with a Wilson interval, side-by-side Elo with its
+  interval when both sides played equal games, and the starting-hand Spearman
+  correlations.
+- `isolyn-lab evaluate --input` is now repeatable and `--json` emits an array, so
+  **one process analyzes several CSVs**. Text mode is unchanged.
+- The app's **Analyses** tab lists finished runs, lets several be selected, sends
+  them in one call, and renders one card per input: a plain-language summary, a
+  monospaced participant table, the Elo line and the correlations. Asymmetric
+  inputs are called out explicitly rather than presented as Elo.
+
+### Technical but friendly
+
+The screen is split into **Runs** and **Analyses**. Plain-language labels sit
+next to monospaced detail (run ids, d8/64 notation, shard counts), every
+stepper has a tooltip explaining the term, presets carry a duration estimate,
+and nothing technical is hidden behind a mode switch — the detail is simply
+quieter than the action.
+
+### Evidence (literal)
+
+- `./scripts/lab evaluate --json --input smoke-400/merged.csv --input
+  kill-900/merged.csv`: `reports: 2`, e.g. `1v1 games=400 decisions=6801
+  outcomes={'closed': 88, 'domino': 312}`.
+- Symmetric check: `0,77,1v1,8,64,8,64` in the CSV, and the app's end-to-end
+  test asserts `configB.depth == 2` after a symmetric run.
+- `8x50 symmetric wall: 17.60 s -> 22.7 games/s; 5M at this rate: 61.1 h`.
+- `swift test`: `Executed 98 tests, with 0 failures`.
+- Python lab tests: `Ran 5 tests ... OK`.
+- `test_hundredAnalysisPressesLaunchOneProcess`: 100 presses → 1 process.

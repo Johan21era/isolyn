@@ -210,6 +210,65 @@ def analyze(games: list[GameRecord]) -> CalibrationReport:
     )
 
 
+def report_to_dict(report: CalibrationReport, mode: str, input_path: str | None = None) -> dict:
+    """Machine-readable report, used by the app's Analyses tab.
+
+    Floats stay unrounded here; formatting is the caller's business, and rounding
+    a confidence interval before display would be a quiet loss of information.
+    """
+
+    def stats(entry: ParticipantStats, label: str) -> dict:
+        low, high = wilson_interval(entry.wins, entry.games)
+        return {
+            "label": label,
+            "games": entry.games,
+            "wins": entry.wins,
+            "win_rate": entry.win_rate,
+            "win_low": low,
+            "win_high": high,
+            "average_points": entry.average_points,
+            "average_initial_pips": entry.average_initial_pips,
+        }
+
+    payload = {
+        "input": input_path,
+        "mode": mode,
+        "games": report.games,
+        "decisions": report.decisions,
+        "outcomes": report.outcomes,
+        "config_a": {"depth": report.config_a[0], "determinizations": report.config_a[1]},
+        "config_b": {"depth": report.config_b[0], "determinizations": report.config_b[1]},
+        "participants": [
+            stats(entry, participant_label(mode, entry.participant))
+            for entry in report.participants
+        ],
+        "sides": [
+            stats(entry, "A" if entry.participant == 0 else "B")
+            for entry in report.sides
+        ],
+        "spearman": {
+            "initial_vs_points": report.initial_vs_points,
+            "initial_vs_win": report.initial_vs_win,
+            "samples": report.correlation_samples,
+        },
+        "elo": None,
+    }
+    if (
+        len(report.sides) == 2
+        and report.sides[0].games == report.sides[1].games
+        and report.sides[0].games > 0
+    ):
+        side_a = report.sides[0]
+        payload["elo"] = {
+            "a_vs_b": report.elo_a_vs_b,
+            "low": report.elo_low,
+            "high": report.elo_high,
+            "games": side_a.games,
+            "score_a": side_a.wins / side_a.games,
+        }
+    return payload
+
+
 def render(report: CalibrationReport, mode: str = "unknown") -> str:
     lines = [
         "Isolyn calibration report",

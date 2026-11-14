@@ -82,3 +82,27 @@ class CalibrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class ReportDictTests(unittest.TestCase):
+    def test_report_to_dict_is_json_serializable(self) -> None:
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "selfplay.csv"
+            path.write_text(
+                HEADER
+                + "0,7,1v1,domino,0,2,10,20,0,0,0,20,0,0,0,10,0,0\n"
+                + "1,7,1v1,closed,1,2,15,5,0,0,15,0,0,0,8,0,0,0\n",
+                encoding="utf-8",
+            )
+            report = calibration.analyze(dataset.load_games(path))
+            payload = calibration.report_to_dict(report, mode="1v1", input_path=str(path))
+
+        encoded = json.dumps(payload)
+        self.assertIn('"participants"', encoded)
+        self.assertEqual(payload["games"], 2)
+        self.assertEqual(payload["mode"], "1v1")
+        self.assertEqual(len(payload["participants"]), 2)
+        self.assertEqual(payload["spearman"]["samples"], 4)
+        # This fixture has no side columns, so there is no head-to-head Elo.
+        self.assertIsNone(payload["elo"])

@@ -7,6 +7,7 @@ struct IsolynApp: App {
     // Owned at app scope so a run keeps its handle while the owner moves
     // between screens; a per-view service would lose the ability to stop it.
     @State private var labService = LabService()
+    @State private var analysisService = LabAnalysisService()
 
     public init() {}
 
@@ -16,6 +17,7 @@ struct IsolynApp: App {
                 .environment(appState)
                 .environment(environmentManager)
                 .environment(labService)
+                .environment(analysisService)
                 .frame(minWidth: IsolynLayout.minWindowWidth,
                        minHeight: IsolynLayout.minWindowHeight)
                 .background(IsolynTheme.ebony)

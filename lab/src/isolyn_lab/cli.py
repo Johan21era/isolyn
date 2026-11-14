@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -24,7 +25,17 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         sub = subparsers.add_parser(command, help=help_text)
         sub.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-        sub.add_argument("--input", type=Path, help="self-play CSV to analyze (evaluate only)")
+        sub.add_argument(
+            "--input",
+            type=Path,
+            action="append",
+            help="self-play CSV to analyze (evaluate only); repeat for several analyses",
+        )
+        sub.add_argument(
+            "--json",
+            action="store_true",
+            help="emit machine-readable JSON instead of a text report",
+        )
         sub.add_argument(
             "--dry-run",
             action="store_true",
@@ -33,8 +44,44 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _evaluate(args: argparse.Namespace) -> int:
+    inputs: list[Path] = args.input or []
+    if not inputs:
+        print("evaluate requires --input PATH (repeat the flag to analyze several CSVs)", file=sys.stderr)
+        return 2
+
+    reports = []
+    for path in inputs:
+        try:
+            games = dataset.load_games(path)
+        except (OSError, ValueError) as exc:
+            print(f"could not read {path}: {exc}", file=sys.stderr)
+            return 2
+        mode = games[0].mode if games else "unknown"
+        reports.append((path, mode, calibration.analyze(games)))
+
+    if args.json:
+        payload = [
+            calibration.report_to_dict(report, mode=mode, input_path=str(path.resolve()))
+            for path, mode, report in reports
+        ]
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    for index, (path, mode, report) in enumerate(reports):
+        if index:
+            print()
+        print(f"isolyn-lab: evaluate  {path}")
+        print(calibration.render(report, mode=mode))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.command == "evaluate" and not args.dry_run:
+        return _evaluate(args)
+
     print(f"isolyn-lab: {args.command}")
     print(f"config: {args.config}")
 
@@ -45,19 +92,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "selfplay":
         print(f"build the C++ harness: {ROOT / 'tools' / 'selfplay' / 'build.sh'}")
         print(f"then run: {SELFPLAY} --help")
-    elif args.command == "evaluate":
-        if args.input is None:
-            print("evaluate requires --input PATH (a tools/selfplay CSV)", file=sys.stderr)
-            return 2
-        try:
-            games = dataset.load_games(args.input)
-            report = calibration.analyze(games)
-        except (OSError, ValueError) as exc:
-            print(f"could not read {args.input}: {exc}", file=sys.stderr)
-            return 2
-        mode = games[0].mode if games else "unknown"
-        print(calibration.render(report, mode=mode))
-        return 0
     else:
         print("This command will consume tools/selfplay output. No trainer exists yet.")
 
