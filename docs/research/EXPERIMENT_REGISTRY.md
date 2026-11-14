@@ -314,6 +314,33 @@ under-weighted by an order of magnitude, and that fixing that is worth ~16 Elo
 in 2v2. It does **not** say 2v2 now converts search effort into wins: the
 compute null (E-011, E-022) was a separate finding, and nothing here re-tests it.
 
+## E-024 — Voluntary draw in the tree: attempted, invalid, reverted (NEGATIVE)
+
+- **Hypothesis.** A draw is legal whenever the boneyard is non-empty
+  (`bridge_voluntary_draw` checks only that, plus round-in-progress), it does not
+  consume the turn, and it is absent from the game tree. If drawing were a real
+  strategic option, putting it in the tree should find value.
+- **Implementation tried.** `Config::maxVoluntaryDraws`; a draw branch in
+  `searchZeroSum` that draws inside the sampled world (where the tile is known
+  exactly) and continues with the **same** player to move, so its score is not
+  negated the way a placement's is. Depth bounds the chain; 0 = off.
+- **Result.** 400 rounds, 1v1, draw-enabled vs shipped: **−38.4 Elo
+  [−72.6, −4.2]**. 429 engine checks still passed.
+- **Why the number is meaningless.** `SearchEngine` returns a `Move` — tile +
+  side — and `MoveDTO` has no draw variant. A draw can therefore never be the
+  returned action. The branch changed leaf scores without giving the engine any
+  way to act on them, so the root compared placements against a score it could
+  not execute, and chose worse. The loss measures a corrupted decision, not the
+  value of drawing.
+- **The real finding.** The blocker is the **decision contract**, not the tree.
+  Modelling this action requires a decision type that can express "draw",
+  propagation through the bridge and the app's Draw affordance, and only then a
+  tournament. Scoring it inside a move-only contract is not a valid experiment.
+- **Verdict.** REVERTED (`git checkout` of all three files; tree clean at
+  `885b65f`). Recorded so the same dead end is not re-entered, and so E-018's
+  "missing action" claim is read correctly: the action is missing from the
+  *interface*, which is why it has never been searchable.
+
 ## Strategic conclusion after E-007 – E-019
 
 Three experiments now agree on one thing: **scaling compute is finished as a
