@@ -286,7 +286,8 @@ documented number to match a broken run.
 
 - **No current strength claim exists.** The rulebook changed on 2026-11-14
   (scoring, hand values, 1v1v1 threshold) and every earlier figure measures a
-  different game. Those numbers are marked SUPERSEDED in `docs/research/`.
+  different game. Those numbers are stamped **VOID** in `docs/research/` — do
+  not cite them, and do not build on them.
 - **Only `docs/research/STRENGTH_BASELINE.md` may carry a strength claim**, and
   only stamped with the rules version it was measured under.
   `scripts/rules_audit.py` fails any research document that quotes Elo without

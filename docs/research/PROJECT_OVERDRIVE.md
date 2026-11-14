@@ -1,18 +1,32 @@
-# Project Overdrive — Research Journal
+# Project Overdrive — Research Journal (VOID)
+**Status: VOID — pre-rulebook measurements, not a claim about the current engine.**
 
-> **SUPERSEDED 2026-11-14.** Every strength figure in this file was measured
-> under the pre-rulebook rules. None of them is a claim about the current
-> engine. They are kept because a deleted measurement cannot be audited, not
-> because they still hold. See [`../rules/RULEBOOK.md`](../rules/RULEBOOK.md).
+> ## ⛔ VOID — DO NOT CITE, DO NOT BUILD ON
+>
+> **Every number in this file was measured under the pre-rulebook rules**, before
+> the owner's rulebook (RULES_VERSION 1) took effect on 2026-11-14. They are void
+> because the game they measured no longer exists:
+>
+> - **Scoring inverted.** The winner is now credited with the loser's total
+>   (R-03, R-05); these runs let the losing hand accumulate its own points, so
+>   every closing decision in them was optimised against the opposite incentive.
+> - **The evaluator changed.** `ClosingOpportunityHeuristic` had its sign flipped
+>   when `roundScores` changed meaning, so the engine in these runs is not the
+>   engine in the tree.
+> - **Hand values changed.** A lone double blank is now worth ten (R-19).
+> - **1v1v1 changed.** It plays to 151, not 101 (R-06), and eliminates a player
+>   into a carried-points 1v1 (R-22).
+> - **Draws changed.** The rulebook allows unlimited draws per turn (R-15); these
+>   runs capped a turn at one.
+>
+> These results are **not reproducible from the current tree**, and none of them
+> is a strength claim about the current engine. They are retained only so this
+> reset can be audited. Current claims belong to
+> [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) and nowhere else.
+>
+> **Rules version at measurement: PRE-RULEBOOK (void).**
 
-**Rules version:** PRE-RULEBOOK
-
-
-**Status:** living research journal (tier 2). Started 2026-11-14. This is the
-entry point for the strength programme; it records what is true *now*, not what
-was hoped for. Measured figures live in `docs/research/BENCHMARK_BASELINE.md`,
-per-change records in `docs/research/EXPERIMENT_REGISTRY.md`, and the GPU audit
-in `docs/research/METAL_INTEGRATION.md`.
+**Rules version:** PRE-RULEBOOK — VOID
 
 **Why four files instead of ten.** The original mission brief named ten journal
 files (RESEARCH_LOG, ARCHITECTURE_MAP, NEXT_ACTIONS, KNOWN_LIMITATIONS and so
@@ -39,6 +53,8 @@ does not pay.
 5. Never overwrite the baseline configuration that produced a published number.
 
 ## Current champion
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | Field | Value |
 |---|---|
@@ -140,6 +156,8 @@ still a thin model of a teammate — the compute null is untouched by the fix.
 
 ## Next actions, in order
 
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
+
 | # | Action | Why it is next |
 |---|---|---|
 | 1 | **Wire the draw action through the bridge and app** | worth **+44.3 Elo at the shipped elite horizon** (E-026) wired end to end in OPS-14 (bridge `isDraw`, analysis `maxVoluntaryDraws = 1`, app plays the draw) |
@@ -163,3 +181,14 @@ sampling operating point; raising it would cost latency and buy nothing.
   promoting any change to the champion.
 - Worker count changes decisions (each lane owns its table), so reproducible
   comparisons must pin `workerThreads`.
+
+---
+
+## ⛔ Everything above this line is VOID
+
+Every measurement in this file predates the 2026-11-14 rulebook and describes a
+game that is no longer played: scoring inverted, the closing heuristic changed
+sign, hand values changed, 1v1v1 changed shape, and draws were capped. It is kept
+for audit only. Cite [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) instead — and
+if that file has no result under the current rules hash, then there is no
+strength claim to cite at all.

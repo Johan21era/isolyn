@@ -55,7 +55,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `roadmaps/strategy-roadmap.md` | Seven-phase plan of record | Plan (partially executed) | 2026-11-13 |
 | `research/PROJECT_OVERDRIVE.md` | Strength programme charter, champion, next actions | Living journal | 2026-11-14 |
 | `research/STRENGTH_BASELINE.md` | **The only home for playing-strength claims**, stamped with the rules version they were measured under | Living measurements | 2026-11-14 |
-| `research/BENCHMARK_BASELINE.md` | Pre-rulebook ladder and timings — superseded, kept for audit | Superseded measurements | 2026-11-14 |
+| `research/BENCHMARK_BASELINE.md` | Pre-rulebook ladder and timings — **VOID**, kept for audit only | VOID measurements | 2026-11-14 |
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | **Current factual baseline** | Authoritative | 2026-11-13 |

@@ -2,8 +2,8 @@
 
 > **Status: living measurement record (tier 2). Started 2026-11-14, empty on
 > purpose.** The rulebook changed on 2026-11-14 and every earlier strength figure
-> became a measurement of a different game. Those live on as superseded history
-> in `PROJECT_OVERDRIVE.md`, `EXPERIMENT_REGISTRY.md` and
+> became a measurement of a different game. Those live on deliberately stamped
+> **VOID** in `PROJECT_OVERDRIVE.md`, `EXPERIMENT_REGISTRY.md` and
 > `BENCHMARK_BASELINE.md`; none of them may be quoted as current.
 
 **Rules version:** `9ce8aee81a8a8d24f3b4a91638ebc62e70350ce44843611c975c6c8a30dd9d74`

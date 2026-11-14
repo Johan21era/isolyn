@@ -1,18 +1,36 @@
-# Benchmark Baseline
+# Benchmark Baseline (VOID)
+**Status: VOID — pre-rulebook measurements, not a claim about the current engine.**
 
-> **SUPERSEDED 2026-11-14.** Every strength figure in this file was measured
-> under the pre-rulebook rules. None of them is a claim about the current
-> engine. They are kept because a deleted measurement cannot be audited, not
-> because they still hold. See [`../rules/RULEBOOK.md`](../rules/RULEBOOK.md).
+> ## ⛔ VOID — DO NOT CITE, DO NOT BUILD ON
+>
+> **Every number in this file was measured under the pre-rulebook rules**, before
+> the owner's rulebook (RULES_VERSION 1) took effect on 2026-11-14. They are void
+> because the game they measured no longer exists:
+>
+> - **Scoring inverted.** The winner is now credited with the loser's total
+>   (R-03, R-05); these runs let the losing hand accumulate its own points, so
+>   every closing decision in them was optimised against the opposite incentive.
+> - **The evaluator changed.** `ClosingOpportunityHeuristic` had its sign flipped
+>   when `roundScores` changed meaning, so the engine in these runs is not the
+>   engine in the tree.
+> - **Hand values changed.** A lone double blank is now worth ten (R-19).
+> - **1v1v1 changed.** It plays to 151, not 101 (R-06), and eliminates a player
+>   into a carried-points 1v1 (R-22).
+> - **Draws changed.** The rulebook allows unlimited draws per turn (R-15); these
+>   runs capped a turn at one.
+>
+> These results are **not reproducible from the current tree**, and none of them
+> is a strength claim about the current engine. They are retained only so this
+> reset can be audited. Current claims belong to
+> [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) and nowhere else.
+>
+> **Rules version at measurement: PRE-RULEBOOK (void).**
 
-**Rules version:** PRE-RULEBOOK
-
-
-**Status:** living measurement record (tier 2). All figures below were produced
-on the machine described, with the seed and game count stated. Re-measure before
-quoting; a number without its seed is not a number.
+**Rules version:** PRE-RULEBOOK — VOID
 
 ## Environment
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | Field | Value |
 |---|---|
@@ -27,6 +45,8 @@ quoting; a number without its seed is not a number.
 A configuration is `depth/determinizations`. These are the six
 `DifficultyModel` profiles plus the sequential control.
 
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
+
 | Name | Depth | Determinizations | Notes |
 |---|---:|---:|---|
 | 2/8 | 2 | 8 | weakest tier (strength 100–400) |
@@ -40,6 +60,8 @@ A configuration is `depth/determinizations`. These are the six
 ## Measured 1v1 ladder (seed 42, alternating seats, no time cap)
 
 Positive Elo favours side A. Intervals are 95%.
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | A vs B | Games | A wins | A score | Elo(A) | 95% CI | Resolved? |
 |---|---:|---:|---:|---:|---|---|
@@ -64,6 +86,8 @@ result was a 400-game sample of a small effect.
 
 ## Timing
 
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
+
 | Workload | Games | Wall | Notes |
 |---|---:|---:|---|
 | 2/8 vs 3/16 | 1,000 | 1.97 s | |
@@ -80,6 +104,8 @@ sequential path (per-lane tables hold fewer entries, so fewer hits).
 
 Until 2026-11-14 every strength claim in this repository was 1v1-only. These are
 the first measured multiplayer baselines.
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | Mode | A seats | A wins | A seat win% | B seats | B wins | B seat win% | Wall |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -104,3 +130,14 @@ Read these with care:
 At depth 4 over 1,000 games: ~17 decisions per round, 79% of rounds decided by a
 Domino (emptied hand) rather than a Close, and first-player advantage is small —
 player 1 wins 50.3–50.5%, so seat does not mask a strength difference.
+
+---
+
+## ⛔ Everything above this line is VOID
+
+Every measurement in this file predates the 2026-11-14 rulebook and describes a
+game that is no longer played: scoring inverted, the closing heuristic changed
+sign, hand values changed, 1v1v1 changed shape, and draws were capped. It is kept
+for audit only. Cite [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) instead — and
+if that file has no result under the current rules hash, then there is no
+strength claim to cite at all.

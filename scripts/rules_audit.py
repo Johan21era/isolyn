@@ -208,7 +208,7 @@ def main() -> int:
             head = "\n".join(raw.splitlines()[:15])
             if "Rules version:" not in raw:
                 failures["strength-stamp"].append(f"{rel}: quotes Elo but declares no Rules version")
-            elif digest not in raw and "SUPERSEDED" not in head:
+            elif digest not in raw and "VOID" not in head and "SUPERSEDED" not in head:
                 failures["strength-stamp"].append(
                     f"{rel}: cites a stale rules version and is not marked SUPERSEDED"
                 )

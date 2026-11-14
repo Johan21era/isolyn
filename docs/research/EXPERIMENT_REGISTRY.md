@@ -1,16 +1,32 @@
-# Experiment Registry
+# Experiment Registry (VOID)
+**Status: VOID — pre-rulebook measurements, not a claim about the current engine.**
 
-> **SUPERSEDED 2026-11-14.** Every strength figure in this file was measured
-> under the pre-rulebook rules. None of them is a claim about the current
-> engine. They are kept because a deleted measurement cannot be audited, not
-> because they still hold. See [`../rules/RULEBOOK.md`](../rules/RULEBOOK.md).
+> ## ⛔ VOID — DO NOT CITE, DO NOT BUILD ON
+>
+> **Every number in this file was measured under the pre-rulebook rules**, before
+> the owner's rulebook (RULES_VERSION 1) took effect on 2026-11-14. They are void
+> because the game they measured no longer exists:
+>
+> - **Scoring inverted.** The winner is now credited with the loser's total
+>   (R-03, R-05); these runs let the losing hand accumulate its own points, so
+>   every closing decision in them was optimised against the opposite incentive.
+> - **The evaluator changed.** `ClosingOpportunityHeuristic` had its sign flipped
+>   when `roundScores` changed meaning, so the engine in these runs is not the
+>   engine in the tree.
+> - **Hand values changed.** A lone double blank is now worth ten (R-19).
+> - **1v1v1 changed.** It plays to 151, not 101 (R-06), and eliminates a player
+>   into a carried-points 1v1 (R-22).
+> - **Draws changed.** The rulebook allows unlimited draws per turn (R-15); these
+>   runs capped a turn at one.
+>
+> These results are **not reproducible from the current tree**, and none of them
+> is a strength claim about the current engine. They are retained only so this
+> reset can be audited. Current claims belong to
+> [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) and nowhere else.
+>
+> **Rules version at measurement: PRE-RULEBOOK (void).**
 
-**Rules version:** PRE-RULEBOOK
-
-
-**Status:** living record (tier 2). One row per experiment. A change that was
-measured and rejected is recorded here with the same care as one that was kept —
-the rejected list is what stops the same idea being re-tried in six months.
+**Rules version:** PRE-RULEBOOK — VOID
 
 Verdicts: **ACCEPTED** (promoted to champion), **REJECTED** (measured, reverted),
 **INCONCLUSIVE** (underpowered; do not promote).
@@ -174,6 +190,8 @@ Search now accepts evaluation overrides, so individual components can be
 removed and measured. All runs: 2,000 games, depth 4, 64 samples, 8 workers,
 seed 42, against the default weights.
 
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
+
 | Ablation | Elo (A vs default) | 95% CI | Verdict |
 |---|---:|---|---|
 | `tempo=0` (default 0.1) | −6.6 | [−21.8, +8.6] | no effect |
@@ -196,6 +214,8 @@ gate fixed in advance.
 
 Reading the per-move component columns already logged by the harness, over 6,793
 decisions at depth 4/64:
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | Component | Mean | SD | Zero share |
 |---|---:|---:|---:|
@@ -245,6 +265,8 @@ of winning chance between "threat exists" and "threat does not".
 - **Result.** A wins 53.9%, **+27.4 Elo, 95% CI [+14.9, +39.9]** — resolved.
 - **Loss analysis (the point of the run).** Splitting the rounds A lost:
 
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
+
 | Slice | A win rate |
 |---|---|
 | A in seat 0 | 54.3% |
@@ -263,6 +285,8 @@ moving first. Against a weaker opponent the win rate is a flat ~54% everywhere.
 - **Hypothesis.** If the champion undervalues a concept, an opponent weighted
   hard toward it should beat it.
 - **Measured.** 2,000 rounds each at seed 777, champion vs a style opponent:
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | Style opponent | A score | Elo | 95% CI |
 |---|---:|---:|---|
@@ -297,6 +321,8 @@ engine represents the partnership — not in how hard it searches.
   negligible, scaling it should convert into wins where compute could not.
 - **Method.** 2v2, depth 4, 64 samples, 8 workers, 3,000 rounds per point, one
   sweep of the weight against the 0.25 default.
+
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
 
 | `teamSupport` | Elo vs old default | 95% CI |
 |---|---:|---|
@@ -410,6 +436,8 @@ Both generalisations were wrong.
 Three experiments now agree on one thing: **scaling compute is finished as a
 strength lever for this engine.**
 
+**⛔ VOID (pre-rulebook) — the row below is not a current result and must not be cited.**
+
 | Lever | Measured marginal return |
 |---|---|
 | 20 → 64 worlds | +17.6 Elo (E-004) — the last real sampling gain |
@@ -426,3 +454,14 @@ nodes per second. That is where the next tranche of work belongs: calibrate the
 eight weights against tournament results, add a tactical-stability pass to stop
 the odd/even horizon wobble that deeper search appears to amplify, and only then
 revisit depth.
+
+---
+
+## ⛔ Everything above this line is VOID
+
+Every measurement in this file predates the 2026-11-14 rulebook and describes a
+game that is no longer played: scoring inverted, the closing heuristic changed
+sign, hand values changed, 1v1v1 changed shape, and draws were capped. It is kept
+for audit only. Cite [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) instead — and
+if that file has no result under the current rules hash, then there is no
+strength claim to cite at all.

@@ -1652,3 +1652,40 @@ are ~53 s per 1,000 rounds at depth 4 and ~230 s per 1,000 at depth 8. Ten milli
 rounds is therefore on the order of six days at depth 4 and four weeks at depth 8,
 not an overnight run. Tomorrow should start with a 1,000-round timing run, then
 choose N from the measured rate and run in seeded chunks.
+
+## OPS-23 — Old measurements stamped VOID, repeatedly and with reasons
+
+**Scope.** The three pre-rulebook research documents are stamped VOID rather than
+merely "superseded", at every point where a reader could encounter a number.
+
+**How it is stamped.** In each of `PROJECT_OVERDRIVE.md`, `EXPERIMENT_REGISTRY.md`
+and `BENCHMARK_BASELINE.md`:
+
+- the title carries `(VOID)`;
+- a `Status: VOID` line sits directly under the title;
+- a banner headed "⛔ VOID — DO NOT CITE, DO NOT BUILD ON" gives the reasons;
+- a marker line sits above **every** markdown table (13 in total: 2 + 6 + 5);
+- a closing section restates that everything above it is void.
+
+**The reasoning recorded in the banner, not left implicit.** These runs predate
+RULES_VERSION 1 and measured a different game: scoring inverted so the winner is
+credited with the loser's total (R-03/R-05), `ClosingOpportunityHeuristic` changed
+sign with that inversion, a lone double blank became worth ten (R-19), 1v1v1 moved
+to 151 and gained elimination (R-06/R-22), and draws were capped at one per turn
+where the rulebook allows unlimited (R-15). The results are therefore **not
+reproducible from the current tree**.
+
+**Gate.** `scripts/rules_audit.py` treats `VOID` and `SUPERSEDED` as the only
+acceptable marks on a document that quotes Elo with a stale rules hash; a stale
+claim with neither fails the build.
+
+**Evidence (literal).** `python3 scripts/rules_audit.py`:
+`RESULT: PASS — every enforced rule names real code and a real assertion; 6 declared hole(s)`.
+`python3 scripts/docs_audit.py`:
+`RESULT: PASS — links, paths, status headers, register, banners and figures are consistent`.
+
+**Correction made while doing this.** The first pass pushed each old `Status:`
+line past the documentation gate's twelve-line window and tripped
+`status-headers: FAIL (3)`; the VOID status line was moved directly under the
+title and the stale "living" paragraphs removed, so the documents no longer
+contradict their own banner.
