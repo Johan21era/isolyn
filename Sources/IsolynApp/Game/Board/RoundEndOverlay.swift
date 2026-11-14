@@ -19,24 +19,6 @@ struct RoundEndOverlay: View {
             ZStack {
                 Color.black.opacity(0.94).ignoresSafeArea()
 
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button(action: onDismiss) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(IsolynTheme.ivoryMuted)
-                                .frame(width: 34, height: 34)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Close the summary and view the board")
-                        .padding(.top, 16)
-                        .padding(.trailing, 18)
-                    }
-                    Spacer()
-                }
-
                 ScrollView(.vertical) {
                     VStack(spacing: 0) {
                         Spacer(minLength: 24)
@@ -59,6 +41,28 @@ struct RoundEndOverlay: View {
                     .frame(minHeight: proxy.size.height)
                 }
                 .scrollIndicators(.hidden)
+
+                // LAST child on purpose: a ZStack stacks later children on top,
+                // and the scroll view above covers the whole surface -- placed
+                // before it, this button was unreachable and × did nothing.
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(IsolynTheme.ivoryMuted)
+                                .frame(width: 34, height: 34)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close the summary and view the board")
+                        .padding(.top, 16)
+                        .padding(.trailing, 18)
+                    }
+                    Spacer()
+                }
+                .zIndex(10)
             }
             .onAppear {
                 revealed = false
