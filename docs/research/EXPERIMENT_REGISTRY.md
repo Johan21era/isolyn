@@ -184,7 +184,53 @@ not. The next evaluation step has to be a budgeted search over the weight vector
 (coordinate descent or CMA-ES against tournament results), with the acceptance
 gate fixed in advance.
 
-## Strategic conclusion after E-007 – E-011
+## E-018 — Evaluation component variance diagnostic (no games played)
+
+Reading the per-move component columns already logged by the harness, over 6,793
+decisions at depth 4/64:
+
+| Component | Mean | SD | Zero share |
+|---|---:|---:|---:|
+| `eval_total` | −21.8 | 285.5 | 0% |
+| `win_threat` | 2.9 | **282.5** | 92% |
+| `expected_value` | −26.0 | 14.7 | 0.3% |
+| `mobility` | 2.3 | 1.4 | 0% |
+| `blocking` | −1.7 | 1.5 | 26% |
+| `pip_control` | 1.1 | 0.7 | 0% |
+| `tempo` | 1.0 | **0.0** | 0% |
+| `closing_opportunity` | 0.0 | 0.0 | 100% |
+| `team_support` | 0.0 | 0.0 | 100% |
+
+**Finding.** One term — an immediate Domino win is available, ±1000 — accounts
+for 98% of the evaluation's variance and is zero in 92% of positions. The other
+seven terms sum to a standard deviation of ~15 against 285. The evaluation is,
+quantitatively, a binary threat detector with a small positional tie-breaker.
+
+Two components are structurally inert in 1v1: `tempo` is a constant +1 for the
+side to move (SD exactly zero), and `closing_opportunity` / `team_support` are
+zero by construction outside closed positions and 2v2 respectively.
+
+`expected_value` was suspected to be sign-inverted (it is always negative);
+reading the implementation shows it is `−(my remaining pips)`, which is correct —
+fewer pips is better. Not a bug.
+
+## E-019 — Attenuating the dominant term (rejected)
+
+- **Hypothesis.** If the ±1000 threat term dominates, the engine is effectively
+  making binary judgments and would benefit from letting the other seven terms
+  matter (weight 100 instead of 1000).
+- **Measured.** 2,000 games each against default: `winThreat=100` → 46.5%,
+  **−24.4 Elo [−39.6, −9.1]**; `winThreat=0` → 47.7%, **−16.0 Elo
+  [−31.2, −0.8]**.
+- **Verdict.** REJECTED. Both attenuations lose. The dominant term is earning
+  its dominance: with pips worth ~15, an immediate-win threat has to outweigh
+  everything else or the search trades away wins for position.
+
+Together E-018 and E-019 say the evaluation is *crude but correctly shaped*.
+Its weakness is not the scale of its terms but the absence of any graded notion
+of winning chance between "threat exists" and "threat does not".
+
+## Strategic conclusion after E-007 – E-019
 
 Three experiments now agree on one thing: **scaling compute is finished as a
 strength lever for this engine.**
@@ -196,6 +242,9 @@ strength lever for this engine.**
 | 192 → 384 worlds | +6.3 Elo, not resolved (E-008) |
 | depth 8 → 10 | −10.4 Elo at 4.3× cost (E-009) |
 | 2v2: 2/8 → 5/40 | 0 (49.6% vs 50.4%, E-011) |
+| maximin / win-count / trimmed root rule | −18 to −41 Elo (E-012 – E-014) |
+| dominant eval term scaled 1000 → 100 | −24.4 Elo (E-019) |
+| dominant eval term removed | −16.0 Elo (E-019) |
 
 The binding constraint is **evaluation quality and search selectivity**, not
 nodes per second. That is where the next tranche of work belongs: calibrate the

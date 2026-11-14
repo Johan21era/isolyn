@@ -47,6 +47,14 @@ Ranked by expected strength return, not by how interesting the work is.
 at 64, and depth 10 loses to depth 8 at 4.3× the cost. Any further strength must
 come from better decisions per node, not from more nodes.
 
+**The evaluation is a binary threat detector with a tie-breaker (measured).**
+One ±1000 term — an immediate Domino win is available — carries 98% of the
+evaluation's variance and is zero in 92% of positions; the other seven terms sum
+to a standard deviation of ~15. Attenuating that term (100) costs 24 Elo and
+removing it costs 16, so its dominance is earned, but the engine has **no graded
+notion of winning chance** between "threat exists" and "threat does not"
+(E-018, E-019). That is the most promising remaining evaluation gap.
+
 1. **The difficulty ladder is ordered but the separation is modest.** At 4,000
    games the 2/8 → 3/16 and 3/16 → 4/24 steps resolve at −14.8 and −14.9 Elo,
    and 4/24 → 5/40 resolves at −39.5. Every adjacent step tested is separable,
