@@ -7,6 +7,10 @@ import IsolynEngineBridge
 struct RoundEndOverlay: View {
     let viewModel: GameViewModel
     let appearance: DominoAppearance
+    /// Closing the summary reveals the finished board, which is worth looking
+    /// at: the final layout is the physical result of the round. Without this
+    /// there was no way to inspect it, only to deal again.
+    var onDismiss: () -> Void = {}
 
     @State private var revealed = false
 
@@ -14,6 +18,24 @@ struct RoundEndOverlay: View {
         GeometryReader { proxy in
             ZStack {
                 Color.black.opacity(0.94).ignoresSafeArea()
+
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(IsolynTheme.ivoryMuted)
+                                .frame(width: 34, height: 34)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close the summary and view the board")
+                        .padding(.top, 16)
+                        .padding(.trailing, 18)
+                    }
+                    Spacer()
+                }
 
                 ScrollView(.vertical) {
                     VStack(spacing: 0) {

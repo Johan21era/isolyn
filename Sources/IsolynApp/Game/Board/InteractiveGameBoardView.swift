@@ -58,7 +58,10 @@ struct InteractiveGameBoardView: View {
             if (viewModel.phase == .roundOver || viewModel.phase == .matchOver), roundOverVisible {
                 RoundEndOverlay(
                     viewModel: viewModel,
-                    appearance: appearanceManager.appearance
+                    appearance: appearanceManager.appearance,
+                    onDismiss: {
+                        withAnimation(.easeInOut(duration: 0.28)) { roundOverVisible = false }
+                    }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
@@ -207,6 +210,25 @@ struct InteractiveGameBoardView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Back to match setup")
+
+            // The summary can be dismissed to study the finished board; this
+            // brings it back so the round can still be dealt on.
+            if (viewModel.phase == .roundOver || viewModel.phase == .matchOver), !roundOverVisible {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.28)) { roundOverVisible = true }
+                } label: {
+                    Text("Round summary")
+                        .font(IsolynTheme.caption(10.5))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule().strokeBorder(IsolynTheme.ivoryMuted.opacity(0.32), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Show the round summary again")
+            }
 
             Spacer()
 
