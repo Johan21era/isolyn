@@ -2658,3 +2658,11 @@ sessions. No app behavior change.
 - **No strength claim.** No game-rule or search behavior was intentionally
   changed; the stable RNG changes seeded sequences but not the rules. No Elo or
   quality claim is made from the smoke games.
+
+### Hosted CI (receipt commit)
+
+The follow-up docs push `ef25b30` triggered run `43655179361`. Both jobs again
+failed in about two seconds with `steps: 0` and the same “recent account payments
+have failed or your spending limit needs to be increased” annotation. No hosted
+test ran for the receipt commit either; the local gate remains the only executed
+evidence.
