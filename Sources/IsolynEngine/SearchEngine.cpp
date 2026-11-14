@@ -137,6 +137,7 @@ struct SearchContext {
     bool exactEndgameUsed = false;
 
     EvaluationWeights weights{};
+    int maxVoluntaryDraws = 0;
     std::unordered_map<std::uint64_t, TTEntry> tt;
     std::array<std::array<int, 2>, kKillerSlots> killers{};
     std::array<std::array<int, kMoveCodeCount>, kMaxHistoryPlayers> history{};
@@ -340,7 +341,8 @@ SearchValue searchZeroSum(GameState& state,
                           double alpha,
                           double beta,
                           SearchContext& context,
-                          int ply) {
+                          int ply,
+                          int drawsLeft) {
     if (tick(context)) return {};
 
     const int player = state.currentPlayerIndex();
@@ -369,11 +371,36 @@ SearchValue searchZeroSum(GameState& state,
         // opposite perspectives.
         const double childAlpha = context.useAlphaBeta ? -beta : -kInfinity;
         const double childBeta = context.useAlphaBeta ? -alpha : kInfinity;
-        SearchValue child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply);
+        SearchValue child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply,
+                                          context.maxVoluntaryDraws);
         state.setCurrentPlayerIndex(player);
         undoDraws(state, player, drawn);
         if (context.aborted || child.raw.empty()) return {};
         return SearchValue{-child.score, child.raw};
+    }
+
+    // Voluntary draw. Inside a determinized world the drawn tile is known
+    // exactly, so the continuation is exact rather than an approximation. A
+    // draw does not consume the turn: the same player is to move, so the score
+    // is taken WITHOUT the negamax sign flip a placement gets.
+    double drawScore = -kInfinity;
+    RawEvaluation drawRaw;
+    bool hasDrawOption = false;
+    if (context.maxVoluntaryDraws > 0 && drawsLeft > 0 &&
+        state.boneyard().drawableCount() > 0) {
+        // A draw costs one ply of horizon here. Keeping depth constant instead
+        // is the true cost model, but it re-enables draws after every placement
+        // and the tree grows as 2^depth -- measured, and rejected as
+        // unaffordable. The conservative model is kept and stated.
+        const DominoTile drawnTile = state.drawTile(player);
+        const SearchValue afterDraw =
+            searchZeroSum(state, depthRemaining - 1, alpha, beta, context, ply, drawsLeft - 1);
+        state.undoDrawTile(player, drawnTile);
+        if (!context.aborted && !afterDraw.raw.empty()) {
+            drawScore = afterDraw.score;
+            drawRaw = afterDraw.raw;
+            hasDrawOption = true;
+        }
     }
 
     const std::uint64_t key = state.hash();
@@ -406,6 +433,12 @@ SearchValue searchZeroSum(GameState& state,
     bool cutoff = false;
     const double originalAlpha = alpha;
 
+    // A voluntary draw competes with every placement as a real action.
+    if (hasDrawOption) {
+        bestScore = drawScore;
+        bestRaw = drawRaw;
+    }
+
     for (std::size_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex) {
         const Move& move = candidates[candidateIndex];
         if (tick(context)) break;
@@ -422,7 +455,8 @@ SearchValue searchZeroSum(GameState& state,
             state.setCurrentPlayerIndex(next);
             const double childAlpha = context.useAlphaBeta ? -beta : -kInfinity;
             const double childBeta = context.useAlphaBeta ? -alpha : kInfinity;
-            child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply + 1);
+            child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply + 1,
+                                  context.maxVoluntaryDraws);
             state.setCurrentPlayerIndex(player);
         }
         MoveExecutor::undo(state, applied);
@@ -444,7 +478,7 @@ SearchValue searchZeroSum(GameState& state,
     }
 
     undoDraws(state, player, drawn);
-    if (context.aborted || bestCode < 0) return {};
+    if (context.aborted || bestRaw.empty()) return {};
 
     if (!bestRaw.empty()) {
         TTFlag flag = TTFlag::Exact;
@@ -535,7 +569,7 @@ RawEvaluation searchMulti(GameState& state,
     }
 
     undoDraws(state, player, drawn);
-    if (context.aborted || bestCode < 0) return {};
+    if (context.aborted || bestRaw.empty()) return {};
 
     if (bestRaw.size() == static_cast<std::size_t>(state.playerCount())) {
         if (context.tt.size() >= kMaxTTEntries) context.tt.clear();
@@ -555,6 +589,13 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
     const int player = state.currentPlayerIndex();
     std::vector<Move> candidates = MoveGenerator::generate(state, player);
     assert(!candidates.empty() && "chooseBestMove requires the current player to already have a legal move");
+
+    // A voluntary draw is a first-class candidate when enabled. It is appended
+    // after the placements so candidate indices keep their existing meaning.
+    const bool drawAllowed =
+        config.maxVoluntaryDraws > 0 && state.boneyard().drawableCount() > 0;
+    const std::size_t drawIndex = candidates.size();
+    const std::size_t actionCount = candidates.size() + (drawAllowed ? 1u : 0u);
 
     const int playerCount = state.playerCount();
 
@@ -577,6 +618,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         ctx.cancelRequested = cancelRequested;
         ctx.sharedAbort = &stopFlag;
         ctx.weights = config.weights;
+        ctx.maxVoluntaryDraws = config.maxVoluntaryDraws;
         ctx.tt.reserve(1 << 12);
     }
 
@@ -601,6 +643,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
     }
 
     std::optional<DepthResult> bestResult;
+    bool bestIsDraw = false;
 
     for (int depth = 1; depth <= config.maxDepthPlies; ++depth) {
         if (shouldStop(contexts.front()) || stopFlag.load(std::memory_order_relaxed)) break;
@@ -623,14 +666,14 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
 
         auto evaluateSample = [&](int sampleIndex, SearchContext& ctx) {
             SampleResult& result = sampleResults[static_cast<std::size_t>(sampleIndex)];
-            result.scores.assign(candidates.size(), 0.0);
-            result.values.assign(candidates.size(),
+            result.scores.assign(actionCount, 0.0);
+            result.values.assign(actionCount,
                                  std::vector<double>(static_cast<std::size_t>(playerCount), 0.0));
             result.aborted = false;
 
             const GameState& world = worlds[static_cast<std::size_t>(sampleIndex)];
 
-            for (std::size_t c = 0; c < candidates.size(); ++c) {
+            for (std::size_t c = 0; c < actionCount; ++c) {
                 if (shouldStop(ctx)) {
                     result.aborted = true;
                     stopFlag.store(true, std::memory_order_relaxed);
@@ -638,6 +681,27 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 }
 
                 GameState trial = world;
+
+                if (drawAllowed && c == drawIndex) {
+                    // Same player to move after a draw, so no sign flip.
+                    const DominoTile drawnTile = trial.drawTile(player);
+                    const SearchValue afterDraw = searchZeroSum(
+                        trial, depth - 1, -kInfinity, kInfinity, ctx, 0,
+                        config.maxVoluntaryDraws - 1);
+                    trial.undoDrawTile(player, drawnTile);
+                    const RawEvaluation drawRaw = afterDraw.raw;
+                    if (ctx.aborted || drawRaw.size() != static_cast<std::size_t>(playerCount)) {
+                        result.aborted = true;
+                        stopFlag.store(true, std::memory_order_relaxed);
+                        return;
+                    }
+                    for (int p = 0; p < playerCount; ++p) {
+                        result.values[c][static_cast<std::size_t>(p)] =
+                            drawRaw[static_cast<std::size_t>(p)];
+                    }
+                    result.scores[c] = afterDraw.score;
+                    continue;
+                }
                 auto applied = MoveExecutor::apply(trial, player, candidates[c]);
                 const bool emptied = trial.hand(player).empty();
 
@@ -660,7 +724,8 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                             candidateScore = raw[static_cast<std::size_t>(player)];
                         }
                     } else {
-                        SearchValue child = searchZeroSum(trial, depth - 1, -kInfinity, kInfinity, ctx, 0);
+                        SearchValue child = searchZeroSum(trial, depth - 1, -kInfinity, kInfinity, ctx, 0,
+                                                          config.maxVoluntaryDraws);
                         raw = child.raw;
                         candidateScore = -child.score;
                     }
@@ -698,12 +763,12 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         }
 
         std::vector<std::vector<double>> accumulated(
-            candidates.size(),
+            actionCount,
             std::vector<double>(static_cast<std::size_t>(playerCount), 0.0));
         // Per-candidate score in every sampled world. Keeping them separate --
         // rather than only accumulating a running mean -- is what makes any
         // aggregation rule other than the mean possible at the root.
-        std::vector<std::vector<double>> scoresByCandidate(candidates.size());
+        std::vector<std::vector<double>> scoresByCandidate(actionCount);
         for (std::vector<double>& perCandidate : scoresByCandidate) {
             perCandidate.reserve(static_cast<std::size_t>(config.determinizationCount));
         }
@@ -719,7 +784,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 abortedDepth = true;
                 break;
             }
-            for (std::size_t c = 0; c < candidates.size(); ++c) {
+            for (std::size_t c = 0; c < actionCount; ++c) {
                 scoresByCandidate[c].push_back(result.scores[c]);
                 for (int p = 0; p < playerCount; ++p) {
                     accumulated[c][static_cast<std::size_t>(p)] +=
@@ -794,6 +859,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
             }
 
             bestResult = DepthResult{candidates[bestIndex], accumulated[bestIndex], depth, samples};
+            bestIsDraw = drawAllowed && bestIndex == drawIndex;
         }
 
         if (abortedDepth) break;
@@ -816,7 +882,8 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                               bestResult->depth,
                               totalNodes,
                               totalTtHits,
-                              anyExactEndgame};
+                              anyExactEndgame,
+                              bestIsDraw};
     }
 
     return SearchDecision{candidates[0],

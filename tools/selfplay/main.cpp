@@ -32,6 +32,8 @@ struct Options {
     int opponentWorkers = 0;
     RootAggregation aggregation = RootAggregation::Mean;
     RootAggregation opponentAggregation = RootAggregation::Mean;
+    int voluntaryDraws = 0;
+    int opponentVoluntaryDraws = 0;
     EvaluationWeights weights{};
     EvaluationWeights opponentWeights{};
     std::uint64_t seed = 1;
@@ -81,6 +83,8 @@ void usage(std::ostream& out) {
         << "  --opponent-workers N    worker threads for B; 0 = auto (default 0)\n"
         << "  --aggregation P         root rule for A: mean|maximin|trimmed|wincount\n"
         << "  --opponent-aggregation P  root rule for B (default: mean)\n"
+        << "  --voluntary-draw N      voluntary draws per turn allowed for A (default 0)\n"
+        << "  --opponent-voluntary-draw N  same for B (default 0)\n"
         << "  --weights LIST           evaluation overrides, e.g. tempo=0,blocking=2\n"
         << "  --opponent-weights LIST   evaluation overrides for B\n"
         << "  --seed N                deterministic deal/search seed (default 1)\n"
@@ -260,6 +264,7 @@ GameSummary playOneRound(const Options& options,
     configA.endgameTileLimit = 8;
     configA.workerThreads = options.workers;
     configA.rootAggregation = options.aggregation;
+    configA.maxVoluntaryDraws = options.voluntaryDraws;
     configA.weights = options.weights;
 
     SearchEngine::Config configB;
@@ -269,6 +274,7 @@ GameSummary playOneRound(const Options& options,
     configB.endgameTileLimit = 8;
     configB.workerThreads = options.opponentWorkers;
     configB.rootAggregation = options.opponentAggregation;
+    configB.maxVoluntaryDraws = options.opponentVoluntaryDraws;
     configB.weights = options.opponentWeights;
 
     // Alternate which physical side gets the A configuration so a one-sided
@@ -287,6 +293,8 @@ GameSummary playOneRound(const Options& options,
 
     RoundOutcome outcome{RoundOutcomeKind::InProgress, -1};
     int decisionCount = 0;
+    int drawPlayer = -1;
+    int drawsThisTurn = 0;
 
     for (int turn = 0; turn < 500; ++turn) {
         if (!controller.currentPlayerHasLegalMove()) {
@@ -301,20 +309,35 @@ GameSummary playOneRound(const Options& options,
         }
 
         const int player = controller.currentPlayerIndex();
+        if (player != drawPlayer) {
+            drawPlayer = player;
+            drawsThisTurn = 0;
+        }
         const int side = sideForPlayer(player);
         const SearchEngine::Config& searchConfig = configForSide(side);
+
+        // Once the per-turn draw budget is spent, the engine is asked with the
+        // option disabled so it returns a placement it can legally play.
+        SearchEngine::Config placeOnly = searchConfig;
+        placeOnly.maxVoluntaryDraws = 0;
+        const SearchEngine::Config& effective =
+            drawsThisTurn < searchConfig.maxVoluntaryDraws ? searchConfig : placeOnly;
+
         const GameState& state = controller.state();
         BeliefState belief = ProbabilityEngine::constructFromGameState(state, player);
         const SearchDecision decision = SearchEngine::chooseBestMove(
-            state, belief, mode, searchConfig, rng, nullptr);
+            state, belief, mode, effective, rng, nullptr);
         const EvaluationBreakdown evaluation = EvaluationEngine::evaluate(mode, state, player);
 
         MoveRow row;
         row.moveIndex = decisionCount++;
         row.player = player;
-        row.tileLow = decision.move.tile.low();
-        row.tileHigh = decision.move.tile.high();
-        row.side = decision.move.side == GameState::ChainSide::Left ? 0 : 1;
+        // A draw has no tile; -1 marks it so draw frequency stays auditable.
+        row.tileLow = decision.isDraw ? -1 : decision.move.tile.low();
+        row.tileHigh = decision.isDraw ? -1 : decision.move.tile.high();
+        row.side = decision.isDraw
+                       ? -1
+                       : (decision.move.side == GameState::ChainSide::Left ? 0 : 1);
         row.depthReached = decision.depthReached;
         row.nodes = decision.nodesVisited;
         row.ttHits = decision.transpositionHits;
@@ -322,6 +345,13 @@ GameSummary playOneRound(const Options& options,
         row.evaluation = evaluation;
         rows.push_back(row);
 
+        if (decision.isDraw) {
+            controller.voluntaryDraw();
+            ++drawsThisTurn;
+            continue; // the draw does not end the turn; the same player acts again
+        }
+
+        drawsThisTurn = 0;
         outcome = controller.playTurn(decision.move);
         if (outcome.kind != RoundOutcomeKind::InProgress) break;
     }
@@ -450,6 +480,7 @@ int main(int argc, char** argv) {
             arg == "--opponent-depth" || arg == "--opponent-determinizations" ||
             arg == "--time-ms" || arg == "--workers" || arg == "--opponent-workers" ||
             arg == "--aggregation" || arg == "--opponent-aggregation" ||
+            arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
             arg == "--weights" || arg == "--opponent-weights" ||
             arg == "--seed" || arg == "--mode" || arg == "--output") {
             if (i + 1 >= argc) {
@@ -500,7 +531,8 @@ int main(int argc, char** argv) {
             }
             int parsed = 0;
             const bool allowZero = arg == "--time-ms" || arg == "--workers" ||
-                                   arg == "--opponent-workers";
+                                   arg == "--opponent-workers" ||
+                                   arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw";
             if (!parseInt(value, parsed, allowZero)) {
                 std::cerr << "invalid value for " << arg << ": " << value << "\n";
                 return 2;
@@ -513,6 +545,8 @@ int main(int argc, char** argv) {
             else if (arg == "--time-ms") options.timeMs = parsed;
             else if (arg == "--workers") options.workers = parsed;
             else if (arg == "--opponent-workers") options.opponentWorkers = parsed;
+            else if (arg == "--voluntary-draw") options.voluntaryDraws = parsed;
+            else if (arg == "--opponent-voluntary-draw") options.opponentVoluntaryDraws = parsed;
             continue;
         }
         std::cerr << "unknown argument: " << arg << "\n";

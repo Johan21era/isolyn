@@ -38,6 +38,12 @@ struct SearchDecision {
     std::uint64_t nodesVisited = 0;
     std::uint64_t transpositionHits = 0;
     bool exactEndgame = false;
+
+    // True when the chosen action is a voluntary draw rather than a placement.
+    // `move` is then a legal placeholder and must NOT be played: callers must
+    // apply the draw and leave the same player to move, because a draw does not
+    // consume the turn (MatchController::voluntaryDraw).
+    bool isDraw = false;
 };
 
 // How per-candidate results from different sampled worlds are combined into one
@@ -100,6 +106,12 @@ public:
         // ones; exposing them here is what makes component ablation and
         // calibration measurable instead of theoretical.
         EvaluationWeights weights{};
+
+        // Voluntary draws a player may consider per turn. 0 disables the option
+        // entirely, which is the behaviour every measurement before 2026-11-14
+        // was made under. A draw does not consume the turn, so its continuation
+        // keeps the same player to move and must not be negated.
+        int maxVoluntaryDraws = 0;
     };
 
     // Precondition: it is currently a player's turn to choose a move

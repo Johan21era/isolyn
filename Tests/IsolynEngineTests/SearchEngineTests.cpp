@@ -1,5 +1,6 @@
 #include "SearchEngine.hpp"
 #include "ProbabilityEngine.hpp"
+#include "MoveValidator.hpp"
 #include "TestHarness.hpp"
 #include <deque>
 #include <random>
@@ -113,6 +114,47 @@ int main() {
         check(decision.completed, "the decision is marked complete when both samples finish");
         check(decision.exactEndgame, "the empty-boneyard late endgame is solved exactly");
         check(decision.nodesVisited > 0, "search diagnostics record visited nodes");
+    }
+
+    section("SearchEngine: voluntary drawing stays out of the tree by default and is a legal action when enabled");
+    {
+        std::vector<DominoTile> padding;
+        for (int i = 0; i < DominoTile::kTileCount; ++i) {
+            DominoTile t = DominoTile::fromIndex(i);
+            if (t == DominoTile(4, 6) || t == DominoTile(4, 1) || t == DominoTile(6, 6) ||
+                t == DominoTile(0, 0) || t == DominoTile(5, 5))
+                continue;
+            padding.push_back(t); // 23 tiles + 3 in hands + 2 in the boneyard = 28
+        }
+        std::deque<DominoTile> chainTiles(padding.begin(), padding.end());
+        Chain chain = Chain::fromKnownState(chainTiles, 4, 4);
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(4, 6), DominoTile(4, 1) },
+            { DominoTile(6, 6) },
+        };
+        std::vector<DominoTile> boneyard = { DominoTile(0, 0), DominoTile(5, 5) };
+        GameState state(GameMode::OneVsOne, hands, boneyard, chain,
+                        { PlayRecord{1, DominoTile(4, 4)} }, 0);
+
+        BeliefState belief = ProbabilityEngine::constructFromGameState(state, 0);
+        std::mt19937_64 rng(77);
+
+        SearchEngine::Config shipped;
+        check(shipped.maxVoluntaryDraws == 0,
+              "the shipped default keeps voluntary draws out of the game tree");
+
+        auto decision = SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, shipped, rng);
+        check(!decision.isDraw, "a move-only configuration never reports a draw");
+
+        SearchEngine::Config withDraws = shipped;
+        withDraws.maxVoluntaryDraws = 1;
+        auto drawDecision =
+            SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, withDraws, rng);
+        const bool legalAction = drawDecision.isDraw
+                                     ? state.boneyard().drawableCount() > 0
+                                     : MoveValidator::isLegal(state, 0, drawDecision.move);
+        check(legalAction,
+              "with draws enabled the engine returns either a legal placement or a legal draw");
     }
 
     if (failureCount() == 0) {

@@ -59,12 +59,15 @@ notion of winning chance** between "threat exists" and "threat does not"
 
 ### Missing action: voluntary draw
 
-> **Status 2026-11-14 (E-024): attempted, invalid, reverted.** A draw branch was
-> added to the search and scored −38.4 Elo at n=400. That number is meaningless:
-> `Move` cannot represent a draw, so the branch changed leaf scores while the
-> engine still had to return a placement, and the root chose worse moves. The
-> blocker is the **decision contract**, not the tree — the action is missing from
-> the interface, which is why it has never been searchable.
+> **Status 2026-11-14 (E-024, E-025): now executable, measured, neutral.**
+> E-024's first attempt scored −38.4 Elo at n=400 and was invalid: `Move` cannot
+> represent a draw, so the branch changed leaf scores the engine could not act
+> on. The decision contract was then extended (`SearchDecision::isDraw`,
+> `Config::maxVoluntaryDraws`, applied by the caller without advancing the turn)
+> and the action re-measured properly: **1,484 draws in 10,650 1v1 decisions
+> (14%)**, but pooled **+2.5 Elo, 95% CI [−4.7, +9.7]** over 9,000 rounds — not
+> resolved. Capability kept, **default off**; 1v1v1 has no branch and 2v2 never
+> chose a draw in 10,426 decisions.
 
 **This is the largest structural gap found so far, and it is a missing move, not
 a missing weight.**
@@ -124,7 +127,7 @@ still a thin model of a teammate — the compute null is untouched by the fix.
 
 | # | Action | Why it is next |
 |---|---|---|
-| 1 | **Extend the decision contract to express a draw, then search it** | scoring it inside a move-only `Move` corrupts root choice (E-024, −38 Elo, reverted) |
+| 1 | **Wire the now-executable draw action through the bridge and app, then re-test at greater depth** | measurable at last, but neutral at depth 4 (E-025); the bridge still cannot play a `SearchDecision::isDraw` |
 | 2 | **Deepen 2v2 partnership modelling beyond one mobility term** | re-weighting was worth +15.8 Elo (E-023); the representation is still one scalar |
 | 3 | Build a budgeted joint weight optimizer | single-weight effects sit below the ~15 Elo resolution of ablation (E-015 – E-017) |
 | 4 | Replace the TT key and add depth-preferred replacement | the stated blocker on deeper search: tables are diluted across lanes |

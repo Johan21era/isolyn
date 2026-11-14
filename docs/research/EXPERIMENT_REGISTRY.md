@@ -341,6 +341,31 @@ compute null (E-011, E-022) was a separate finding, and nothing here re-tests it
   "missing action" claim is read correctly: the action is missing from the
   *interface*, which is why it has never been searchable.
 
+## E-025 — Voluntary draw made executable, then measured (CAPABILITY KEPT, NO STRENGTH CLAIM)
+
+- **What changed.** `SearchDecision::isDraw` and `Config::maxVoluntaryDraws`
+  (default **0**). A draw is now a first-class root candidate and an action
+  inside `searchZeroSum`: the drawn tile is known inside a sampled world, the
+  continuation keeps the same player to move, and its score is **not** negated.
+  The harness applies it with `MatchController::voluntaryDraw()` and does not
+  advance the turn, bounded per turn so it cannot stall.
+- **The action is real.** 1v1, 500 rounds: **1,484 draws in 10,650 decisions
+  (14%)**, every round completed, every draw applied legally.
+- **Strength at depth 4.** Three seeds, 3,000 rounds each: 50.90%, 51.10%,
+  49.07%. Pooled 4,532/9,000 = **50.36%, +2.5 Elo, 95% CI [−4.7, +9.7]** —
+  **not resolved**. The action does not beat the champion as modelled.
+- **A model that had to be rejected.** Charging a draw a ply of horizon is not
+  faithful — a draw does not advance the turn — but keeping depth constant
+  re-enables draws after every placement and the tree grows as 2^depth. That
+  version was measured and timed out; the conservative model is kept and stated.
+- **Mode coverage, measured rather than assumed.** `searchMulti` (1v1v1) has no
+  draw branch, so 0 draws there by construction. 2v2 does have the branch and
+  selected **0 draws in 10,426 decisions** — the pip cost plus the loss of a ply
+  is never worth it there, unlike 1v1's 14%.
+- **Verdict.** Capability kept, default **off**, no strength claim. E-024's
+  invalid −38.4 measurement is superseded by this valid one, which is the point:
+  the number only became meaningful after the action could be executed.
+
 ## Strategic conclusion after E-007 – E-019
 
 Three experiments now agree on one thing: **scaling compute is finished as a
