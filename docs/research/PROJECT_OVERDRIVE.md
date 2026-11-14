@@ -134,7 +134,7 @@ still a thin model of a teammate — the compute null is untouched by the fix.
 
 | # | Action | Why it is next |
 |---|---|---|
-| 1 | **Wire the draw action through the bridge and app** | worth **+44.3 Elo at the shipped elite horizon** (E-026) and currently unplayable: the bridge still cannot execute a `SearchDecision::isDraw` |
+| 1 | **Wire the draw action through the bridge and app** | worth **+44.3 Elo at the shipped elite horizon** (E-026) wired end to end in OPS-14 (bridge `isDraw`, analysis `maxVoluntaryDraws = 1`, app plays the draw) |
 | 2 | **Deepen 2v2 partnership modelling beyond one mobility term** | re-weighting was worth +15.8 Elo (E-023); the representation is still one scalar |
 | 3 | Build a budgeted joint weight optimizer | single-weight effects sit below the ~15 Elo resolution of ablation (E-015 – E-017) |
 | 4 | Replace the TT key and add depth-preferred replacement | the stated blocker on deeper search: tables are diluted across lanes |

@@ -169,6 +169,8 @@ int main() {
         CHECK(result.completed == true, "an uncancelled run reports completed == true");
         CHECK(result.samplesCompleted == 5, "all 5 configured samples ran");
         CHECK(result.playerCount == 2, "expectedValuePerPlayer reflects 2 players (1v1)");
+        CHECK(result.recommendedMove.tile.low >= 0 && result.recommendedMove.tile.low <= 6,
+              "the recommendation carries a real tile (a draw reports a legal placeholder, never a sentinel or an out-of-bounds read)");
         bridge_analysis_snapshot_destroy(a);
 
         AnalysisHandle a2 = bridge_analysis_snapshot_create(s, believer);

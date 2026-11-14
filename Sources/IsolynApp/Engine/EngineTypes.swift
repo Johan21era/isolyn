@@ -479,6 +479,10 @@ struct AnalysisOutcome: Sendable {
     let samplesCompleted: Int
     let samplesConfigured: Int
     let recommendedMove: Move
+    /// True when the engine chose a voluntary draw. `recommendedMove` is then
+    /// only a legal placeholder and must not be submitted: apply a draw, which
+    /// does not consume the turn, and re-read the snapshot.
+    let isDraw: Bool
     /// One entry per player, EvaluationEngine score.
     let expectedValuePerPlayer: [Double]
 
@@ -488,6 +492,7 @@ struct AnalysisOutcome: Sendable {
         samplesCompleted = Int(dto.samplesCompleted)
         samplesConfigured = Int(dto.samplesConfigured)
         recommendedMove = Move(dto: dto.recommendedMove)
+        isDraw = dto.isDraw
         var mutableDto = dto
         expectedValuePerPlayer = withTupleAsArray(
             &mutableDto.expectedValuePerPlayer, capacity: Int(isolyn.bridge.kMaxPlayers),

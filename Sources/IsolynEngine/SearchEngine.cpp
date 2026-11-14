@@ -858,8 +858,14 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 }
             }
 
-            bestResult = DepthResult{candidates[bestIndex], accumulated[bestIndex], depth, samples};
+            // The draw is a candidate INDEX but not a Move: drawIndex sits one
+            // past the end of `candidates`. Indexing it here read out of bounds
+            // and produced a garbage "placeholder" move. A draw must report a
+            // genuinely legal placement instead (the DTO contract requires it),
+            // so use the first legal candidate and let isDraw carry the meaning.
             bestIsDraw = drawAllowed && bestIndex == drawIndex;
+            const Move chosenMove = bestIsDraw ? candidates[0] : candidates[bestIndex];
+            bestResult = DepthResult{chosenMove, accumulated[bestIndex], depth, samples};
         }
 
         if (abortedDepth) break;

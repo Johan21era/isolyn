@@ -125,6 +125,7 @@ AnalysisResultDTO failedAnalysis(BridgeStatus status) noexcept {
     r.playerCount = 0; r.stateVersionAnalyzed = 0;
     for (double& v : r.expectedValuePerPlayer) v = 0.0;
     r.recommendedMove = MoveDTO{ kNoTileDTO, ChainSideDTO::Left };
+    r.isDraw = false;
     return r;
 }
 
@@ -621,6 +622,12 @@ AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthP
         SearchEngine::Config config;
         config.maxDepthPlies = maxDepthPlies;
         config.determinizationCount = determinizationCount;
+        // The engine's Config defaults to no voluntary draws, which made this
+        // path structurally incapable of ever recommending one: the draw
+        // branch is gated on this being > 0. Analysis must search the same
+        // action set the player can actually take, or its "best move" is a
+        // recommendation for a different game.
+        config.maxVoluntaryDraws = 1;
         std::mt19937_64 rng(rngSeed);
 
         // Pass atomic flag directly. No new abstraction layers.
@@ -630,6 +637,7 @@ AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthP
         r.status = BridgeStatus::Ok; r.stateVersionAnalyzed = snap->stateVersionAnalyzed;
         r.completed = decision.completed; r.samplesCompleted = decision.samplesCompleted; r.samplesConfigured = determinizationCount;
         r.recommendedMove = fromEngineMove(decision.move);
+        r.isDraw = decision.isDraw;
         const std::size_t cnt = decision.expectedValuePerPlayer.size();
         const std::size_t copied = cnt < static_cast<std::size_t>(kMaxPlayers) ? cnt : static_cast<std::size_t>(kMaxPlayers);
         r.playerCount = static_cast<int32_t>(copied);

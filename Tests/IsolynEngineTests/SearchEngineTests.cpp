@@ -155,6 +155,12 @@ int main() {
                                      : MoveValidator::isLegal(state, 0, drawDecision.move);
         check(legalAction,
               "with draws enabled the engine returns either a legal placement or a legal draw");
+        // The decision still reports a Move even when the action is a draw: the
+        // bridge forwards it as a placeholder and the DTO contract promises it
+        // is genuinely legal. The draw index sits one past the end of the
+        // candidate list, so this is exactly where an out-of-bounds read hid.
+        check(MoveValidator::isLegal(state, 0, drawDecision.move),
+              "a draw decision still reports a genuinely legal placeholder move");
     }
 
     if (failureCount() == 0) {

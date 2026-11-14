@@ -279,6 +279,8 @@ struct AnalysisResultDTO {
     int32_t samplesCompleted;
     int32_t samplesConfigured;
     MoveDTO recommendedMove;         // a genuinely legal move even when completed is false and samplesCompleted is 0 (falls back to the first legal candidate) -- NEVER fabricated, but caller should treat samplesCompleted == 0 as "no real analysis happened, do not display this as a recommendation"
+                                     // when isDraw is true this is only a LEGAL PLACEHOLDER and must not be submitted -- apply a draw instead
+    bool isDraw;                     // true when the chosen action is a VOLUNTARY DRAW rather than a placement. A draw does not consume the turn (the same player is to move again), so callers must apply it via bridge_session_voluntary_draw and then re-read the snapshot. Analysis enables draws because the app offers a Draw control: reporting the best placement while silently withholding the option to draw would be a dishonest recommendation.
     double expectedValuePerPlayer[kMaxPlayers];
     int32_t playerCount;
 };

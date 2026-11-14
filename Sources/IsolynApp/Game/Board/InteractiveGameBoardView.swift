@@ -539,6 +539,7 @@ struct InteractiveGameBoardView: View {
 
     private var statusText: String {
         if let outcome = viewModel.analysisOutcome, !viewModel.analysisRunning {
+            if outcome.isDraw { return "Engine suggests drawing a tile" }
             return "Engine suggests \(outcome.recommendedMove.tile.high)–\(outcome.recommendedMove.tile.low)"
         }
         if viewModel.analysisWasCancelled { return "Analysis cancelled" }

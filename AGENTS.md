@@ -277,9 +277,13 @@ documented number to match a broken run.
 - Champion configuration: depth 8, 64 determinization samples, 8 workers.
 - Strength evidence: parallel search **+17.6 Elo** (1v1, 95% CI [+6.8, +28.3]);
   partnership weight **+15.8 Elo** (2v2, [+10.2, +21.3], n=15,000).
-- Open, measured but unshipped: the voluntary **draw action** is worth
-  **+44.3 Elo [+24.6, +64.2]** at depth 8; the bridge/app cannot execute
-  `SearchDecision::isDraw` yet, so it is off by default.
+- Shipped (OPS-14): the voluntary **draw action**, worth **+44.3 Elo
+  [+24.6, +64.2]** at depth 8, is wired end to end -- `AnalysisResultDTO::isDraw`,
+  analysis runs with `maxVoluntaryDraws = 1`, the app plays a recommended draw,
+  and the Analyze line says so. Measured frequency with draws enabled:
+  **23/200 decisions (11.5%)** at depth 4, **14/62 (22.6%)** at depth 8. The
+  engine's own `Config` default stays 0, so callers that do not opt in are
+  unchanged.
 - Known dead ends, do not re-litigate: Metal/GPU end-to-end acceleration (slower at
   every batch size), maximin/win-count/trimmed root aggregation, extra determinization
   samples beyond 64 at depth 8.

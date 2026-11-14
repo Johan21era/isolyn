@@ -580,6 +580,22 @@ final class GameViewModel {
 
                 if Task.isCancelled { return }
 
+                // A voluntary draw is a real action, not a placement. The
+                // engine reports it separately because a draw does not consume
+                // the turn: submitting the placeholder move it leaves in
+                // `recommendedMove` would play a different game than the one it
+                // searched.
+                if outcome.samplesCompleted > 0, outcome.isDraw {
+                    await pace(240_000_000)
+                    guard !Task.isCancelled else { return }
+                    _ = try await session.voluntaryDraw(expecting: view.stateVersion)
+                    // The drawn tile is the computer's hidden card; only the
+                    // fact and count of the draw are published.
+                    publishDraw(seat: seat, tiles: [], count: 1)
+                    await refresh()
+                    return
+                }
+
                 // The analysis contract says zero completed samples means no
                 // real recommendation. Fall back to a genuinely legal move
                 // rather than displaying or submitting fabricated analysis.

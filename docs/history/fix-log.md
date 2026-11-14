@@ -1265,3 +1265,55 @@ shipped): advancing a vertical tile by its short axis (tiles stacked exactly on
 each other); starting the run outside its own reserved band (first tile forced
 to turn); and a run reaching the edge with no room left for its corner (chain
 marched off the table).
+
+## OPS-14 — Analyze could never recommend a draw; it now can, and the engine draws freely (2026-11-14)
+
+**Trigger.** Owner live testing: "the 'analyze' button almost NEVER seems to
+recommend drawing, ever ... either that, or we have to open and see the 'elite'
+engine play against the master one ... if it truly never draws on its own, then
+theres a real possibility that its entire elo is fake".
+
+**Root cause — three independent defects, all in the product path, none in search.**
+1. `bridge_analysis_run` built `SearchEngine::Config config;` and set only
+   `maxDepthPlies` / `determinizationCount`. `maxVoluntaryDraws` therefore stayed
+   at its default **0**, and the draw branch is gated on it
+   (`SearchEngine.cpp`: `context.maxVoluntaryDraws > 0 && drawsLeft > 0 && ...`).
+   Analysis was *structurally incapable* of considering a draw at any depth.
+2. `AnalysisResultDTO` had no `isDraw` field and the bridge assigned
+   `r.recommendedMove = fromEngineMove(decision.move)` unconditionally, so even a
+   perfect draw decision could only surface as an unrelated placement.
+3. **Search-engine bug found while wiring it:** when the best action was the
+   draw, `candidates[bestIndex]` indexed *past the end* of the placement vector,
+   because `drawIndex == candidates.size()`. The decision therefore carried a
+   garbage "placeholder" move (out-of-bounds read) that the new DTO would have
+   forwarded to the app. `tests` had only checked `boneyard().drawableCount() > 0`
+   for draw decisions, never the placeholder's legality.
+
+**Fix.**
+- `SearchEngine.cpp`: `chosenMove = bestIsDraw ? candidates[0] : candidates[bestIndex]`
+  -- a draw now reports a genuinely legal placeholder, as the DTO contract requires.
+- `IsolynBridge.hpp/.cpp`: `AnalysisResultDTO::isDraw` added; analysis runs with
+  `maxVoluntaryDraws = 1`; `failedAnalysis` reports `isDraw = false`.
+- `EngineTypes.swift`: `AnalysisOutcome.isDraw`; `GameViewModel` plays
+  `voluntaryDraw()` instead of submitting the placeholder, publishes the hidden
+  draw, and refreshes; `InteractiveGameBoardView` shows "Engine suggests drawing
+  a tile".
+- Tests added: engine assertion that a draw decision's placeholder is legal
+  (the check whose absence hid the OOB read), bridge assertion that the reported
+  tile is real.
+
+**Evidence that the Elo was never fake.** Self-play, draws enabled, CSV rows with
+`side == -1` counted:
+- depth 4 / 20 samples (the Analyze configuration), 10 games:
+  **23 draws in 200 decisions = 11.5%** (`lab/data/draws-d4.csv`, seed 11).
+- depth 8 / 64 samples (shipped elite), 3 games:
+  **14 draws in 62 decisions = 22.6%** (`lab/data/draws-d8.csv`, seed 21).
+Draw frequency *rises* with depth, which is what E-026's +44.3 Elo at depth 8
+predicts. The engine always could draw; the UI simply never asked it to.
+
+**Verification.** `TOTAL CHECKS PASSED: 433` (engine, +1), `TOTAL CHECKS PASSED: 74`
+(bridge, +1), `swift test` 81 tests / 0 failures, `swift build` complete.
+
+**Not done, deliberately.** Analyze still runs depth 4 / 20 samples rather than
+the elite 8 / 64; that is a latency choice, not a draw bug, and is now visible
+as such. The engine's own `Config` default for `maxVoluntaryDraws` remains 0.
