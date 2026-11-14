@@ -2571,3 +2571,12 @@ three-seat ritual round.
 - The Lab screen and its new controls were compile- and model-tested, not
   visually inspected in a running window.
 - Hosted CI remains billing-blocked; see the CI note appended after the push.
+
+### Hosted CI
+
+Push `1c256e7` triggered run `43651713880`. It completed as **failure** in about
+two seconds with **zero steps executed** in both jobs (`steps: []`), and the
+weekly fuzz job was skipped. That is the same billing-blocked signature recorded
+for OPS-38, not a test result. No hosted job compiled or tested this commit;
+the local six-step gate above is the only executed evidence. The owner must fix
+GitHub Billing before hosted CI can run.
