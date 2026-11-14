@@ -1,16 +1,16 @@
 # Graph Report - Isolyn-current_4  (2026-11-12)
 
 ## Corpus Check
-- 195 files · ~149,690 words
+- 195 files · ~150,761 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2232 nodes · 4182 edges · 185 communities (117 shown, 68 thin omitted)
+- 2241 nodes · 4200 edges · 178 communities (110 shown, 68 thin omitted)
 - Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 289 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c7153f0d`
+- Built from commit: `24ab7dff`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -62,20 +62,17 @@
 - Isolynengine
 - Include
 - Include
-- Isolynenginebridge
 - Root Docs
 - Game
 - Include
 - Isolynenginebridge
 - Isolynengine
 - Root Docs
-- Game
 - Include
 - Include
 - Include
 - Root Docs
 - Environment
-- Root Docs
 - Include
 - Components
 - Components
@@ -112,7 +109,6 @@
 - DOMINOES UI FIX --- NON-NEGOTIABLE REBUILD MANDATE
 - Isolyn Current Audit (Markdown edition)
 - README.md
-- .shutdown
 - tree.md
 - Audit Remediation Roadmap
 - GameSnapshot Test Seam (internal init)
@@ -179,51 +175,48 @@
 - XCTestCase
 - EvaluationWeights
 - Dealer.cpp
-- TTEntry
 - CalibrationTests
 - Determinizer::sample
 - .makeBody
 - GestureArbiter
-- buildAllTiles
 - build.sh
+- .automaticMove
 - Dealer
 - IsolynV2.0 Project Inventory
 - buildSnapshot
-- RoundEndOverlay
 - GestureArbiter
 - build.sh
+- CenteredContent
 - ComingSoonView
 - BlockingHeuristic::score
-- EnvironmentTimeLabel
-- GestureArbiter
 - RoundOutcome
-- TTEntry
-- DepthResult
 - DrawFlightView
+- CommandOutcome
+- HandDropResolver
 
 ## God Nodes (most connected - your core abstractions)
 1. `GameState` - 75 edges
 2. `DominoTile` - 63 edges
 3. `GameViewModel` - 56 edges
-4. `Tile` - 53 edges
-5. `View` - 52 edges
+4. `View` - 55 edges
+5. `Tile` - 53 edges
 6. `SwiftUI` - 35 edges
 7. `InteractiveGameBoardView` - 35 edges
 8. `SearchContext` - 31 edges
-9. `Color` - 29 edges
+9. `Color` - 30 edges
 10. `Chain` - 29 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Isolyn Current Audit (Markdown edition)` --semantically_similar_to--> `Isolyn Current Audit (PDF edition)`  [INFERRED] [semantically similar]
   isolyn current audit.md → isolyn current audit.pdf
+- `bridge_match_record_round()` --calls--> `handValue()`  [INFERRED]
+  Sources/IsolynEngineBridge/IsolynBridge.cpp → Accelerator/shaders/evaluation.metal
+- `HandTapRouterTests` --calls--> `Tile`  [INFERRED]
+  Tests/IsolynAppTests/HandTapRouterTests.swift → Sources/IsolynApp/Engine/EngineTypes.swift
 - `main()` --calls--> `markTileKnown`  [INFERRED]
   Tests/IsolynEngineTests/BeliefStateTests.cpp → Sources/IsolynEngine/include/BeliefState.hpp
 - `main()` --calls--> `applyOpponentDraw`  [INFERRED]
   Tests/IsolynEngineTests/BeliefStateTests.cpp → Sources/IsolynEngine/include/BeliefState.hpp
-- `main()` --calls--> `undoPlayTile`  [INFERRED]
-  Tests/IsolynEngineTests/GameStateTests.cpp → Sources/IsolynEngine/include/GameState.hpp
-- `main()` --calls--> `undoDrawTile`  [INFERRED]
-  Tests/IsolynEngineTests/GameStateTests.cpp → Sources/IsolynEngine/include/GameState.hpp
 
 ## Import Cycles
 - None detected.
@@ -233,114 +226,114 @@
 - **Bridge Design ↔ Verification Trust Chain** — docs_bridge_architecture_document, docs_bridge_architecture_bridge, docs_bridge_testing_document, docs_bridge_testing_blocked_player_ub [EXTRACTED 1.00]
 - **OA Remediation Executed as FIX-27/FIX-28** — audit_remediation_roadmap_oa_1_macos_soak_noop, audit_remediation_roadmap_oa_4_chain_board_bounds, fix_log_fix_27_soak_truth, fix_log_fix_28_board_layout [EXTRACTED 1.00]
 
-## Communities (185 total, 68 thin omitted)
+## Communities (178 total, 68 thin omitted)
 
 ### Community 0 - "Appearance"
-Cohesion: 0.13
-Nodes (18): PipGlyph, CGFloat, Int, Color, IsolynDominoTile, Bool, CGFloat, CGPoint (+10 more)
+Cohesion: 0.16
+Nodes (14): IsolynDominoTile, Bool, CGFloat, CGPoint, CGSize, Int, TileOrientation, horizontal (+6 more)
 
 ### Community 1 - "Root Docs"
 Cohesion: 0.67
 Nodes (3): CI Pipeline (Phase 3a / OPS-04), F-02-Class Drift Structural Guard, CI Workflow (GitHub Actions macOS)
 
 ### Community 2 - "Root Docs"
-Cohesion: 0.10
-Nodes (19): ChainAndZonesView, EndEdgeHighlight, EndTarget, GameSurfaceCoordinateSpace, Metrics, Oriented, Placed, SnakeChainBoard (+11 more)
+Cohesion: 0.23
+Nodes (3): SnakeChainLayout, CGSize, BoardLayoutTests
 
 ### Community 3 - "Hoverchain"
-Cohesion: 0.16
-Nodes (12): PredictivePolicy, Double, TileKnowledge, historical, lockedOff, mine, predictedOpponent, unknown (+4 more)
+Cohesion: 0.15
+Nodes (12): ButtonStyle, PrimaryCapsuleButtonStyle, CGFloat, BoneyardFaceDownTile, BoneyardPressStyle, BoneyardView, Bool, CGFloat (+4 more)
 
 ### Community 4 - "Include"
-Cohesion: 0.18
-Nodes (15): Int, HoverChain, HoverChainEntry, HoverChainNodeKind, baseUninformed, complete, historicalInformed, lockedOff (+7 more)
+Cohesion: 0.12
+Nodes (22): Int, HoverChain, HoverChainEntry, HoverChainNodeKind, baseUninformed, complete, historicalInformed, lockedOff (+14 more)
 
 ### Community 5 - "Isolynapptests"
-Cohesion: 0.10
-Nodes (22): kKillerSlots, kMaxHistoryPlayers, kMoveCodeCount, atomic, uint64_t, SearchContext, aborted, cancelRequested (+14 more)
+Cohesion: 0.05
+Nodes (59): Config, kKillerSlots, kMaxHistoryPlayers, kMoveCodeCount, SimulationEngine, sampleDeterminizedState, array, atomic (+51 more)
 
 ### Community 6 - "Include"
-Cohesion: 0.16
+Cohesion: 0.15
 Nodes (5): vector, array, map, deque, main()
 
 ### Community 7 - "Root Docs"
 Cohesion: 0.10
-Nodes (17): GraphicsContext, RandomNumberGenerator, StarFieldView, Int, UInt64, CGSize, Double, WeatherEffectView (+9 more)
+Nodes (19): GraphicsContext, RandomNumberGenerator, StarFieldView, Int, UInt64, CGSize, Double, WeatherEffectView (+11 more)
 
 ### Community 8 - "Isolynenginebridge"
-Cohesion: 0.19
-Nodes (24): CommandResultDTO, decidingPlayerIndex, diagnosticMessage, newStateVersion, roundOutcome, status, RoundOutcomeDTO, advanceStateVersion() (+16 more)
+Cohesion: 0.17
+Nodes (26): CommandResultDTO, decidingPlayerIndex, diagnosticMessage, newStateVersion, roundOutcome, status, RoundOutcomeDTO, advanceStateVersion() (+18 more)
 
 ### Community 9 - "Game"
-Cohesion: 0.05
-Nodes (34): ObjectIdentifier, AnalysisTask, EngineSession, Error, Int, Int32, isolyn, MatchFormat (+26 more)
+Cohesion: 0.17
+Nodes (12): ObjectIdentifier, DrawEvent, GameViewModel, Bool, Int, Never, RoundOutcome, Set (+4 more)
 
 ### Community 10 - "Environment"
-Cohesion: 0.11
-Nodes (16): CLLocation, CoreLocation, previewManager(), Int, LiveWeatherService, SkyCondition, clear, cloudy (+8 more)
+Cohesion: 0.13
+Nodes (17): CLLocation, CoreLocation, Sendable, previewManager(), Int, LiveWeatherService, SkyCondition, clear (+9 more)
 
 ### Community 11 - "Isolynenginebridge"
-Cohesion: 0.12
-Nodes (17): mutex, GameMode, EngineSessionImpl, cachedDecidingPlayer, cachedRoundOutcome, controller, mode, mutex (+9 more)
+Cohesion: 0.08
+Nodes (25): mutex, AnalysisSnapshotImpl, belief, believerPlayerIndex, cancelRequested, mode, stateVersionAnalyzed, world (+17 more)
 
 ### Community 12 - "Include"
-Cohesion: 0.11
-Nodes (19): EvaluationBatch, componentCount, features, playerCount, positionCount, size_t, GameMode, vector (+11 more)
+Cohesion: 0.33
+Nodes (6): EvaluationBatch, componentCount, features, playerCount, positionCount, size_t
 
 ### Community 13 - "Isolynapptests"
-Cohesion: 0.21
-Nodes (4): Calendar, Int, String, TimePhaseTests
+Cohesion: 0.08
+Nodes (19): DateFormatter, EnvironmentTimeLabel, String, FixedEnvironmentClock, Date, SystemEnvironmentClock, Calendar, Double (+11 more)
 
 ### Community 14 - "Game"
-Cohesion: 0.14
-Nodes (10): ButtonStyle, Configuration, Font, PrimaryCapsuleButtonStyle, CGFloat, IsolynTheme, CGFloat, EntryView (+2 more)
+Cohesion: 0.29
+Nodes (4): Font, Configuration, IsolynTheme, CGFloat
 
 ### Community 15 - "Include"
-Cohesion: 0.10
-Nodes (16): int8_t, BeliefState::BeliefState(), BeliefState::isTracked(), BeliefState::markTileKnown(), BeliefState::probability(), map, vector, string (+8 more)
+Cohesion: 0.05
+Nodes (36): int8_t, BeliefState::BeliefState(), BeliefState::isTracked(), BeliefState::markTileKnown(), BeliefState::probability(), map, vector, Chain::fromKnownState() (+28 more)
 
 ### Community 16 - "Isolynengine"
 Cohesion: 0.07
-Nodes (27): BlockingHeuristic::score(), ExpectedValueHeuristic::score(), GameState, hash, m_boneyard, m_chain, m_currentPlayerIndex, m_hands (+19 more)
+Nodes (34): ExpectedValueHeuristic::score(), BlockingHeuristic, score, ExpectedValueHeuristic, score, GameState, drawTile, hash (+26 more)
 
 ### Community 17 - "Include"
-Cohesion: 0.18
-Nodes (16): AnalysisHandle, MatchHandle, bridge_analysis_request_cancel(), bridge_analysis_run(), bridge_analysis_snapshot_create(), bridge_analysis_snapshot_destroy(), bridge_match_close(), bridge_match_record_round() (+8 more)
+Cohesion: 0.15
+Nodes (24): AnalysisHandle, MatchHandle, playerCountForMode, bridge_analysis_request_cancel(), bridge_analysis_run(), bridge_analysis_snapshot_create(), bridge_analysis_snapshot_destroy(), bridge_match_begin() (+16 more)
 
 ### Community 18 - "Engine"
-Cohesion: 0.19
-Nodes (14): Determinizer, sample, DominoSet, shuffledTiles, mt19937_64, SimulationEngine::sampleDeterminizedState(), main(), main() (+6 more)
+Cohesion: 0.14
+Nodes (18): BoardDropTargetFrames, ChainAndZonesView, EndEdgeHighlight, EndTarget, GameSurfaceCoordinateSpace, Metrics, Oriented, Placed (+10 more)
 
 ### Community 19 - "Include"
-Cohesion: 0.15
-Nodes (14): BeliefState::applyOpponentDraw(), BeliefState, applyOpponentDraw, kBoneyardLocation, m_distributions, m_tracked, markTileKnown, totalProbabilityMass (+6 more)
+Cohesion: 0.08
+Nodes (32): BeliefState::applyOpponentDraw(), BeliefState::totalProbabilityMass(), map, mt19937_64, pair, vector, Determinizer::sample(), BeliefState (+24 more)
 
 ### Community 20 - "Include"
 Cohesion: 0.09
 Nodes (24): GameModeDTO, SnapshotDTO, boneyardDrawableCount, boneyardLockedCount, boneyardLockedTiles, chain, currentPlayerIndex, decidingPlayerIndex (+16 more)
 
 ### Community 21 - "Include"
-Cohesion: 0.25
-Nodes (10): CoreGraphics, Tile, HandDropResolver, CGFloat, CGPoint, CGRect, Move, HandDropResolverTests (+2 more)
+Cohesion: 0.28
+Nodes (9): Tile, CGPoint, CGRect, Move, HandTileFramesKey, CGRect, HandDropResolverTests, Int (+1 more)
 
 ### Community 22 - "Engine"
-Cohesion: 0.11
-Nodes (23): Element, Equatable, os, Sendable, AnalysisOutcome, GameSnapshot, MatchFormat, MatchOutcome (+15 more)
+Cohesion: 0.12
+Nodes (21): Element, Hashable, os, ChainSide, left, right, GameSnapshot, MatchFormat (+13 more)
 
 ### Community 23 - "Include"
 Cohesion: 0.11
 Nodes (20): AnalysisResultDTO, completed, expectedValuePerPlayer, playerCount, recommendedMove, samplesCompleted, samplesConfigured, stateVersionAnalyzed (+12 more)
 
 ### Community 24 - "Root Docs"
-Cohesion: 0.13
-Nodes (22): size_t, vector, PositionBatch, playerCount, rows, GameMode, vector, encodePositionBatch() (+14 more)
+Cohesion: 0.33
+Nodes (6): size_t, vector, PositionBatch, playerCount, rows, PositionRow
 
 ### Community 25 - "Components"
-Cohesion: 0.10
-Nodes (19): AtmosphericBackgroundView, EnvironmentSettingsView, EnvironmentView, LegibilityScrim, ColorEditorRow, DominoAppearanceSection, HueSlider, InspectionSection (+11 more)
+Cohesion: 0.07
+Nodes (21): AtmosphericBackgroundView, EnvironmentSettingsView, EnvironmentView, LegibilityScrim, PipGlyph, CGFloat, Int, View (+13 more)
 
 ### Community 26 - "Hoverchain"
-Cohesion: 0.32
+Cohesion: 0.28
 Nodes (4): Bool, Double, Int, TileKnowledgeResolver
 
 ### Community 27 - "Include"
@@ -349,27 +342,27 @@ Nodes (15): GameMode, vector, ScoreSystem, applyRoundScores, hasMatchEnded, m_mo
 
 ### Community 28 - "Include"
 Cohesion: 0.14
-Nodes (19): Chain, fromKnownState, m_leftEnd, m_leftEndHistory, m_rightEnd, m_rightEndHistory, m_tiles, placeLeft (+11 more)
+Nodes (18): Chain, fromKnownState, m_leftEnd, m_leftEndHistory, m_rightEnd, m_rightEndHistory, m_tiles, placeLeft (+10 more)
 
 ### Community 29 - "Isolynenginetests"
-Cohesion: 0.12
-Nodes (22): BeliefState::totalProbabilityMass(), isTracked, probability, ProbabilityEngine, constructFromGameState, expectedRemainingValue, observeDraw, observePlay (+14 more)
+Cohesion: 0.13
+Nodes (18): Determinizer, sample, DominoSet, shuffledTiles, SearchEngine, chooseBestMove, approxEqual(), main() (+10 more)
 
 ### Community 30 - "Environment"
-Cohesion: 0.20
-Nodes (8): NSObjectProtocol, EnvironmentManager, Calendar, Int, Never, Task, Void, EnvironmentManagerTests
+Cohesion: 0.16
+Nodes (14): NSObjectProtocol, EnvironmentClock, EnvironmentManager, Calendar, Int, Never, Task, Void (+6 more)
 
 ### Community 31 - "Isolynapp"
 Cohesion: 0.04
 Nodes (47): 0. Design correction — Offsuit-minimal (2026-11-12), 10. Implementation phases, 11. Acceptance criteria, 12. Risks and boundaries, 13. Immediate next slice, 1. Verdict, 2. What exists today, 3. Product direction: The Table (+39 more)
 
 ### Community 32 - "Engine"
-Cohesion: 0.18
-Nodes (12): EvaluationEngine::evaluate(), teamMobility(), BlockingHeuristic, score, ClosingOpportunityHeuristic, kNextRoundStartBonus, score, ExpectedValueHeuristic (+4 more)
+Cohesion: 0.16
+Nodes (5): Move, UInt64, AIOpponentTests, GameViewModelTests, Bool
 
 ### Community 33 - "Isolynengine"
-Cohesion: 0.07
-Nodes (21): Content, IsolynApp, AppearanceKeyframe, EnvironmentAppearance, EnvironmentAppearanceCurve, EnvironmentColor, Double, HandTapRouter (+13 more)
+Cohesion: 0.29
+Nodes (6): AppearanceKeyframe, EnvironmentAppearance, EnvironmentAppearanceCurve, EnvironmentColor, Double, EnvironmentAppearanceCurveTests
 
 ### Community 34 - "Isolynengine"
 Cohesion: 0.16
@@ -380,7 +373,7 @@ Cohesion: 0.19
 Nodes (9): BoardCamera, CGFloat, CGPoint, CGSize, Double, Never, Task, Void (+1 more)
 
 ### Community 36 - "Engine"
-Cohesion: 0.15
+Cohesion: 0.14
 Nodes (13): Error, BridgeError, boneyardEmpty, bridgeFailure, engineFailure, invalidMove, invalidRequest, noLegalMove (+5 more)
 
 ### Community 37 - "Isolynenginebridgetests"
@@ -388,47 +381,43 @@ Cohesion: 0.30
 Nodes (13): FuzzedDataProvider, consumeMode(), consumeMove(), consumePlayerIndex(), consumeSessionHandleGuess(), consumeSide(), consumeTile(), consumeVersion() (+5 more)
 
 ### Community 38 - "Environment"
-Cohesion: 0.11
-Nodes (16): CaseIterable, EnvironmentState, Date, Double, String, Double, TimePhase, afternoon (+8 more)
+Cohesion: 0.12
+Nodes (15): Equatable, EnvironmentState, Date, Double, String, GestureOwner, boardPan, dominoDrag (+7 more)
 
 ### Community 39 - "Include"
-Cohesion: 0.20
-Nodes (18): setCurrentPlayerIndex, GameMode, MatchController, currentPlayerHasLegalMove, dealFirstRound, dealSubsequentRound, endTurnWithNoPlay, m_mode (+10 more)
+Cohesion: 0.27
+Nodes (14): GameMode, MatchController, currentPlayerHasLegalMove, dealFirstRound, dealSubsequentRound, endTurnWithNoPlay, m_mode, m_state (+6 more)
 
 ### Community 40 - "Root Docs"
-Cohesion: 0.38
-Nodes (5): PreferenceKey, BoneyardAnchorKey, CGPoint, HandTileFramesKey, CGRect
+Cohesion: 0.24
+Nodes (8): Impl, shared_ptr, size_t, unordered_map, HandleTable, m_entries, m_mutex, m_nextId
 
 ### Community 41 - "Environment"
-Cohesion: 0.21
-Nodes (7): EnvironmentClock, FixedEnvironmentClock, Date, SystemEnvironmentClock, RandomWeatherService, Double, TimeZone
+Cohesion: 0.20
+Nodes (10): EvaluationBreakdown, blocking, closingOpportunity, expectedValue, mobility, pipControl, teamSupport, tempo (+2 more)
 
 ### Community 42 - "Appearance"
-Cohesion: 0.09
-Nodes (23): ENGINE-01 — Search, terminal scoring, evaluation, difficulty, and AI mode, METAL-01 — Standalone Metal batch evaluator, METAL-02 — face-mask kernel optimization (2026-11-11), OPS-10 — Closeout Initiative, PERF-01 — CPU evaluator/hash and Metal kernel throughput round (2026-11-11), PERF-02 — batch leaf evaluation + inline raw totals (2026-11-11), PERF-03 — batch leaf Closed/mobility consolidation (2026-11-12), REGRESSION-01 — post-Metal regression matrix (2026-11-11) (+15 more)
+Cohesion: 0.08
+Nodes (25): ENGINE-01 — Search, terminal scoring, evaluation, difficulty, and AI mode, METAL-01 — Standalone Metal batch evaluator, METAL-02 — face-mask kernel optimization (2026-11-11), OPS-10 — Closeout Initiative, PERF-01 — CPU evaluator/hash and Metal kernel throughput round (2026-11-11), PERF-02 — batch leaf evaluation + inline raw totals (2026-11-11), PERF-03 — batch leaf Closed/mobility consolidation (2026-11-12), REGRESSION-01 — post-Metal regression matrix (2026-11-11) (+17 more)
 
 ### Community 43 - "Include"
 Cohesion: 0.17
 Nodes (12): Boneyard::Boneyard(), Boneyard::drawNext(), Boneyard::lockedTiles(), Boneyard::undoDraw(), vector, Boneyard, drawNext, lockedTiles (+4 more)
 
 ### Community 44 - "Isolynengine"
-Cohesion: 0.10
+Cohesion: 0.11
 Nodes (16): Context, NSEvent, NSPoint, NSView, NSViewRepresentable, Coordinator, InspectionEventMonitor, InspectionMouseButton (+8 more)
 
 ### Community 45 - "Include"
-Cohesion: 0.18
-Nodes (9): App, Scene, AppState, Screen, comingSoon, entry, game, modeSelect (+1 more)
+Cohesion: 0.14
+Nodes (13): App, Scene, AppState, MatchFormat, oneVOne, oneVOneVOne, twoVTwo, Screen (+5 more)
 
 ### Community 46 - "Include"
-Cohesion: 0.18
-Nodes (10): PlacementKind, uint64_t, GameState::drawTile(), GameState::hash(), GameState::playTile(), GameState::undoDrawTile(), GameState::undoPlayTile(), hashMix() (+2 more)
-
-### Community 47 - "Isolynenginebridge"
-Cohesion: 0.44
-Nodes (8): bridge_match_begin(), bridge_session_create_first_round(), bridge_session_create_subsequent_round(), ChainSideDTO, GameModeDTO, isValidMode(), toEngine(), unique_ptr
+Cohesion: 0.50
+Nodes (5): setCurrentPlayerIndex, mt19937_64, vector, createFirstRound(), dealSeeded()
 
 ### Community 48 - "Root Docs"
-Cohesion: 0.23
+Cohesion: 0.21
 Nodes (6): HoverChainController, Int, Never, Task, UInt64, Void
 
 ### Community 49 - "Game"
@@ -440,8 +429,8 @@ Cohesion: 0.11
 Nodes (19): FIX‑01 — Swift test target could not build at all, FIX‑02 — Engine/bridge scripts failed to link on macOS, FIX‑03 — Bridge test harness assumed GNU coreutils, FIX‑04 — SmokeTest deal-randomness flake, part A (blocked-player assumption), FIX‑05 — SmokeTest flake part B (helper spun forever in boneyard-less modes), FIX‑06 — libFuzzer runtime absent from Xcode 26 toolchain (infrastructure), FIX‑07 — Terminal-round guard (audit F‑03): play could continue past a finished round, FIX‑08 — ScoreSystem lacked participant-count accessor (additive) (+11 more)
 
 ### Community 51 - "Isolynenginebridge"
-Cohesion: 0.15
-Nodes (16): Hashable, ChainSide, left, right, BoardDropTargetFrames, CGRect, HandRackView, Bool (+8 more)
+Cohesion: 0.21
+Nodes (10): HandRackView, Bool, CGFloat, CGPoint, CGSize, Gesture, Move, Set (+2 more)
 
 ### Community 52 - "Isolynengine"
 Cohesion: 0.06
@@ -450,10 +439,6 @@ Nodes (34): 1a. F‑04 — EnvironmentManager / LiveWeatherService race closure,
 ### Community 53 - "Root Docs"
 Cohesion: 0.07
 Nodes (27): 1a. Darwin RSS reader, 1b. Make "couldn't measure" loud instead of silently green, 1c. Verify the measurement is REAL before trusting it, 2a. Extract pure layout metrics (testability first), 2b. Auto-fit scale (uniform ⇒ the 2:1 law survives), 2c. Content-aware camera bounds, 2d. The GameSnapshot TEST SEAM (shared infrastructure with Phase 3), 3a. Fix the math to match the claim (or the claim to match the math — math wins) (+19 more)
-
-### Community 54 - "Game"
-Cohesion: 0.24
-Nodes (8): Impl, shared_ptr, size_t, unordered_map, HandleTable, m_entries, m_mutex, m_nextId
 
 ### Community 55 - "Include"
 Cohesion: 0.08
@@ -475,21 +460,17 @@ Nodes (8): Codable, InspectionMouseButton, extra, middle, right, InspectionSetti
 Cohesion: 0.06
 Nodes (36): Backend, capabilities, evaluate, BatchView, featureCount, features, playerCount, positionCount (+28 more)
 
-### Community 60 - "Root Docs"
-Cohesion: 0.21
-Nodes (13): Config, array, GameMode, mt19937_64, size_t, uint8_t, evaluateAll(), RawEvaluation (+5 more)
-
 ### Community 61 - "Include"
-Cohesion: 0.22
-Nodes (5): Chain::fromKnownState(), Chain::placeLeft(), Chain::placeOpening(), Chain::placeRight(), deque
+Cohesion: 0.33
+Nodes (6): AnalysisTask, Error, isolyn, Task, AnalysisOutcome, Double
 
 ### Community 62 - "Components"
 Cohesion: 0.11
 Nodes (17): 0. HOW TO READ THE PERCENTAGES, 1a. Version control + verification harness repair *(small, blocking everything)*, 1b. Terminal-round guard (F‑03) — the highest-severity unfixed bug, 1c. Match orchestration — the keystone design *(bulk of the phase)*, DEPENDENCY GRAPH (why this order and no other), EFFORT SUMMARY TABLE, FIRST THREE ACTIONS WHEN WORK BEGINS, ISOLYN IMPLEMENTATION ROADMAP (+9 more)
 
 ### Community 63 - "Components"
-Cohesion: 0.19
-Nodes (4): Double, CGFloat, String, ColorMathTests
+Cohesion: 0.18
+Nodes (7): Color, Double, HoverChainOverlay, String, Void, String, ColorMathTests
 
 ### Community 64 - "Views"
 Cohesion: 0.12
@@ -510,10 +491,6 @@ Nodes (6): Bridge Testing, Current verification matrix, Environment, Historical 
 ### Community 71 - "Include"
 Cohesion: 0.15
 Nodes (12): Boundary, Components, Data contracts, `lab/` — Python lab, Measured baseline (2026-11-11), Milestones, Non-goals, Offline Lab & Trainer (+4 more)
-
-### Community 72 - "Isolynenginebridgetests"
-Cohesion: 0.22
-Nodes (8): AnalysisSnapshotImpl, belief, believerPlayerIndex, cancelRequested, mode, stateVersionAnalyzed, world, atomic
 
 ### Community 80 - "ISOLYN RELEASE CHECKLIST"
 Cohesion: 0.20
@@ -548,8 +525,8 @@ Cohesion: 0.33
 Nodes (6): 30. ACCEPTANCE CRITERIA, Board, Domino construction, Hand, Layout, Quality
 
 ### Community 88 - "EnvironmentTests.swift"
-Cohesion: 0.23
-Nodes (16): ofstream, ostream, GameMode, string, string_view, uint64_t, handValueOf(), main() (+8 more)
+Cohesion: 0.21
+Nodes (17): ofstream, ostream, GameMode, RoundOutcomeKind, string, string_view, uint64_t, handValueOf() (+9 more)
 
 ### Community 89 - "3. DOMINO TILE SPECIFICATION"
 Cohesion: 0.40
@@ -560,16 +537,12 @@ Cohesion: 0.11
 Nodes (28): EvalParams, componentCount, playerCount, positionCount, EvalPositionParams, playerCount, positionCount, handValue() (+20 more)
 
 ### Community 91 - "RoundOutcome"
-Cohesion: 0.12
-Nodes (13): AILevel, casual, club, elite, expert, master, MatchFormat, OpponentMode (+5 more)
+Cohesion: 0.13
+Nodes (14): CaseIterable, AILevel, casual, club, elite, expert, master, AIProfile (+6 more)
 
 ### Community 96 - "README.md"
 Cohesion: 0.29
 Nodes (6): Architecture, Decisions, IsolynV2.0, Project identity, Run, Status
-
-### Community 97 - ".shutdown"
-Cohesion: 0.48
-Nodes (6): GameMode, vector, Dealer::excludedTilesForMode(), Dealer::handSizeForMode(), Dealer::isMisdeal(), Dealer::playerCountForMode()
 
 ### Community 145 - "Isolyn Offline Lab (scaffold)"
 Cohesion: 0.25
@@ -592,12 +565,12 @@ Cohesion: 0.33
 Nodes (5): Build and run, CSV fields, IsolynV2.0 Self-Play Generator, Modes, What it deliberately does not do yet
 
 ### Community 150 - "ComingSoonView"
-Cohesion: 0.14
-Nodes (14): RoundOutcomeKind, GameSummary, aDepth, aDeterminizations, bDepth, bDeterminizations, decidingPlayer, decisions (+6 more)
+Cohesion: 0.15
+Nodes (13): GameSummary, aDepth, aDeterminizations, bDepth, bDeterminizations, decidingPlayer, decisions, finalHands (+5 more)
 
 ### Community 151 - "Boneyard.cpp"
-Cohesion: 0.14
-Nodes (12): GeometryProxy, HandDragModel, InteractiveGameBoardView, SeatItem, Bool, CGFloat, CGPoint, CGSize (+4 more)
+Cohesion: 0.08
+Nodes (21): GeometryProxy, PreferenceKey, BoneyardAnchorKey, CGPoint, GestureArbiter, Bool, CGFloat, CGPoint (+13 more)
 
 ### Community 152 - "Move"
 Cohesion: 0.20
@@ -612,8 +585,8 @@ Cohesion: 0.18
 Nodes (11): MoveRow, depthReached, evaluation, exactEndgame, moveIndex, nodes, player, side (+3 more)
 
 ### Community 155 - "benchmarkMode"
-Cohesion: 0.31
-Nodes (10): Fn, benchmarkMode(), array, GameMode, size_t, main(), makeFixture(), median() (+2 more)
+Cohesion: 0.12
+Nodes (23): GameMode, vector, encodeEvaluationBatch(), Fn, EvaluationEngine, evaluate, evaluateAll, evaluateAllWithClosed (+15 more)
 
 ### Community 158 - "MetalAccelerator.mm"
 Cohesion: 0.20
@@ -621,102 +594,94 @@ Nodes (9): DifficultyModel, kMaxStrength, kMinStrength, kProfiles, DifficultyPro
 
 ### Community 160 - "Options"
 Cohesion: 0.13
-Nodes (25): Dealer::deal(), Dealer, deal, excludedTilesForMode, handSizeForMode, isMisdeal, playerCountForMode, DealResult (+17 more)
+Nodes (23): GameMode, vector, Dealer::deal(), Dealer::excludedTilesForMode(), Dealer::handSizeForMode(), Dealer::isMisdeal(), Dealer::playerCountForMode(), Dealer (+15 more)
 
 ### Community 161 - "XCTestCase"
-Cohesion: 0.33
-Nodes (5): map, mt19937_64, pair, vector, Determinizer::sample()
+Cohesion: 0.21
+Nodes (10): ColorEditorRow, DominoAppearanceSection, HueSlider, InspectionSection, SettingsDrawer, Bool, CGFloat, Double (+2 more)
 
 ### Community 162 - "EvaluationWeights"
-Cohesion: 0.13
-Nodes (22): optional, GameMode, evaluateAllImpl(), EvaluationEngine::evaluateAll(), EvaluationEngine::evaluateAllWithClosed(), HandFacts, legalMoves, value (+14 more)
+Cohesion: 0.08
+Nodes (46): GameMode, vector, encodePositionBatch(), optional, GameMode, evaluateAllImpl(), EvaluationEngine::evaluate(), EvaluationEngine::evaluateAll() (+38 more)
 
 ### Community 163 - "Dealer.cpp"
 Cohesion: 0.20
-Nodes (10): EvaluationBreakdown, blocking, closingOpportunity, expectedValue, mobility, pipControl, teamSupport, tempo (+2 more)
-
-### Community 164 - "TTEntry"
-Cohesion: 0.33
-Nodes (6): GameMode, vector, GameState::GameState(), PlayRecord, playerIndex, tile
+Nodes (6): MatchFormat, BoneyardRulesTests, MatchFormat, ResponsiveLayoutTests, RoundRevealTests, XCTestCase
 
 ### Community 166 - "Determinizer::sample"
-Cohesion: 0.25
-Nodes (8): size_t, uint64_t, uint8_t, EntropySource::fillSecureRandomBytes(), EntropySource::nextUint64(), EntropySource::uniformIndexBelow(), fillSecureRandomBytes, nextUint64
+Cohesion: 0.10
+Nodes (18): index_sequence, buildAllTiles(), array, vector, DominoSet::shuffledTiles(), size_t, uint64_t, uint8_t (+10 more)
 
 ### Community 167 - ".makeBody"
 Cohesion: 0.40
 Nodes (4): Move, describe, side, tile
 
-### Community 169 - "buildAllTiles"
-Cohesion: 0.33
-Nodes (5): index_sequence, buildAllTiles(), array, vector, DominoSet::shuffledTiles()
+### Community 168 - "GestureArbiter"
+Cohesion: 0.20
+Nodes (6): MatchCoordinator, Bool, Int, isolyn, MatchFormat, MatchFormat
+
+### Community 172 - ".automaticMove"
+Cohesion: 0.25
+Nodes (4): HandTapRouter, Bool, Move, HandTapRouterTests
 
 ### Community 173 - "Dealer"
-Cohesion: 0.20
-Nodes (10): Identifiable, MatchFormat, oneVOne, oneVOneVOne, twoVTwo, ModeCard, ModeOption, Bool (+2 more)
+Cohesion: 0.17
+Nodes (9): Identifiable, ModeCard, ModeOption, Bool, String, Void, ModeSelectorView, CGFloat (+1 more)
 
 ### Community 174 - "IsolynV2.0 Project Inventory"
 Cohesion: 0.40
 Nodes (4): Components and LOC, IsolynV2.0 Project Inventory, Naming boundary, Relevant callers
 
 ### Community 175 - "buildSnapshot"
-Cohesion: 0.10
+Cohesion: 0.09
 Nodes (23): ChainDTO, count, leftEnd, rightEnd, tiles, DifficultyProfileDTO, determinizationCount, maxDepthPlies (+15 more)
 
-### Community 176 - "RoundEndOverlay"
-Cohesion: 0.32
-Nodes (6): RevealRow, RoundEndOverlay, Bool, Int, String, Void
-
 ### Community 177 - "GestureArbiter"
-Cohesion: 0.14
-Nodes (10): AppKit, Foundation, IsolynEngineBridge, Observation, Phase, loading, matchOver, playing (+2 more)
+Cohesion: 0.22
+Nodes (5): AppKit, Foundation, IsolynEngineBridge, Observation, SwiftUI
+
+### Community 179 - "CenteredContent"
+Cohesion: 0.39
+Nodes (4): Content, CenteredContent, IsolynLayout, CGFloat
 
 ### Community 180 - "ComingSoonView"
-Cohesion: 0.16
-Nodes (28): hasImmediateDominoWin(), advanceToNextPlayer, checkForClose, MoveExecutor, apply, undo, size_t, MoveGenerator (+20 more)
+Cohesion: 0.12
+Nodes (33): BlockingHeuristic::score(), hasImmediateDominoWin(), advanceToNextPlayer, checkForClose, MoveExecutor, apply, undo, size_t (+25 more)
 
 ### Community 181 - "BlockingHeuristic::score"
 Cohesion: 0.13
 Nodes (13): AppliedMove, kind, move, playerIndex, Move, PlacementKind, string, Move::describe() (+5 more)
 
-### Community 182 - "EnvironmentTimeLabel"
-Cohesion: 0.60
-Nodes (3): DateFormatter, EnvironmentTimeLabel, String
-
-### Community 183 - "GestureArbiter"
-Cohesion: 0.23
-Nodes (9): GestureArbiter, GestureOwner, boardPan, dominoDrag, idle, pending, Bool, CGFloat (+1 more)
-
 ### Community 184 - "RoundOutcome"
 Cohesion: 0.50
 Nodes (4): RoundOutcomeKind, RoundOutcome, decidingPlayerIndex, kind
 
-### Community 185 - "TTEntry"
-Cohesion: 0.29
-Nodes (7): TTEntry, bestCode, depth, flag, raw, score, TTFlag
-
-### Community 186 - "DepthResult"
-Cohesion: 0.15
-Nodes (18): Move, unordered_map, vector, DepthResult, depth, move, samples, values (+10 more)
-
 ### Community 187 - "DrawFlightView"
-Cohesion: 0.10
-Nodes (21): DominoAppearance, EdgeHighlightMode, none, standard, strong, subtle, BoneyardFaceDownTile, BoneyardView (+13 more)
+Cohesion: 0.13
+Nodes (16): DominoAppearance, EdgeHighlightMode, none, standard, strong, subtle, DrawFlightView, FlyingFaceDownTile (+8 more)
+
+### Community 188 - "CommandOutcome"
+Cohesion: 0.24
+Nodes (6): EngineSession, Int, Int32, Move, UInt64, CommandOutcome
+
+### Community 193 - "HandDropResolver"
+Cohesion: 0.50
+Nodes (3): CoreGraphics, HandDropResolver, CGFloat
 
 ## Knowledge Gaps
-- **738 isolated node(s):** `build.sh script`, `features`, `positionCount`, `featureCount`, `values` (+733 more)
+- **740 isolated node(s):** `build.sh script`, `features`, `positionCount`, `featureCount`, `values` (+735 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **68 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `GameState` connect `Isolynengine` to `Include`, `Include`, `Include`, `Include`, `Engine`, `Include`, `Include`, `Root Docs`, `benchmarkMode`, `Include`, `Isolynenginetests`, `Engine`, `Options`, `EvaluationWeights`, `TTEntry`, `Include`, `Include`, `Include`, `ComingSoonView`, `BlockingHeuristic::score`, `DepthResult`, `Root Docs`, `Isolynenginebridgetests`, `EnvironmentTests.swift`?**
-  _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Why does `DominoTile` connect `Include` to `Include`, `Isolynenginebridge`, `Isolynengine`, `Engine`, `Include`, `Include`, `Isolynenginetests`, `Options`, `XCTestCase`, `Isolynengine`, `TTEntry`, `.makeBody`, `Include`, `buildAllTiles`, `Include`, `Include`, `Isolynenginebridge`, `ComingSoonView`, `BlockingHeuristic::score`, `DepthResult`, `Include`, `.shutdown`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
-- **Why does `InteractiveGameBoardView` connect `Boneyard.cpp` to `Include`, `GestureArbiter`, `Game`, `Root Docs`, `GestureArbiter`, `Isolynenginebridge`, `SimulationEngine::sampleDeterminizedState`, `Include`, `GestureArbiter`, `Components`, `Root Docs`, `RoundOutcome`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Why does `GameState` connect `Isolynengine` to `Options`, `EvaluationWeights`, `Isolynapptests`, `Include`, `Include`, `Include`, `Isolynenginebridge`, `Include`, `Include`, `Include`, `Include`, `ComingSoonView`, `BlockingHeuristic::score`, `Include`, `EnvironmentTests.swift`, `benchmarkMode`, `Include`, `Isolynenginetests`?**
+  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+- **Why does `DominoTile` connect `Include` to `Options`, `Isolynengine`, `Determinizer::sample`, `Include`, `.makeBody`, `Isolynenginebridge`, `Include`, `Include`, `Isolynengine`, `Include`, `Include`, `ComingSoonView`, `BlockingHeuristic::score`, `Include`, `Isolynenginetests`?**
+  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+- **Why does `View` connect `Components` to `Appearance`, `XCTestCase`, `Hoverchain`, `Root Docs`, `Isolynapptests`, `Game`, `Dealer`, `Engine`, `Isolynenginebridge`, `CenteredContent`, `Boneyard.cpp`, `DrawFlightView`, `Components`?**
+  _High betweenness centrality (0.021) - this node is a cross-community bridge._
 - **Are the 6 inferred relationships involving `GameState` (e.g. with `bridge_match_record_round()` and `buildSnapshot()`) actually correct?**
   _`GameState` has 6 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 2 inferred relationships involving `GameViewModel` (e.g. with `.test_computer_plays_its_own_turn_without_human_input()` and `.test_computer_plays_two_v_two_partner_turn_without_stalling()`) actually correct?**
@@ -724,4 +689,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 4 inferred relationships involving `Tile` (e.g. with `.test_orient_flipsEachTileToTouchItsNeighbour()` and `.test_orient_marksDoubles()`) actually correct?**
   _`Tile` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `build.sh script`, `features`, `positionCount` to the rest of the system?**
-  _738 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _740 weakly-connected nodes found - possible documentation gaps or missing edges._

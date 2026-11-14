@@ -1,5 +1,13 @@
 # Strategic Design Notes — Closing vs. Domino Decisions
 
+> **Status: domain knowledge, mostly unimplemented (verified 2026-11-13).** Of
+> the behaviours described here, only a round-level closing-opportunity component
+> exists in `EvaluationEngine`. The 2v2 declarations, partner-play mode,
+> match-threshold playstyle shift and locked-double tactic are design intent.
+> Treat this file as requirements for future evaluation work, not as a claim
+> about current playing strength. The measured ladder is in
+> `docs/subsystems/LAB.md`.
+
 > Captured from a design discussion. This is domain knowledge for
 > EvaluationEngine, ProbabilityEngine, and DifficultyModel to encode when
 > those are built -- it does not affect MoveValidator or MoveGenerator,

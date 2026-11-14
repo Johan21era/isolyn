@@ -19,8 +19,9 @@ BINARY=".build/$([ "$CONFIG" = "debug" ] && echo "debug" || echo "release")/Isol
 [ -f "$BINARY" ] || { echo "❌ binary not found at $BINARY"; exit 1; }
 
 APP="build/IsolynV2.0.app"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/IsolynV2.0"
+cp "Assets/Isolyn.icns" "$APP/Contents/Resources/Isolyn.icns"
 
 cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -28,6 +29,7 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>com.isolyn.app</string>
 <key>CFBundleName</key><string>IsolynV2.0</string>
+<key>CFBundleIconFile</key><string>Isolyn</string>
 <key>CFBundleExecutable</key><string>IsolynV2.0</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>

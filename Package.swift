@@ -24,7 +24,7 @@ let package = Package(
                 .linkedFramework("Security", .when(platforms: [.macOS, .iOS]))
             ]
         ),
-        // The narrow Swift/C++ boundary -- see docs/BRIDGE_ARCHITECTURE.md.
+        // The narrow Swift/C++ boundary -- see docs/architecture/BRIDGE_ARCHITECTURE.md.
         // A separate target from IsolynEngine on purpose: its
         // publicHeadersPath exposes ONLY include/IsolynBridge.hpp, a
         // small POD-only contract, NOT IsolynEngine's full header set
@@ -46,7 +46,7 @@ let package = Package(
         // has NOT been verified by an actual Swift/Xcode compile in any
         // session that has produced this codebase, including this one --
         // no session has ever had a Swift toolchain available (see
-        // legacy handoff.md §5.6). Hand-reviewed carefully against the real
+        // docs/history/legacy-handoff.md §5.6). Hand-reviewed carefully against the real
         // IsolynBridge.hpp signatures instead; treat as unverified until
         // it has actually been built in Xcode.
         .executableTarget(

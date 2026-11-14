@@ -595,8 +595,8 @@
     "semantic_hash": "f7d4d550e810cc157964ee716f3c2edd"
   },
   "fix-log.md": {
-    "mtime": 1794460929.8159845,
-    "ast_hash": "6a9c86fc8d1b5582e9055e948a3ca05d",
+    "mtime": 1794462303.7979136,
+    "ast_hash": "0c32a4accf21adf1a9704b5813cd78d7",
     "semantic_hash": ""
   },
   "isolyn roadmap.md": {
@@ -665,8 +665,8 @@
     "semantic_hash": "195e7b9f67cfb940307c00fa034d4d5c"
   },
   "Sources/IsolynApp/Game/InteractiveGameBoardView.swift": {
-    "mtime": 1794460863.4146109,
-    "ast_hash": "ca6a662b614ea8b9684db4e67181260c",
+    "mtime": 1794462184.9616637,
+    "ast_hash": "a3d02740a14f995612073f6a2b1f734f",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/IsolynDominoTile.swift": {
@@ -920,8 +920,8 @@
     "semantic_hash": "e635d808f2e5d6fbfe44c94ee1684915"
   },
   "docs/UI_UX_OVERHAUL.md": {
-    "mtime": 1794460863.7020578,
-    "ast_hash": "6a7eb859a7cf9bc6bc6ab6b94d5a842e",
+    "mtime": 1794462303.4258382,
+    "ast_hash": "bf2b8b18ab527590792620d788d98f91",
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/Inspection/InspectionEventMonitor.swift": {
@@ -945,8 +945,8 @@
     "semantic_hash": "08d8c68a5315bef60530721b6ffc76f6"
   },
   "Sources/IsolynApp/Game/DrawFlightView.swift": {
-    "mtime": 1794460522.1495194,
-    "ast_hash": "864a7fc422bb519630dc6174b28887ec",
+    "mtime": 1794462254.9825783,
+    "ast_hash": "7f0e5e21fb048e8f4cc9da1b2a32a201",
     "semantic_hash": ""
   },
   "Tests/IsolynAppTests/RoundRevealTests.swift": {
@@ -965,8 +965,8 @@
     "semantic_hash": ""
   },
   "Sources/IsolynApp/Game/BoneyardView.swift": {
-    "mtime": 1794460468.4136066,
-    "ast_hash": "18432f44d09d89f0658d0f63566f6a8d",
+    "mtime": 1794462254.6499949,
+    "ast_hash": "bda6c1ba96bc77ec46fd9b9d62fefaf9",
     "semantic_hash": ""
   },
   "Tests/IsolynAppTests/BoneyardRulesTests.swift": {

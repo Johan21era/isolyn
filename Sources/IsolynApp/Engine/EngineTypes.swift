@@ -16,11 +16,11 @@ private let bridgeDTOLogger = Logger(subsystem: "com.isolyn.app", category: "bri
 //
 // This file and EngineSession.swift have NEVER been compiled -- no
 // session that has worked on this codebase has ever had a Swift
-// toolchain available (see legacy handoff.md §5). Everything on the C++ side
+// toolchain available (see docs/history/legacy-handoff.md §5). Everything on the C++ side
 // (Sources/IsolynEngineBridge/IsolynBridge.cpp) has been compiled,
 // hand-tested, fuzzed for 75000+ real executions, and run clean under
 // AddressSanitizer/UndefinedBehaviorSanitizer/ThreadSanitizer completely
-// independently of Swift -- see docs/BRIDGE_TESTING.md. What's genuinely
+// independently of Swift -- see docs/engineering/BRIDGE_TESTING.md. What's genuinely
 // unverified is specifically the Swift/Cxx-interop BOUNDARY below, which
 // has two known-uncertain spots:
 //

@@ -112,7 +112,7 @@ measuring time-to-depth and ladder strength.
 - `src/EvaluationBatch.cpp`, `src/PositionBatch.cpp` — host encoders.
 - `shaders/evaluation.metal` — canonical MSL reference.
 - `tests/AcceleratorTests.mm` — parity, fallback, and benchmark harness.
-- `../docs/ACCELERATOR.md` — architecture and phase gates.
+- `../docs/subsystems/ACCELERATOR.md` — architecture and phase gates.
 
 ## Non-goals
 

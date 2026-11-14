@@ -1,6 +1,6 @@
 # IsolynV2.0 — Open Decisions & Architecture Records
 
-> Created 2026-11-11. The audit flagged this ledger as missing. Each ADR records
+> **Status: living decision log (tier 3).** Created 2026-11-11. The audit flagged this ledger as missing. Each ADR records
 > the decision, why it was made, and what would cause it to be revisited.
 >
 > Status vocabulary: **Accepted** = direction is settled. **Scaffolded** = files

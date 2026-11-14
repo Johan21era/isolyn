@@ -17,7 +17,7 @@ enum TileState {
 /// THE canonical domino renderer — the single source of truth for every
 /// domino in the application (board, hand, overlays, previews).
 ///
-/// NON-NEGOTIABLE GEOMETRY LAW (dominoes_ui_fix_non_negotiable.md §2/§3):
+/// NON-NEGOTIABLE GEOMETRY LAW (docs/history/2026-08-ui-rebuild-mandate.md §2/§3):
 ///  * ONE continuous rectangle: one background, one border, one radius,
 ///    one shadow, one bounding box, one interaction target.
 ///  * Aspect ratio EXACTLY 2:1 (width == 2 × height), preserved in both

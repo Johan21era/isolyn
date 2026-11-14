@@ -2,7 +2,7 @@
 # Compiles Sources/IsolynEngine + Sources/IsolynEngineBridge ONCE into
 # reusable .o files, then links every Tests/IsolynEngineBridgeTests/*.cpp
 # against them individually. Deliberately not recompiling the engine per
-# test file, unlike the original run_tests.sh -- see docs/BRIDGE_TESTING.md.
+# test file, unlike the original run_tests.sh -- see docs/engineering/BRIDGE_TESTING.md.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 

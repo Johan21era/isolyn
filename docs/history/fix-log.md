@@ -1,10 +1,15 @@
 # ISOLYN FIX LOG
 
+> **Status: append-only historical log.** Entries record the state of the tree on
+> the date they were written; their counts are receipts, not current figures.
+> Current state lives in `docs/audits/2026-11-13-audit.md`. Never rewrite an
+> entry — append a new one.
+
 > Format follows `aggressive-bug-fix-protocol.md` (12 fields per entry,
 > compressed). Every entry below was executed and VERIFIED during the
 > 2026‑08 session that produced commits `b79a3f4 → 0d63200`.
 >
-> **How to verify any entry:** see "Check My Work" in `legacy handoff.md` —
+> **How to verify any entry:** see "Check My Work" in `docs/history/legacy-handoff.md` —
 > every fix cites a grep-able anchor string; search the named file for it.
 
 ---
@@ -13,7 +18,7 @@
 Severity: CRITICAL / HIGH / MEDIUM / LOW / OPS (non-code infrastructure)
 Status: FIXED+VERIFIED means: change applied AND proven by an actual command
 run whose output is quoted in the Verification field or reproducible via
-legacy handoff.md §CHECK-MY-WORK.
+docs/history/legacy-handoff.md §CHECK-MY-WORK.
 
 ---
 
@@ -139,7 +144,7 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 
 # SESSION: CORE HARDENING (2026-08, post-audit roadmap execution)
 
-> Executed from `core hardening roadmap.md` with owner authorization.
+> Executed from `docs/history/roadmaps/core-hardening-roadmap.md` with owner authorization.
 > Baseline at session start: engine 356/356 · bridge 57/57 · swift 28/0 ·
 > build clean-with-one-SPM-warning. Every entry below verified by actual
 > command output shown in-session.
@@ -212,7 +217,7 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 - **Verification:** zero-warning build; swift test 35/0; bridge 58/58.
 
 ## OPS‑06 — Session closeout
-- All proof gates re-run at end-of-session (see legacy handoff.md §6 for expected outputs, updated this session). Tagged `core-hardened-1`.
+- All proof gates re-run at end-of-session (see docs/history/legacy-handoff.md §6 for expected outputs, updated this session). Tagged `core-hardened-1`.
 
 ## OPS‑07 — Build-residue recurrence + guardrail (OPS-03 lesson re-learned)
 - **What happened:** the core-hardening session's builds (SwiftPM cache + 18
@@ -232,20 +237,20 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 1. **Unlimited testing, zero residue.** Builds/tests/sanitizers/scripts are
    unrestricted DURING work; every generated artifact must be erased when the
    session or phase ends (`./clean.sh`). Codified as handoff §7 rule 7.
-2. **Docs must match reality at every session/phase boundary:** fix-log.md
-   (protocol entries), tree.md (fresh `tree` regeneration), and graphify-out
+2. **Docs must match reality at every session/phase boundary:** docs/history/fix-log.md
+   (protocol entries), docs/history/repo-tree-2026-08.md (fresh `tree` regeneration), and graphify-out
    (`graphify update . --force`) refreshed to the exact project state.
    Codified as handoff §7 rule 8.
 
 **Executed immediately for this session:** graphify rebuilt → **1,383 nodes /
 2,684 edges / 112 communities** (was 1,077/2,172/80 — reflects the hardening
-code + docs); tree.md regenerated (36 dirs / 163 files excl. regenerable
+code + docs); docs/history/repo-tree-2026-08.md regenerated (36 dirs / 163 files excl. regenerable
 cache); handoff folder map + rules updated; folder size verified at ~10 MB
 steady state per rule 7.
 
 ---
 
-# UI REBUILD — dominoes_ui_fix_non_negotiable.md EXECUTED
+# UI REBUILD — docs/history/2026-08-ui-rebuild-mandate.md EXECUTED
 
 > Owner mandate rejected the previous presentation layer outright and
 > specified structure/geometry/hierarchy as law. Executed in the doc's
@@ -295,13 +300,13 @@ app and confirmed the rebuild** ("looks amazing"). All §30 acceptance sections
 verification. The mandate is fully satisfied, not partially.
 
 Post-sign-off directive executed: push all commits (verified none pending),
-refresh fix-log/tree.md/graphify to exact state (this entry), erase build
+refresh fix-log/docs/history/repo-tree-2026-08.md/graphify to exact state (this entry), erase build
 residue per house rule 7.
 
 
 ---
 
-# SESSION: AUDIT REMEDIATION (2026-08-25, owner-approved Phases 0-2 of `audit remediation roadmap.md`)
+# SESSION: AUDIT REMEDIATION (2026-08-25, owner-approved Phases 0-2 of `docs/history/roadmaps/audit-remediation-roadmap.md`)
 
 > Baseline pinned verbatim at Step 0 before any edit: engine 362/362 - bridge
 > 58/58 (soak contributing ZERO -- the defect below) - swift build zero-warning -
@@ -325,7 +330,7 @@ residue per house rule 7.
 ## FIX-28 - Board layout truth + auto-fit resilience + snapshot test seam; FOUND+FIXED latent off-board snake bug (audit OA-4)
 - **Severity:** MEDIUM (OA-4 proper) / the discovered snake bug is HIGH-visibility-but-low-probability (any chain >1 row once rendered off-board) . **Confidence:** High (bug reproduced by test BEFORE fix; fix verified by same suite)
 - **Files:** `Sources/IsolynApp/Game/ChainAndZonesView.swift` (anchors: `SnakeChainLayout`, `FIX-28 discovery`, `P2b/P2c application`), `Sources/IsolynApp/Game/Camera/BoardCamera.swift` (anchor: `defaultMaxOffsetX`), `Sources/IsolynApp/Engine/EngineTypes.swift` (anchor: `Test construction seam`), NEW `Tests/IsolynAppTests/BoardLayoutTests.swift`
-- **Root cause (OA-4):** serpentine rows stacked downward without limit while BoardCamera capped pan at fixed +/-300/+200 -- a near-full-board chain could lay its tail out of reachable view. Also the last unclosed clause of `dominoes_ui_fix_non_negotiable.md` §17 ("scale intelligently ... prevent overflow").
+- **Root cause (OA-4):** serpentine rows stacked downward without limit while BoardCamera capped pan at fixed +/-300/+200 -- a near-full-board chain could lay its tail out of reachable view. Also the last unclosed clause of `docs/history/2026-08-ui-rebuild-mandate.md` §17 ("scale intelligently ... prevent overflow").
 - **FOUND EN ROUTE (pre-existing, not introduced here -- confirmed verbatim in HEAD):** `advance()` incremented the column UNSIGNED (`col += n`) while x moved signed. After the FIRST row-break corner, no second corner could ever fire ((dir<0 && col==0) unreachable going left; col had already passed cols-1 going right), so any chain longer than one row continued LEFT FOREVER off the board's edge instead of snaking. Latent since the snake board shipped; invisible with real mid-game chains (<13 tiles on an 800pt plane); exposed immediately by BoardLayoutTests' synthetic 40-tile chains (diagnostic trace showed y stuck at two values, x running to -720). Fixed with signed advance (`col += n * Int(dir)`), anchor-commented in place.
 - **Fix:** (1) ALL placement/extent/fit math hoisted VERBATIM into internal pure `SnakeChainLayout` (orient/compute/fitScale + named constants) -- rendering consumes its data unchanged. (2) Auto-fit: ONE UNIFORM `scaleEffect(suggestedScale)`, engaged only past 94% axis occupancy, clamped 0.62...1.0 -- uniform scaling multiplies both axes equally, so the mandate's exact-2:1 law holds BY CONSTRUCTION; below the floor scaling STOPS and pan takes over (§17 priority order encoded). (3) Content-aware camera bounds: post-scale residual overflow (halved -- offset moves the plane's center) raises maxOffsetX/Y from new named defaults; bounds only ever GROW; mutated in onAppear/onChange closures, never during body evaluation. (4) Test seam: internal test-only `GameSnapshot` init -- tuple DTOs are unfillable element-wise from Swift and `init?(dto:)` suppresses the memberwise initializer, so without this NO headless test can fabricate controlled snapshots (real sessions deal CSPRNG hands). Production paths untouched: snapshots still come ONLY from EngineSession.snapshot(for:) so hidden-info enforcement stays bridge-side.
 - **Verification:** `swift build` zero warnings; `swift test` -> **Executed 45 tests, with 1 test skipped and 0 failures** (was 35; +10 BoardLayoutTests covering orient-flip correctness, corner-cap placement, marker-clearance vs double-protrusion extents (hand-derived 34 vs 52pt), fit-scale exactness/threshold/tighter-axis/floor/monotonicity, degenerate guards, and multi-row serpentine integrity with in-bounds x assertions that FAIL against the pre-fix bug). Engine suite untouched (362/362 via earlier gate this session). Long-chain visual behavior flagged for owner eyeball at next app launch (headless session cannot screenshot GUI) -- risk-register item anticipated this.
@@ -354,7 +359,7 @@ the session; all earlier entries retain their original historical numbers.
   **2 executables / 82 checks**; standalone fuzz **37,500 executions** with zero
   crashes, hangs, or sanitizer findings.
 - **Limitations:** difficulty labels remain provisional; no external-engine
-  Elo claim. The measured ladder is internal and recorded in `docs/LAB.md`.
+  Elo claim. The measured ladder is internal and recorded in `docs/subsystems/LAB.md`.
 
 ## METAL-01 — Standalone Metal batch evaluator
 - **Files:** `Accelerator/` — runtime-compiled MSL, generic and compact kernels,
@@ -368,10 +373,10 @@ the session; all earlier entries retain their original historical numbers.
 
 ## OPS-10 — Closeout Initiative
 - **Documentation sweep:** `README.md`, `Accelerator/README.md`,
-  `docs/ACCELERATOR.md`, `docs/BRIDGE_ARCHITECTURE.md`,
-  `docs/BRIDGE_TESTING.md`, `docs/OPEN_DECISIONS.md`, `isolyn roadmap.md`,
-  `legacy handoff.md`, `tools/selfplay/README.md`, `tree.md`, and this file.
-  `docs/LAB.md` and `lab/README.md` were reviewed and needed no numeric change.
+  `docs/subsystems/ACCELERATOR.md`, `docs/architecture/BRIDGE_ARCHITECTURE.md`,
+  `docs/engineering/BRIDGE_TESTING.md`, `docs/engineering/OPEN_DECISIONS.md`, `docs/roadmaps/strategy-roadmap.md`,
+  `docs/history/legacy-handoff.md`, `tools/selfplay/README.md`, `tree.md` (retired 2026-11-13), and this file.
+  `docs/subsystems/LAB.md` and `lab/README.md` were reviewed and needed no numeric change.
 - **Documentation gate:** the Monarcha/Asterisma `documentation_audit.py` gate
   does not exist in this repository. Manual path/count/claim review was run;
   the gate itself is **SKIPPED** with that reason, not presented as a pass.
@@ -520,7 +525,7 @@ the session; all earlier entries retain their original historical numbers.
   retained. Dots are not legal in Swift module/C++ identifiers, and changing
   them would be a separate ABI/import migration. The bundle identifier remains
   `com.isolyn.app` so existing local app identity is not silently migrated.
-- **Inventory:** `docs/PROJECT_INVENTORY.md` records the component LOC and the
+- **Inventory:** `docs/architecture/PROJECT_INVENTORY.md` records the component LOC and the
   caller chain from the SwiftUI entry point through `EngineSession`, the bridge,
   `SearchEngine`, and `EvaluationEngine::evaluateAll`, plus the offline lab,
   self-play, and standalone Metal callers.
@@ -537,7 +542,7 @@ the session; all earlier entries retain their original historical numbers.
   `Sources/IsolynEngine/SearchEngine.cpp`,
   `Tests/IsolynEngineTests/EvaluationEngineTests.cpp`,
   `Accelerator/src/PositionBatch.cpp`,
-  `Accelerator/tests/AcceleratorTests.mm`, and `docs/ACCELERATOR.md`.
+  `Accelerator/tests/AcceleratorTests.mm`, and `docs/subsystems/ACCELERATOR.md`.
 - **Problem:** the batch leaf path scanned each hand once for its value and again
   for mobility, then scanned a one-tile hand a third time for an immediate win.
   Search also computed `isPositionClosed` at every horizon leaf, even though the
@@ -653,7 +658,7 @@ the session; all earlier entries retain their original historical numbers.
 - **Round end:** `RoundEndOverlay` now uses a black overlay, one headline, a
   plain reveal list, simple score deltas, and one wide next-round/new-match
   button instead of the bordered scorecard.
-- **Charter:** `docs/UI_UX_OVERHAUL.md` has a new §0 design correction that
+- **Charter:** `docs/design/UI_CHARTER.md` has a new §0 design correction that
   supersedes the older panel/mode-wireframe guidance.
 - **Verification:** `swift build` succeeds; `swift test` passes **53 tests, 1
   skipped, 0 failures**; `git diff --check` clean. No commit or push.
@@ -828,7 +833,7 @@ the session; all earlier entries retain their original historical numbers.
   empty-chain drops.
 - **Files:** `HandRackView.swift`, `InteractiveGameBoardView.swift`,
   `ChainAndZonesView.swift`, `EngineTypes.swift`, `HandDropResolver.swift`,
-  `HandDropResolverTests.swift`, `docs/UI_UX_OVERHAUL.md`.
+  `HandDropResolverTests.swift`, `docs/design/UI_CHARTER.md`.
 - **Verification:** `swift build` succeeds; `swift test` passes **68 tests,
   1 skipped, 0 failures**; `git diff --check` clean. No commit or push.
 - **Graph:** refreshed to **2,191 nodes / 4,098 edges**;
@@ -873,7 +878,7 @@ the session; all earlier entries retain their original historical numbers.
 - **Files:** `BoneyardView.swift`, `DrawFlightView.swift`,
   `InteractiveGameBoardView.swift`, `GameViewModel.swift`, `EngineTypes.swift`,
   `BoneyardRulesTests.swift`, `RoundRevealTests.swift`,
-  `docs/UI_UX_OVERHAUL.md`.
+  `docs/design/UI_CHARTER.md`.
 - **Tests:** `BoneyardRulesTests` proves the mode split through real deals
   (1v1: 12 drawable + hidden locked pair; 1v1v1/2v2: no boneyard at all).
   `RoundRevealTests` additionally asserts the opening 1v1 count and that
@@ -915,7 +920,7 @@ the session; all earlier entries retain their original historical numbers.
 - **Files:** `ChainAndZonesView.swift`, `HandRackView.swift`,
   `HandTapRouter.swift`, `InteractiveGameBoardView.swift`,
   `BoardLayoutTests.swift`, `HandTapRouterTests.swift`,
-  `docs/UI_UX_OVERHAUL.md`.
+  `docs/design/UI_CHARTER.md`.
 - **Tests:** `BoardLayoutTests` now pins the 4pt gap on both sides of a
   vertical double. `HandTapRouterTests` covers one-side, both-equal-ends
   (random selection always one of the legal sides), different-ends refusal,
@@ -952,7 +957,7 @@ the session; all earlier entries retain their original historical numbers.
   row, not a stack center. Draws still use the existing lifted face-down flight
   into the hand or the computer seat.
 - **Files:** `BoneyardView.swift`, `DrawFlightView.swift`,
-  `InteractiveGameBoardView.swift`, `docs/UI_UX_OVERHAUL.md`.
+  `InteractiveGameBoardView.swift`, `docs/design/UI_CHARTER.md`.
 - **Verification:** offscreen `ImageRenderer` inspection of the real view at
   12, 4, and 0 drawable tiles confirmed the full 14-tile opening row, correct
   shrink direction, and the clean two-tile closed state. The temporary render
@@ -985,7 +990,7 @@ the session; all earlier entries retain their original historical numbers.
 - **Boundary:** no tile identities or pips are rendered. The end-of-round
   reveal remains the only place hidden faces become visible.
 - **Files:** `OpponentHandRack.swift`, `InteractiveGameBoardView.swift`,
-  `docs/UI_UX_OVERHAUL.md`.
+  `docs/design/UI_CHARTER.md`.
 - **Verification:** an offscreen `ImageRenderer` inspection of the real rack at
   7, 8, 9, and 14 tiles confirmed legibility and width; the temporary harness was
   removed afterward. `swift test` passes **75 tests, 1 skipped, 0 failures**;
@@ -994,3 +999,147 @@ the session; all earlier entries retain their original historical numbers.
   rebuilt and relaunched.
 - **Limitation:** the live strip's exact vertical placement was not viewed in
   the running window; the owner's physical run remains the source of truth.
+
+## UI-BONEYARD-03 — vertical column, direction fixed only by first draw (2026-11-12)
+- **Problem:** the boneyard was a wide horizontal strip across the top of the
+  board, and it labelled one end `CLOSED` at the opening deal before any draw
+  had fixed a direction. That both dominated the table and asserted a side
+  closure the rules do not have yet.
+- **Layout:** the pile is now a narrow vertical column descending from the
+  board's top-left. At the opening deal it is fourteen equal face-down backs
+  with no `CLOSED` marker. The bottom edge is the draw edge. After the first
+  draw (`drawableCount < 12`), the two reserved tiles at the top gain an
+  upward cap, a `CLOSED` label, and a small separation from the drawable
+  remainder. The column then shrinks from the bottom as draws remove tiles,
+  leaving the closed pair fixed at the top.
+- **Rules boundary:** no engine change. The opening deal still reserves two
+  tiles in canonical draw order; the UI simply withholds the closed-side
+  presentation until a draw has fixed it. The pair stays face down.
+- **Motion:** the bottom tile leaves downward on a draw; the first-draw cap and
+  gap animate in quietly. The flight anchor now comes from the bottom edge of
+  the column rather than a stack center.
+- **Files:** `BoneyardView.swift`, `docs/design/UI_CHARTER.md`.
+- **Verification:** offscreen `ImageRenderer` inspection of the real view at
+  opening 12, post-first-draw 11, late 4, and closed-pair 0 confirmed no
+  opening `CLOSED` marker and an upward closed cap only after the first draw.
+  The temporary harness was removed afterward. `swift test` passes **75 tests,
+  1 skipped, 0 failures**; bridge regression passes **73 checks, 0 failed**;
+  graph and `git diff --check` are clean; the app was rebuilt and relaunched.
+- **Limitation:** the live board placement was not viewed in the running
+  window; the owner's physical run remains the source of truth.
+
+## UI-BONEYARD-04 — upright closed cap, readable scale, direct draw (2026-11-12)
+- **Problem:** the vertical column was right, but the closed pair still lay on
+  its side, the pile was too small to read comfortably, and the pile itself
+  was deliberately inert (`allowsHitTesting(false)`) while only the distant
+  action-dock button could draw. A draw also lacked visible feedback at the
+  pile.
+- **Closed presentation:** at the opening deal the two reserved pieces still
+  lie flat among the fourteen. After the first draw they turn portrait and sit
+  side by side as a two-piece cap under the upward rail and `CLOSED` label;
+  the drawable column continues beneath them. The pair remains face down.
+- **Scale:** pile pieces now scale with the live board height between 14pt and
+  20pt half-axis, with larger labels and a heavier brass edge. A large table
+  gets the full 20pt pieces; a compact table compresses before clipping.
+- **Direct draw:** the whole pile is a Button wired to the same tested
+  `GameViewModel.voluntaryDraw()` path as the action-dock Draw control. It is
+  disabled whenever a voluntary draw is not legal. The Draw/Pass control is
+  unchanged and never replaced.
+- **Motion:** the Button has an immediate press response; drawable pieces
+  leave from the bottom with an offset/fade and the column settles on a
+  spring; the closed pair animates from flat stack to upright cap, with the
+  rail and label fading in; the numeric `DRAW N` count transitions; the draw
+  flight now starts from a 24pt face-down piece over 0.68s. No state or engine
+  timing is changed by presentation.
+- **Files:** `BoneyardView.swift`, `InteractiveGameBoardView.swift`,
+  `DrawFlightView.swift`, `docs/design/UI_CHARTER.md`.
+- **Verification:** offscreen `ImageRenderer` inspection at opening 12,
+  post-first-draw 11, late 4, and closed-pair 0 confirmed the larger pile, no
+  opening `CLOSED` marker, upright side-by-side closed pieces after the first
+  draw, and the bottom draw edge. The temporary harness was removed afterward.
+  `swift test` passes **75 tests, 1 skipped, 0 failures**; bridge regression
+  passes **73 checks, 0 failed**; graph and `git diff --check` are clean; the
+  app was rebuilt and relaunched.
+- **Limitation:** macOS denied screen-capture and UI-automation access to this
+  session, so the live mouse click was not driven end-to-end. The pile is now
+  a real Button calling the same `voluntaryDraw` path already covered by
+  `GameViewModelTests`; the owner's physical run remains the source of truth.
+
+## UI-BRAND-01 — Isolyn app icon (2026-11-12)
+- **Problem:** the app bundle had no `CFBundleIconFile` and no Resources
+  directory, so Dock/Finder showed a generic application icon despite the
+  table having a complete visual identity.
+- **Mark:** one upright warm-ivory domino on a warm-black rounded-square
+  field. The upper half has three canonical black pips; the lower half has
+  one pip framed by the boneyard's brass diamond. A brass divider, faint
+  ivory rim, top-light gradient, and soft table shadow carry the same
+  ebony/ivory/brass material language as the game. The mark is intentionally
+  half-open/half-hidden rather than a generic domino sticker.
+- **Assets:** `Assets/Isolyn-1024.png` is the 1024 square source render;
+  `Assets/Isolyn.icns` contains the complete macOS ladder (16 through
+  1024 @2x). The source artwork uses an 824pt rounded square centered on a
+  1024 transparent canvas, matching the standard macOS icon grid.
+- **Bundle:** `run.sh` creates `Contents/Resources` and copies
+  `Assets/Isolyn.icns`; both the generated and source `Info.plist` carry
+  `CFBundleIconFile = Isolyn`. The icon is copied before ad-hoc signing.
+- **Verification:** `iconutil` round-tripped the `.icns` to all ten expected
+  representations with a 1024 @2x image; the final source at 1024/768 and the
+  128px icon were inspected. The bundle `Info.plist` and Resources copy
+  match, the copied `.icns` is byte-identical to the asset, and the rebuilt
+  bundle was cleaned and ad-hoc signed by `run.sh` before launch; a strict
+  verification immediately after signing passed. `swift test` remains 75
+  tests, 1 skipped, 0 failures. The app was rebuilt and relaunched.
+- **Limitation:** macOS screen-capture access is denied to this session, and
+  Quick Look thumbnail generation hung, so the live Dock tile was not
+  visually captured here. The Desktop is also file-provider-managed, so
+  macOS reattaches FinderInfo/provenance xattrs after launch and a later
+  strict `codesign --verify` can complain about detritus; the app itself
+  launches normally and the icon resource is byte-identical. The in-app
+  entry wordmark remains typographic.
+- **Files:** `Assets/Isolyn-1024.png`, `Assets/Isolyn.icns`, `run.sh`,
+  `Sources/IsolynApp/Info.plist`, `docs/design/UI_CHARTER.md`.
+
+## OPS-11 — Closeout Initiative (2026-11-13: documentation audit, tree reorganisation, gate execution)
+
+**Scope:** all 29 markdown documents, the `docs/` hierarchy, and the documentation
+gate that OPS-10 recorded as missing and therefore **SKIPPED**.
+
+- **Documentation audit:** every one of the 29 files read and judged on
+  What/Why/How/Where/Validity. Verdict register (25 rows, A1–A29) and
+  contradiction register (C1–C25) at
+  `docs/audits/2026-11-13-documentation-audit.md`.
+- **Reorganisation:** `docs/` grouped into `architecture/`, `engineering/`,
+  `design/`, `subsystems/`, `roadmaps/`, `audits/`, `history/`. 20 tracked files
+  moved with `git mv` (history preserved); root now holds exactly one markdown
+  file. Renames: `UI_UX_OVERHAUL.md` → `design/UI_CHARTER.md`;
+  `ui-fix-directive.md` → `history/2026-08-ui-rebuild-mandate.md`; the two
+  completed roadmaps → `history/roadmaps/`. Deleted `tree.md`: stale by
+  construction, regenerable in seconds, and rule 8 now points at the register in
+  `docs/README.md` instead.
+- **False claims retracted:** `docs/subsystems/LAB.md`'s ladder table did not
+  reproduce from its own committed CSVs. Recomputed values: 3/16 vs 4/24 =
+  202–198 (**+3.5**, shallower wins), 4/24 vs 5/40 = 205–195 (**+8.7**, shallower
+  wins); the "directionally monotonic" conclusion is withdrawn. `lab/README.md`
+  no longer calls the implemented Elo report a scaffold.
+- **Counts corrected by re-measurement:** engine 426→**429**; Swift 68→**75**;
+  ASan 494→**502**; accelerator 95→**100**; `ci.yml` 380/68→**429/73**; engine LOC
+  3,766→**3,842**; app 47/5,869→**56/7,424**; tests 29/4,056→**35/4,597**;
+  accelerator 1,640→**1,702**; total 160/20,284→**175/22,546**.
+- **Documentation gate now EXISTS and RUNS:** `scripts/docs_audit.py`. It checks
+  markdown link resolution, backticked `docs/` paths, status headers on living
+  documents, register coverage, provenance banners on history, and the absence of
+  superseded figures. **RESULT: PASS** (24 documents, 6 checks, exit 0). This
+  replaces the permanent SKIP recorded in OPS-10.
+- **Verification sweep (2026-11-13, macOS arm64, Apple silicon):**
+  - `swift build` → `Build complete!`, exit 0
+  - `./run_tests.sh` → 19 executables, **429 checks passed, 0 failed**
+  - `./run_bridge_tests.sh` → 2 executables, **73 checks passed, 0 failed**
+  - `swift test` → **75 tests, 1 skipped, 0 failures** (the skip is the known
+    vacuous forced-draw test at `GameViewModelTests.swift:81`, unchanged and
+    tracked in audit §13.3 — not counted as a pass)
+  - `python3 scripts/docs_audit.py` → **PASS**
+- **Not done, deliberately:** no commit, no tag, no push. All three are separate
+  owner gates, per the standing rule in this log. `graphify-out/` was not
+  regenerated — it still records the pre-reorganisation tree. Code comments
+  C24/C25 (`IsolynBridge.hpp`, `EngineSession.swift`) still contradict the
+  documents and are left for an engineering pass.

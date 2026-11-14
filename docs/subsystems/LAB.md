@@ -114,19 +114,29 @@ generated after the terminal-utility correction described underneath the table:
 a real Domino win is a search score of 2000 plus the losing hand, while a
 one-tile playable threat is only 1000.
 
-| A config (depth/det) | B config (depth/det) | Games | A wins | B wins | Elo(A vs B) | 95% CI |
-|---|---:|---:|---:|---:|---:|---:|
-| 2/8 | 3/16 | 400 | 183 | 217 | -29.6 | [-63.7, +4.5] |
-| 3/16 | 4/24 | 400 | 190 | 210 | -17.4 | [-51.4, +16.7] |
-| 4/24 | 5/40 | 400 | 196 | 204 | -6.9 | [-41.0, +27.1] |
-| 2/8 | 8/64 | 1000 | 424 | 576 | -53.2 | [-75.0, -31.4] |
+| A config (depth/det) | B config (depth/det) | Games | A wins | B wins | Elo(A vs B) | 95% CI | Source file |
+|---|---:|---:|---:|---:|---:|---:|---|
+| 2/8 | 3/16 | 400 | 187 | 213 | −22.6 | [−56.7, +11.5] | `lab/data/ladder-100-900.csv` |
+| 3/16 | 4/24 | 400 | **202** | 198 | **+3.5** | [−30.5, +37.5] | `lab/data/ladder-900-1600.csv` |
+| 4/24 | 5/40 | 400 | **205** | 195 | **+8.7** | [−25.3, +42.7] | `lab/data/ladder-1600-2300.csv` |
+| 2/8 | 8/64 | 1000 | 424 | 576 | −53.2 | [−75.0, −31.4] | `lab/data/ladder-100-3000-8x64.csv` |
 
-The ladder is now **directionally monotonic**: every adjacent comparison favours
-the deeper configuration, and the bottom-vs-top gap is -53.2 Elo with an interval
-that excludes zero. Adjacent tiers are still statistically unresolved at 400
-games (B wins 51-54%, every adjacent interval crosses zero), so the
-`DifficultyModel` labels remain provisional. No tier should be frozen until the
-adjacent comparisons clear the 55% milestone at adequate sample size.
+All four rows were recomputed from the committed CSVs with
+`PYTHONPATH=src python3 -m isolyn_lab.cli evaluate --input <file>` on 2026-11-13;
+the report was byte-identical across three runs.
+
+**The ladder is NOT directionally monotonic.** Two of the three adjacent
+comparisons favour the *shallower* configuration: 3/16 beats 4/24 by 51.2%,
+and 4/24 beats 5/40 by 51.3%. Only the widest gap (2/8 vs 8/64, 42.4%) is
+statistically resolved; every adjacent interval crosses zero. An earlier version
+of this table reported 190/210 and 196/204 for those two rows, which does not
+reproduce from the committed data.
+
+Consequence: the five `DifficultyModel` bands are labels, not measured
+strengths. The top band is genuinely stronger than the bottom band; the
+intermediate ordering is unproven. No adjacent comparison clears the 55%
+milestone. The honest summary of measured 1v1 strength is "two tiers:
+2/8 and 8/64, with three unvalidated points between them."
 
 The depth increase was measured separately rather than assumed. In 1,000-game
 1v1 matches: 2/8 vs 6/8 was -18.8 Elo ([-40.3, +2.8]), 6/8 vs 6/64 was -8.3
@@ -165,7 +175,7 @@ transposition-table bound.
 
 ## Related decisions
 
-- `docs/OPEN_DECISIONS.md` — ADR-001, ADR-002, ADR-004.
-- `docs/ACCELERATOR.md` — how stronger evaluation/search is accelerated.
+- `docs/engineering/OPEN_DECISIONS.md` — ADR-001, ADR-002, ADR-004.
+- `docs/subsystems/ACCELERATOR.md` — how stronger evaluation/search is accelerated.
 - `tools/selfplay/README.md` — self-play generator contract and limitations.
 - `lab/README.md` — lab layout and milestones.

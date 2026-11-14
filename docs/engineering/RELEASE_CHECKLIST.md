@@ -1,5 +1,9 @@
 # ISOLYNV2.0 RELEASE CHECKLIST
 
+> **Status: living checklist (tier 3), entirely unexecuted.** No item is
+> complete; the app has no Xcode target and no privacy manifest. Re-verify
+> Apple's current requirements at execution time.
+
 **Purpose:** core-hardening roadmap Phase 3c. The project currently ships as an
 SPM executable target; actual distribution needs an Xcode app shell with
 capabilities, privacy declarations, and signing. This document is the complete,
@@ -82,4 +86,4 @@ execution time).
 ## Explicitly out of scope until after UI revival
 
 Fog-as-discrete-layer, difficulty selector UI, Training/Sandbox screens --
-feature work stays governed by `isolyn roadmap.md`.
+feature work stays governed by `docs/roadmaps/strategy-roadmap.md`.

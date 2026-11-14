@@ -3,7 +3,7 @@ import IsolynEngineBridge
 import Foundation
 import AppKit
 
-/// The player's hand (dominoes_ui_fix_non_negotiable.md §9/§10).
+/// The player's hand (docs/history/2026-08-ui-rebuild-mandate.md §9/§10).
 ///
 /// A real collection of dominoes: every tile is the CANONICAL
 /// single-rectangle renderer at identical dimensions — only values differ.

@@ -59,7 +59,7 @@ public:
 
     // Probability that playerIndex holds AT LEAST minimumCount of the
     // (at most 7) tiles containing pipValue -- a direct, computable form
-    // of the "missing a set" concept from docs/STRATEGY_NOTES.md's 2v2
+    // of the "missing a set" concept from docs/design/STRATEGY_NOTES.md's 2v2
     // section (5+ including the double = not missing). Computed via the
     // Poisson binomial distribution: treats each relevant tile's
     // membership as an independent Bernoulli trial at its own marginal

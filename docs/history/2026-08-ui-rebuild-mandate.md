@@ -1,5 +1,14 @@
 # DOMINOES UI FIX --- NON-NEGOTIABLE REBUILD MANDATE
 
+> **Status: historical mandate (2026-08), executed. Archived 2026-11-13.**
+> The UI this document rejected no longer exists; it was rebuilt and the owner
+> signed off (``UI-QA`` in `docs/history/fix-log.md`). Two sections remain
+> binding law and are cited from source: **§2** (dominoes are single
+> rectangles) and **§3** (tile specification). §4–§10 still govern board and
+> hand composition where `docs/design/UI_CHARTER.md` is silent. Everything else
+> is historical. **Do not re-run the "reject current UI" instruction — this is
+> not a live order.**
+
 ## STATUS: CRITICAL / REJECT CURRENT UI
 
 The current Dominoes Stockfish UI is **not acceptable**.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Compiles every *Tests.cpp against the full engine source set, using the
-# the project's standard flags (see legacy handoff.md §5.6), then runs each resulting executable and
+# the project's standard flags (see docs/history/legacy-handoff.md §5.6), then runs each resulting executable and
 # aggregates pass/fail counts across all of them.
 #
 # FIX (audit F-02): EntropySource calls SecRandomCopyBytes on Apple platforms,

@@ -1,4 +1,13 @@
-# Isolyn UI/UX Overhaul — The Table
+# Isolyn UI/UX Charter — The Table
+
+> **Status: authoritative design direction (living document).** Written
+> 2026-11-12, after the rebuild mandate was executed. It supersedes
+> `docs/history/2026-08-ui-rebuild-mandate.md` for layout, palette, typography,
+> spacing and component structure. The mandate remains normative for the
+> single-rectangle tile law and pip/divider geometry (§2–§3 there), which
+> `ChainAndZonesView`, `HandRackView` and `IsolynDominoTile` cite directly.
+> Where the two disagree: this document wins on composition, the mandate wins on
+> tile geometry.
 
 **Status:** design charter / Phase 0, with the responsive shell and the
 Offsuit-minimal table and motion/reveal pass landed
@@ -9,7 +18,7 @@ Partners (2v2) — plus the entry/lobby surfaces that lead into them.
 features, new game rules, or changing the bridge ABI.
 
 This document deliberately supersedes the *composition* rules in
-`dominoes_ui_fix_non_negotiable.md`. The tile-construction laws in that
+`docs/history/2026-08-ui-rebuild-mandate.md`. The tile-construction laws in that
 document remain non-negotiable: one continuous rectangle, exact 2:1 geometry,
 an internal divider, canonical pips, and one interaction target per tile. The
 old five-row dashboard is what we are replacing.
@@ -78,16 +87,21 @@ What the play surface must be:
   landing. Hand tiles rise into place and board tiles settle with a quiet
   spring. No confetti, screen shake, or new chrome.
 - The 1v1 draw pile is a real table object, not a counter and not a stack.
-  All remaining tiles lie face down in one straight row. The two permanently
-  closed tiles occupy the left end behind a thin rail; the open draw end is
-  the right edge. A draw removes the rightmost tile, so the row shrinks toward
-  the closed pair while its left edge stays fixed. The closed pair remains
-  face down for the whole round; the engine's late identity reveal is strategy
-  data, never a reason to turn physical table tiles face up. The row shows the
-  exact number of **drawable** tiles and labels the two ends `CLOSED` and
-  `DRAW N`. Three-Way and Partners deal the complete set, so they show no
-  pile. The existing `Draw`/`Pass` control stays in the action lane; the pile
-  never replaces it.
+  All remaining tiles lie face down in one straight column going down the
+  table. At the opening deal neither side is marked closed; the first draw
+  fixes the direction, after which the two reserved tiles turn upright and
+  sit side by side as a distinct cap behind an upward rail and `CLOSED`
+  label. The open draw end is the bottom edge; a draw removes the bottom tile
+  and the column shrinks toward the closed pair while its top stays fixed.
+  The closed pair remains face down for the whole round; the engine's late
+  identity reveal is strategy data, never a reason to turn physical table
+  tiles face up. The column shows the exact number of **drawable** tiles and
+  labels the ends `CLOSED` and `DRAW N` (with no `CLOSED` label before the
+  first draw). The whole pile is also a direct draw target; the existing
+  `Draw`/`Pass` control stays in the action lane and is never replaced. Pile
+  pieces scale between roughly 14pt and 20pt half-axis with the board height,
+  so the pile stays readable without crowding a compact table. Three-Way and
+  Partners deal the complete set, so they show no pile.
 - Consecutive forced draws keep overlapping flights alive instead of replacing
   one another, so every draw gets its own departure. The pile compresses a
   few points as each tile leaves and settles back with a restrained spring.
@@ -108,6 +122,17 @@ What the play surface must be:
 The mode-native wireframes in §5 are retained only as a record of the earlier
 direction. Do not use them to reintroduce chrome. Mode identity now comes
 from the player row and the engine's seat/team state, not from a dashboard.
+
+### Brand mark
+
+The app icon is the same material language as the table: a single upright
+warm-ivory domino on a warm-black field, with black pips, a brass divider,
+and the boneyard's brass diamond framing the single lower pip. It is the
+half-open/half-hidden idea in one object, not a generic domino sticker or a
+UI glyph. The icon is shipped as `Assets/Isolyn.icns` at every macOS size;
+`run.sh` copies it into the bundle and `CFBundleIconFile` points at it. The
+in-app wordmark remains typographic for now; the first surface for the mark
+is the Dock/app icon.
 
 ---
 

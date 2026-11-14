@@ -1,16 +1,20 @@
 # Bridge Architecture
 
-What the Swift/C++ bridge is, why it's shaped the way it is, and what it deliberately does not do. Companion to `docs/BRIDGE_TESTING.md` (how it's been verified) and `Sources/IsolynEngineBridge/include/IsolynBridge.hpp` (the actual contract — this document explains it, the header IS it).
+> **Status: living architecture document (tier 3).** Re-verified against the
+> code on 2026-11-13. Update this file in the same change as any modification
+> to `Sources/IsolynEngineBridge/`.
+
+What the Swift/C++ bridge is, why it's shaped the way it is, and what it deliberately does not do. Companion to `docs/engineering/BRIDGE_TESTING.md` (how it's been verified) and `Sources/IsolynEngineBridge/include/IsolynBridge.hpp` (the actual contract — this document explains it, the header IS it).
 
 ## What this is
 
 A narrow layer between the SwiftUI app (`Sources/IsolynApp`) and the authoritative C++ engine (`Sources/IsolynEngine`). It exists because nothing wired the two together before this — `Package.swift` said so explicitly ("no Swift/C++ interop is wired up here... future work"), and a repo-wide search turned up zero prior bridge/adapter/interop artifacts of any kind. This is not a refactor of something that existed; it's new.
 
-It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`run_tests.sh`, 426 checks across 19 executables as of 2026-11-11), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
+It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`run_tests.sh`, 429 checks across 19 executables, re-measured 2026-11-13), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
 
 ## Two facts about the engine that shaped every other decision here
 
-These came from reading the actual `.cpp` files, not from assuming API behavior from headers — see `legacy handoff.md` §5.6 for the fuller audit trail.
+These came from reading the actual `.cpp` files, not from assuming API behavior from headers — see `docs/history/legacy-handoff.md` §5.6 for the fuller audit trail.
 
 **1. The engine enforces nothing at its own boundary.** `MatchController::playTurn` and `MoveExecutor::apply` check their legality precondition via `assert(MoveValidator::isLegal(...))` — and `assert()` compiles to nothing under `NDEBUG`, which Xcode's Release configuration defines by default. Calling either with an illegal move in a Release build is undefined behavior in the engine, not a safe rejection. This is why `bridge_submit_move` explicitly calls `MoveValidator::isLegal` itself before ever touching `MatchController`, regardless of build configuration — the bridge is the actual enforcement point, not a redundant extra check on top of one the engine already does. Same story for `resolveForcedDraw`/`endTurnWithNoPlay`'s `currentPlayerHasLegalMove()` precondition.
 
@@ -43,7 +47,7 @@ The Swift side mirrors this exactly: phase 1 runs actor-isolated (`EngineSession
 `SessionHandle` and `AnalysisHandle` are plain `uint64_t` tokens looked up in an internal table, not opaque pointers. Two concrete reasons, not a style preference:
 
 - **Genuine idempotent close.** Looking up an unknown/already-erased ID in a table is always safe. Checking `->closed` on a `delete`d raw pointer is not — that's a real use-after-free regardless of how careful the check looks. `bridge_session_close`/`bridge_analysis_snapshot_destroy` being safe to call twice, or on a value that was never valid, is a real property this design has, not a documented-but-unenforced hope.
-- **Zero import ambiguity.** Plain integers cross into Swift unambiguously no matter which exact Cxx-interop behavior a given Xcode version has for opaque pointer types — a real unknown this project has no way to resolve without a compiler (see `docs/BRIDGE_TESTING.md`'s Swift-side caveats).
+- **Zero import ambiguity.** Plain integers cross into Swift unambiguously no matter which exact Cxx-interop behavior a given Xcode version has for opaque pointer types — a real unknown this project has no way to resolve without a compiler (see `docs/engineering/BRIDGE_TESTING.md`'s Swift-side caveats).
 
 IDs are never reused (monotonic counters), so there's no ABA-style risk of a stale handle later addressing a different, unrelated session.
 
@@ -67,7 +71,7 @@ This mirrors how the engine itself keeps hidden and known information structural
 
 ## Why the DTOs are POD-only, fixed-size, no STL
 
-Every public type in `IsolynBridge.hpp` is a plain enum, a plain struct of primitives and fixed C arrays, or a `uint64_t` handle — no `std::vector`, `std::string`, `std::optional`, references, or templates cross the boundary. This is the most conservative reading of "narrowest boundary the actual toolchain supports," chosen for stable interop rather than relying on STL bridging behavior that varies by toolchain. The Swift target compiles this header and exercises it in the package tests. Fixed arrays are sized against the game's actual hard ceiling (28 tiles, `kTotalTileCount`) rather than a "typical" smaller number, specifically because Sandbox Mode (`docs/FEATURE_SPECS.md`) allows arbitrary, user-constructed positions — truncating real data to fit an assumed-typical bound would silently corrupt whatever didn't fit.
+Every public type in `IsolynBridge.hpp` is a plain enum, a plain struct of primitives and fixed C arrays, or a `uint64_t` handle — no `std::vector`, `std::string`, `std::optional`, references, or templates cross the boundary. This is the most conservative reading of "narrowest boundary the actual toolchain supports," chosen for stable interop rather than relying on STL bridging behavior that varies by toolchain. The Swift target compiles this header and exercises it in the package tests. Fixed arrays are sized against the game's actual hard ceiling (28 tiles, `kTotalTileCount`) rather than a "typical" smaller number, specifically because Sandbox Mode (`docs/architecture/FEATURE_SPECS.md`) allows arbitrary, user-constructed positions — truncating real data to fit an assumed-typical bound would silently corrupt whatever didn't fit.
 
 The cost of this choice lands entirely on the Swift side: a fixed C array imports into Swift as a tuple, not an `Array`, which is genuinely awkward to consume directly. `Sources/IsolynApp/Engine/EngineTypes.swift` handles this with one reusable `withTupleAsArray` helper (pointer-reinterpretation from tuple memory to a typed buffer, which is safe because the two are guaranteed to have identical layout) rather than hand-writing tuple-accessor code per field.
 
@@ -75,7 +79,7 @@ The cost of this choice lands entirely on the Swift side: a fixed C array import
 
 Said plainly rather than silently dropped, matching this project's own established documentation standard:
 
-- **Sandbox Mode's arbitrary starting positions.** No bridge entry point accepts a caller-constructed `GameState` — `docs/FEATURE_SPECS.md` calls for a `PositionConstructor` on the engine side that doesn't exist yet. Nothing to bridge to until that's built.
+- **Sandbox Mode's arbitrary starting positions.** No bridge entry point accepts a caller-constructed `GameState` — `docs/architecture/FEATURE_SPECS.md` calls for a `PositionConstructor` on the engine side that doesn't exist yet. Nothing to bridge to until that's built.
 - **A `bridge_analysis_run` pinned against a concurrent `bridge_analysis_snapshot_destroy`.** `find()` on the analysis handle table only guarantees the snapshot was valid at that instant, not for the whole (potentially long) remainder of a run call. In practice this is safe under the documented discipline (destroy only after run returns; use `bridge_analysis_request_cancel` to ask an in-flight run to stop, never destroy underneath it) — but it's a caller-discipline guarantee, not a structurally-enforced one, unlike the shared_ptr fix that closed the equivalent gap for session handles. A generation-checked handle or reference count on the analysis side would close this properly; it's real, scoped, undone work, not something to improvise under this pass's time constraints.
 - **Native visual and on-device performance behavior.** The Swift package compiles and its headless tests run on macOS, but this document cannot prove what the running window looks like or how search latency feels in the packaged app. Those remain manual checks.
 
@@ -115,4 +119,13 @@ serializes with the session's own command stream.
 Verified: SmokeTest match section (record/duplicate-reject/starter/
 accumulation/idempotent close) plus the reveal-on-end assertions -- current
 bridge suite 73/73; ASan+UBSan clean over the new paths; Swift package
-currently 68 tests, 1 skipped, 0 failures.
+currently 75 tests, 1 skipped, 0 failures (re-measured 2026-11-13).
+
+**Known gap in this surface.** `bridge_match_record_round` accepts any
+finished session whose player count happens to fit the match's array, but it
+does not verify that the session's mode matches the match's mode. A 1v1 session
+recorded into a 2v2 match reaches `GameState::hand(3)` on a two-player state;
+`hand()` is guarded only by `assert`, so Release builds read out of bounds.
+Reproduced 6/6 on 2026-11-13 (Debug SIGABRT, Release SIGSEGV). This is
+tracked as AUD-01 / TD-1 in `docs/audits/2026-11-13-audit.md` and is not
+covered by the current bridge suite.

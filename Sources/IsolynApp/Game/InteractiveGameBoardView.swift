@@ -334,7 +334,12 @@ struct InteractiveGameBoardView: View {
             if let snap = viewModel.snapshot, snap.mode == .oneVOne {
                 BoneyardView(
                     drawableCount: snap.boneyardDrawableCount,
-                    appearance: appearanceManager.appearance
+                    appearance: appearanceManager.appearance,
+                    availableHeight: boardFrame.height > 0 ? boardFrame.height : nil,
+                    isDrawEnabled: viewModel.canVoluntaryDraw,
+                    onDraw: {
+                        Task { await viewModel.voluntaryDraw() }
+                    }
                 )
                 .padding(.leading, 18)
                 .padding(.top, 16)

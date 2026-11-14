@@ -1,5 +1,11 @@
 # Feature Specifications — Training Mode and Sandbox Mode
 
+> **Status: product intent, unimplemented (verified 2026-11-13).** Neither mode
+> exists: both entry points render "This part of Isolyn hasn't been built yet"
+> (`EntryView.swift:51,54`). `PositionConstructor` and `ExplanationEngine` have
+> zero implementation. This is the specification those builds must satisfy —
+> not a description of the current app.
+
 > Captured from detailed feature requirements given well ahead of the UI
 > layer being built. Same purpose as STRATEGY_NOTES.md: this is real,
 > specific product intent that would otherwise have to be re-derived or

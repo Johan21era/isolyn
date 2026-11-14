@@ -30,10 +30,10 @@ jobs:
       - name: Swift test suite (environment + headless game flow)
         run: swift test
 
-      - name: Engine suite (19 executables, 380 checks)
+      - name: Engine suite (19 executables, 429 checks)
         run: ./run_tests.sh
 
-      - name: Bridge suite (SmokeTest + SoakTest, 68 checks)
+      - name: Bridge suite (SmokeTest + SoakTest, 73 checks)
         run: ./run_bridge_tests.sh
 
   weekly-fuzz:

@@ -2,8 +2,8 @@
 # Builds Tests/IsolynEngineBridgeTests/FuzzBridge.cpp with
 # clang++ -fsanitize=fuzzer,address,undefined against the real engine +
 # bridge, then runs it for SECONDS (default 120) of real wall-clock fuzzing.
-# See docs/BRIDGE_TESTING.md for how to read the output and for the
-# specific run `docs/BRIDGE_TESTING.md` cites results from.
+# See docs/engineering/BRIDGE_TESTING.md for how to read the output and for the
+# specific run `docs/engineering/BRIDGE_TESTING.md` cites results from.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 

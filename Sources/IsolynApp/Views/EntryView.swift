@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The very first thing a player sees. Deliberately quiet: the
 /// wordmark, one clear primary action, and two lower-emphasis paths
-/// into the more specialized modes from `docs/FEATURE_SPECS.md` --
+/// into the more specialized modes from `docs/architecture/FEATURE_SPECS.md` --
 /// nothing competes with "Play."
 struct EntryView: View {
     @Environment(AppState.self) private var appState

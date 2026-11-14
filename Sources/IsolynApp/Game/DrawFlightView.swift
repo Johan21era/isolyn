@@ -61,7 +61,7 @@ private struct FlyingFaceDownTile: View {
     }
 
     var body: some View {
-        BoneyardFaceDownTile(appearance: appearance, height: 27)
+        BoneyardFaceDownTile(appearance: appearance, height: 24)
             .shadow(
                 color: .black.opacity(0.28 + 0.18 * sin(progress * CGFloat.pi)),
                 radius: 3 + 7 * sin(progress * CGFloat.pi),
@@ -77,7 +77,7 @@ private struct FlyingFaceDownTile: View {
             .opacity(progress > 0.88 ? max(0, (1 - progress) / 0.12) : 1)
             .onAppear {
                 withAnimation(
-                    .timingCurve(0.16, 0.82, 0.22, 1, duration: 0.58)
+                    .timingCurve(0.16, 0.82, 0.22, 1, duration: 0.68)
                         .delay(delay)
                 ) {
                     progress = 1

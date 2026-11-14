@@ -6,7 +6,7 @@ namespace isolyn {
 
 // Whether a specific proposed Move is legal for a specific player against
 // a specific GameState. Does no win/close-priority filtering -- see
-// docs/STRATEGY_NOTES.md for the full reasoning; in short, "may not
+// docs/design/STRATEGY_NOTES.md for the full reasoning; in short, "may not
 // refuse to win/close" restates ordinary Mandatory Play (make some legal
 // move if one exists), it does not make a winning/closing move the only
 // legal one. A move is legal exactly when the tile is in the player's

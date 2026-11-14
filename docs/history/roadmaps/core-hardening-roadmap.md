@@ -1,7 +1,13 @@
 # ISOLYN CORE HARDENING ROADMAP
 
+> **Status: completed plan (2026-08), archived 2026-11-13.** Phases 1–6 were
+> executed; receipts are in `docs/history/fix-log.md` (FIX-15…FIX-26, OPS-05…08).
+> Kept as the record of how the hardening session was scoped and ordered. Its
+> baseline numbers (356/356, 57/57, 28 tests) are 2026-08 measurements. Current
+> state: `docs/audits/2026-11-13-audit.md`.
+
 **Purpose:** make the core architecture *sound and extremely strong* before the planned UI revival.
-**Companion to:** `isolyn roadmap.md` (feature roadmap — unchanged, still governs Phases 3–7 feature work) · `isolyn current audit.md` (findings F‑01…F‑12) · `fix-log.md` (protocol format for every fix below) · `legacy handoff.md` (house rules — ALL binding).
+**Companion to:** `docs/roadmaps/strategy-roadmap.md` (feature roadmap — unchanged, still governs Phases 3–7 feature work) · `docs/audits/2026-08-24-audit.md` (findings F‑01…F‑12) · `docs/history/fix-log.md` (protocol format for every fix below) · `docs/history/legacy-handoff.md` (house rules — ALL binding).
 **Baseline (verified this session):** `swift build` clean · `swift test` → 28 tests, 1 skipped, 0 failures · git clean except one untracked doc (Step 0 closes that).
 **Owner directive:** descending workload per phase. Phases 1–3 carry the absolute heaviest lifting; 4–6 shrink to fixes and adjustments. Total budget ≈ a few hours. UI revival happens AFTER this roadmap completes — explicitly out of scope here.
 
@@ -18,7 +24,7 @@ This roadmap contains **zero new features and zero visual redesign**. Everything
 | Verifiability | CI pipeline, regression tests, final proof gates | Test-framework churn |
 | Honesty | Wiring or removing dead controls/comments, doc closeout | Cosmetic polish |
 
-DifficultyModel/AI, Sandbox, Training, drag-and-drop, and the entire UI revival remain governed by `isolyn roadmap.md` and come after this document is done.
+DifficultyModel/AI, Sandbox, Training, drag-and-drop, and the entire UI revival remain governed by `docs/roadmaps/strategy-roadmap.md` and come after this document is done.
 
 ---
 
@@ -42,7 +48,7 @@ Front-loading rule satisfied by construction: P1/P2/P3 are design-and-infrastruc
 
 Non-negotiable preconditions, per house rules §5.2 and §7.4:
 
-1. `git add "isolyn current audit.md"` + commit — the audit is meaningful work living in exactly one place (**closes N‑7**).
+1. `git add "docs/audits/2026-08-24-audit.md"` + commit — the audit is meaningful work living in exactly one place (**closes N‑7**).
 2. Re-run the three proofs to pin the baseline in-session: `./run_tests.sh` → 356/356 · `./run_bridge_tests.sh` → 57/57 · `swift test` → 28/0-failures. Record outputs in the session log. If ANY differs → STOP and report verbatim (handoff §8.1).
 
 ---
@@ -111,7 +117,7 @@ Non-negotiable preconditions, per house rules §5.2 and §7.4:
 - Gate: **zero findings**, recorded verbatim. Any finding found NOW becomes a Phase‑1-style work item immediately — surprises later are forbidden.
 
 ### 3c. Packaging groundwork (paper-only, F‑05 prep)
-- New doc: `docs/RELEASE_CHECKLIST.md` — enumerates the Xcode-target requirements (PrivacyInfo.xcprivacy CoreLocation declaration, NSLocationWhenInUseUsageDescription copy, WeatherKit capability, hardened-runtime/signing, icon pipeline) so the eventual app-shell work is a checklist, not archaeology. NO Xcode project created in this roadmap.
+- New doc: `docs/engineering/RELEASE_CHECKLIST.md` — enumerates the Xcode-target requirements (PrivacyInfo.xcprivacy CoreLocation declaration, NSLocationWhenInUseUsageDescription copy, WeatherKit capability, hardened-runtime/signing, icon pipeline) so the eventual app-shell work is a checklist, not archaeology. NO Xcode project created in this roadmap.
 
 ### Exit criteria
 CI green on main · sanitizer log committed to fix-log · checklist doc exists · one commit.
@@ -174,9 +180,9 @@ No comment in `Sources/` promises behavior that doesn't exist (spot-audit) · se
 
 **Objective:** leave the tree stranger-resumable than we found it, with every claim machine-checkable.
 
-1. **fix-log.md** — append entries in the 12-field protocol format: FIX‑15 (F‑04), FIX‑16 (F‑10), FIX‑17 (F‑11 + test anchor), FIX‑18 (F‑07), FIX‑19 (F‑08/F‑12), FIX‑20 (N‑1…N‑6 compressed), OPS‑04 (CI), OPS‑05 (sanitizer baseline log). Each with grep-able anchors, per protocol.
-2. **legacy handoff.md** — refresh the scoreboard table (356→357+, 57→58, 28 tests, CI row added) and §4 table with this session's rows.
-3. **Audit ledger** — mark F‑04, F‑07, F‑08, F‑09, F‑10, F‑11, F‑12 resolved in a short addendum to `isolyn current audit.md` (do NOT rewrite history — append).
+1. **docs/history/fix-log.md** — append entries in the 12-field protocol format: FIX‑15 (F‑04), FIX‑16 (F‑10), FIX‑17 (F‑11 + test anchor), FIX‑18 (F‑07), FIX‑19 (F‑08/F‑12), FIX‑20 (N‑1…N‑6 compressed), OPS‑04 (CI), OPS‑05 (sanitizer baseline log). Each with grep-able anchors, per protocol.
+2. **docs/history/legacy-handoff.md** — refresh the scoreboard table (356→357+, 57→58, 28 tests, CI row added) and §4 table with this session's rows.
+3. **Audit ledger** — mark F‑04, F‑07, F‑08, F‑09, F‑10, F‑11, F‑12 resolved in a short addendum to `docs/audits/2026-08-24-audit.md` (do NOT rewrite history — append).
 4. **Final proofs, verbatim outputs into the log:** `./run_tests.sh` · `./run_bridge_tests.sh` · `swift test` · `./run_bridge_fuzz.sh 15` · CI badge green on GitHub.
 5. Push. Tag the state (e.g. `core-hardened-1`) so the UI revival starts from a named, immutable baseline.
 
@@ -207,7 +213,7 @@ Strictly descending ✓. Heavy lifting exhausted by Phase 3 ✓. Everything afte
 
 ## EXPLICITLY DEFERRED (post-roadmap)
 
-UI revival (entire — owner-led, next session) · AI/DifficultyModel (`isolyn roadmap.md` P3) · PositionConstructor/Sandbox (P4) · ExplanationEngine/Training (P5) · distribution/packaging execution (only the checklist ships here) · drag-and-drop placement.
+UI revival (entire — owner-led, next session) · AI/DifficultyModel (`docs/roadmaps/strategy-roadmap.md` P3) · PositionConstructor/Sandbox (P4) · ExplanationEngine/Training (P5) · distribution/packaging execution (only the checklist ships here) · drag-and-drop placement.
 
 ---
 

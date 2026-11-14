@@ -17,13 +17,13 @@ copy them as current numbers.
 
 | Check | Command | Result |
 |---|---|---|
-| Engine suite | `./run_tests.sh` | 19 executables, **426 checks passed**, 0 failed |
+| Engine suite | `./run_tests.sh` | 19 executables, **429 checks passed**, 0 failed |
 | Bridge suite | `./run_bridge_tests.sh` | 2 executables, **73 checks passed**, 0 failed |
-| Swift package | `swift test` | **68 tests, 1 skipped, 0 failures** |
-| AddressSanitizer + UBSan | `./run_sanitize.sh address` | 21 executables, **494 checks passed**, 0 findings |
+| Swift package | `swift test` | **75 tests, 1 skipped, 0 failures** |
+| AddressSanitizer + UBSan | `./run_sanitize.sh address` | 21 executables, **502 checks passed**, 0 findings |
 | ThreadSanitizer | `./run_sanitize.sh thread` | 2 executables, **82 checks passed**, 0 findings |
 | Standalone fuzz fallback | `./run_bridge_fuzz.sh 30` | 75,000 executions, zero crashes/hangs/sanitizer findings |
-| Accelerator harness | `./Accelerator/build.sh` | **95 checks passed**; compact GPU parity plus 1K-65K throughput sweep |
+| Accelerator harness | `./Accelerator/build.sh` | **100 checks passed**; compact GPU parity plus 1K-65K throughput sweep |
 
 The fuzz runner reports that libFuzzer is unavailable on this toolchain and uses
 the repository's standalone driver. That is a real fallback, not full
@@ -57,11 +57,17 @@ The bridge's original hardening pass found and fixed:
 - a terminal-round mutation hole (`RoundAlreadyOver`);
 - a soak-test measurement gap on macOS.
 
-Per-fix anchors and exact historical outputs remain in `fix-log.md` and
-`legacy handoff.md`; those entries are historical receipts, not re-runs.
+Per-fix anchors and exact historical outputs remain in `docs/history/fix-log.md` and
+`docs/history/legacy-handoff.md`; those entries are historical receipts, not re-runs.
 
 ## Not covered
 
+- **The match/session mode-mismatch path.** `bridge_match_record_round` does
+  not reject a session whose player count differs from the match mode; a 1v1
+  session recorded into a 2v2 match reads `state.hand(3)` on a two-player
+  state. The use of `hand()` is `assert`-only, so this is an out-of-bounds read
+  in Release (SIGSEGV) and an abort in Debug. Neither the bridge suite nor the
+  sanitizer sweep exercises it. See `docs/audits/2026-11-13-audit.md` §7.2.
 - Sandbox Mode's caller-constructed positions. The engine has no
   `PositionConstructor`/bridge entry point yet.
 - Native UI visual behavior and on-device interaction. The Swift tests are
@@ -69,4 +75,4 @@ Per-fix anchors and exact historical outputs remain in `fix-log.md` and
 - A full multi-hour soak on the current build. The 2026-11-11 suite exercises
   the current code, but long-duration stability is not a fresh claim.
 - Search strength. Engine/bridge tests prove behavior, not playing strength;
-  the measured ladder lives in `docs/LAB.md`.
+  the measured ladder lives in `docs/subsystems/LAB.md`.

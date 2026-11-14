@@ -10,7 +10,7 @@ namespace isolyn {
 // points `playerIndex` would be charged (fewer points charged is
 // better), plus a fixed bonus if `playerIndex` is the closer, since the
 // closer always starts the next round regardless of the scoring outcome
-// (Rules Spec Sec. 4) -- exactly the tradeoff docs/STRATEGY_NOTES.md
+// (Rules Spec Sec. 4) -- exactly the tradeoff docs/design/STRATEGY_NOTES.md
 // documents: a player may accept a worse points outcome specifically
 // because starting the next round is worth it.
 //

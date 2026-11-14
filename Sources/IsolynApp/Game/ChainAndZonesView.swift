@@ -1,7 +1,7 @@
 import SwiftUI
 import IsolynEngineBridge
 
-/// The domino board (dominoes_ui_fix_non_negotiable.md §4–§8).
+/// The domino board (docs/history/2026-08-ui-rebuild-mandate.md §4–§8).
 ///
 /// The chain is THE primary visual object: a connected snake of canonical
 /// single-rectangle dominoes laid on one coherent surface — horizontal

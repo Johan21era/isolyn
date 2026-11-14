@@ -1,7 +1,12 @@
 # ISOLYN AUDIT REMEDIATION ROADMAP
 
+> **Status: completed plan (2026-08-25), archived 2026-11-13.** All phases were
+> executed; receipts are in `docs/history/fix-log.md` (FIX-27 onward). Kept as
+> the record of how the work was scoped and ordered, not as open work. Current
+> state and remaining work: `docs/audits/2026-11-13-audit.md`.
+
 **Purpose:** fix every finding from the ox-alpha full-read audit (findings **OA-1…OA-5**, delivered 2026‑08‑25) so the tree is measurement-honest, doc-honest, analytically correct, and geometrically resilient before any feature work resumes.
-**Companion to:** `isolyn roadmap.md` (feature roadmap — UNCHANGED, still governs Phases 3–7 feature work; this document contains ZERO features) · `legacy handoff.md` (house rules — ALL binding) · `fix-log.md` (protocol-format entries land here per fix) · `isolyn current audit.md` (the prior audit whose findings are already fully resolved — nothing in this document re-opens F-series items).
+**Companion to:** `docs/roadmaps/strategy-roadmap.md` (feature roadmap — UNCHANGED, still governs Phases 3–7 feature work; this document contains ZERO features) · `docs/history/legacy-handoff.md` (house rules — ALL binding) · `docs/history/fix-log.md` (protocol-format entries land here per fix) · `docs/audits/2026-08-24-audit.md` (the prior audit whose findings are already fully resolved — nothing in this document re-opens F-series items).
 **Baseline (verified live this session, on-target macOS):** `run_tests.sh` → **362/362**, zero warnings · `run_bridge_tests.sh` → **58/58** (caveat: SoakTest contributes 0 checks on macOS — that is OA-1) · `swift build` → **zero warnings** · `swift test` → **35 tests, 1 honest skip, 0 failures** · git clean · folder restored steady-state via `clean.sh`.
 **Owner directive:** descending workload per phase. Heavy lifting exhausted by Phase 3; Phases 4–6 shrink to sweeps, conversations, and paperwork. Total budget ≈ one working day.
 
@@ -20,7 +25,7 @@ This roadmap contains **zero new gameplay features and zero visual redesign**. E
 | Decisions | OA-5 (ambiguity #6/#8, approximation acceptance, weights sequencing) | Implementing #8 before the owner rules |
 | Process | Tagging the first fully-machine-verified baseline | Feature work of any kind |
 
-AI/DifficultyModel, Sandbox, Training, packaging execution remain governed by `isolyn roadmap.md` and come after this document is done. When this closes, the only remaining work in the entire project is that feature roadmap — exactly the "easy work and niche features" end-state the owner asked for.
+AI/DifficultyModel, Sandbox, Training, packaging execution remain governed by `docs/roadmaps/strategy-roadmap.md` and come after this document is done. When this closes, the only remaining work in the entire project is that feature roadmap — exactly the "easy work and niche features" end-state the owner asked for.
 
 ---
 
@@ -46,7 +51,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 
 1. Re-pin the baseline verbatim (house rule §8.1): `./run_tests.sh` → 362/362 · `./run_bridge_tests.sh` → 58/58 · `swift build` zero warnings · `swift test` → 35/0-failures/1-skip. If ANY differs → STOP, report mismatch verbatim, change nothing.
 2. `git status` must be clean. Commit this roadmap file itself first (`docs: adopt audit remediation roadmap`) so every subsequent diff maps to a reviewable intent.
-3. Note for closeout: adding this file made `tree.md` stale by exactly one entry — rule-8 sync is scheduled as P6's job, not skipped.
+3. Note for closeout: adding this file made `tree.md` stale by exactly one entry — rule-8 sync is scheduled as P6's job, not skipped. *(That snapshot was retired on 2026-11-13; the register in `docs/README.md` is the map now.)*
 
 ---
 
@@ -70,7 +75,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 
 ### Exit criteria (all of Phase 1)
 - `grep -n "__APPLE__" Tests/IsolynEngineBridgeTests/SoakTest.cpp` finds the Mach branch; `/proc` path intact for Linux.
-- macOS `./run_bridge_tests.sh` output shows SoakTest printing real VmRSS numbers and a computed growth-per-cycle figure — pasted verbatim into `fix-log.md`.
+- macOS `./run_bridge_tests.sh` output shows SoakTest printing real VmRSS numbers and a computed growth-per-cycle figure — pasted verbatim into `docs/history/fix-log.md`.
 - Engine suite untouched-green (362/362); bridge suite green with the soak NOW CONTRIBUTING A REAL VERDICT.
 - One commit: `fix(soak): darwin RSS measurement — macOS soak test measures instead of passing silently (audit OA-1)`.
 
@@ -78,7 +83,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 
 ## PHASE 2 — BOARD GEOMETRY RESILIENCE + THE SNAPSHOT TEST SEAM *(~25%)*
 
-**Objective:** OA-4. A pathological near-full-board chain lays out rows downward without limit while `BoardCamera` caps pan at ±300/±200 — worst case, the tail end renders out of reachable view. This is rare, cosmetic, and it is also the LAST UNCLOSED ITEM of `dominoes_ui_fix_non_negotiable.md` §17 ("scale the board intelligently … prevent horizontal overflow … avoid crushing dominoes"): the mandate's responsive clause was never finished because the failure needed a huge chain to appear. Fixing it COMPLETES the signed-off mandate rather than reopening it.
+**Objective:** OA-4. A pathological near-full-board chain lays out rows downward without limit while `BoardCamera` caps pan at ±300/±200 — worst case, the tail end renders out of reachable view. This is rare, cosmetic, and it is also the LAST UNCLOSED ITEM of `docs/history/2026-08-ui-rebuild-mandate.md` §17 ("scale the board intelligently … prevent horizontal overflow … avoid crushing dominoes"): the mandate's responsive clause was never finished because the failure needed a huge chain to appear. Fixing it COMPLETES the signed-off mandate rather than reopening it.
 
 ### 2a. Extract pure layout metrics (testability first)
 - File: `Sources/IsolynApp/Game/ChainAndZonesView.swift` (anchor: `computeLayout`).
@@ -137,11 +142,11 @@ Inventory (each item: file → anchor → action):
 1. `Package.swift` → IsolynApp target comment ("has NOT been verified by an actual Swift/Xcode compile…") and IsolynAppTests comment ("NOT been re-verified…") → append: *RESOLVED 2026‑08‑25: compiled zero-warning and tested green on macOS/Xcode; interop spelling and tuple-import behavior confirmed.*
 2. `Sources/IsolynApp/Engine/EngineTypes.swift` → header block ("have NEVER been compiled…") → resolution note atop the two uncertainties; KEEP the explanations (tuple-as-tuple layout rationale remains the best documentation of WHY `withTupleAsArray` exists).
 3. `Sources/IsolynApp/Engine/EngineSession.swift` → pointer comment referencing EngineTypes' uncertainties → one-line resolution pointer.
-4. `docs/BRIDGE_TESTING.md` → Environment section ("no Swift toolchain, ever") + "What has not been done" (Swift-side testing line) → resolution note + replace the Swift-side-testing absence with the CURRENT truth (35 swift tests green, incl. headless gameplay through the real bridge), citing Step-0 outputs.
-5. `docs/BRIDGE_ARCHITECTURE.md` → threading-section parenthetical + "Everything Swift-compiler-dependent" out-of-scope bullet → resolution note; move the actor-discipline item from "unverifiable" to "compiler-enforced and exercised."
-6. `legacy handoff.md` → §2 scoreboard (add a verified-this-session column/row), §5.6 timeline tail (one closing sentence), §6 proofs (numbers already correct — add "re-confirmed 2026‑08‑25 on macOS") → minimal annotations.
-7. `docs/RELEASE_CHECKLIST.md` — checked-for-relevance, expected UNCHANGED (packaging substrate genuinely still absent; F-05 stays "grounded, not closed").
-8. `isolyn current audit.md` → append `Appendix E — Swift-boundary closure (2026‑08‑25)`: two paragraphs, the F-01-era uncertainty formally retired, citing the four green gates. History above untouched.
+4. `docs/engineering/BRIDGE_TESTING.md` → Environment section ("no Swift toolchain, ever") + "What has not been done" (Swift-side testing line) → resolution note + replace the Swift-side-testing absence with the CURRENT truth (35 swift tests green, incl. headless gameplay through the real bridge), citing Step-0 outputs.
+5. `docs/architecture/BRIDGE_ARCHITECTURE.md` → threading-section parenthetical + "Everything Swift-compiler-dependent" out-of-scope bullet → resolution note; move the actor-discipline item from "unverifiable" to "compiler-enforced and exercised."
+6. `docs/history/legacy-handoff.md` → §2 scoreboard (add a verified-this-session column/row), §5.6 timeline tail (one closing sentence), §6 proofs (numbers already correct — add "re-confirmed 2026‑08‑25 on macOS") → minimal annotations.
+7. `docs/engineering/RELEASE_CHECKLIST.md` — checked-for-relevance, expected UNCHANGED (packaging substrate genuinely still absent; F-05 stays "grounded, not closed").
+8. `docs/audits/2026-08-24-audit.md` → append `Appendix E — Swift-boundary closure (2026‑08‑25)`: two paragraphs, the F-01-era uncertainty formally retired, citing the four green gates. History above untouched.
 
 ### Exit criteria (all of Phase 4)
 - Repo-wide grep for `NEVER been compiled` / `never been available` / `not been verified` returns only sites carrying a dated RESOLVED annotation (or genuinely-still-true statements — e.g., Training/Sandbox absence).
@@ -152,15 +157,15 @@ Inventory (each item: file → anchor → action):
 
 ## PHASE 5 — OPEN-DECISIONS LEDGER *(~7% — a structured conversation, captured in writing)*
 
-**Objective:** OA-5. Four carried items need an OWNER RULING or an explicit acceptance — not code yet. Deliverable: `docs/OPEN_DECISIONS.md`, one page per question in the ambiguity-listing style of handoff §5.3 (background → options → recommendation → implementation cost once ruled). Implement NOTHING from this phase except items the owner rules on IN-session AND which cost ≤ a few lines (listed per item).
+**Objective:** OA-5. Four carried items need an OWNER RULING or an explicit acceptance — not code yet. Deliverable: `docs/engineering/OPEN_DECISIONS.md`, one page per question in the ambiguity-listing style of handoff §5.3 (background → options → recommendation → implementation cost once ruled). Implement NOTHING from this phase except items the owner rules on IN-session AND which cost ≤ a few lines (listed per item).
 
 1. **Ambiguity #6 — all-doubles-round closer (1v1).** Current fallback credits the last player. Options: (a) keep, (b) declare such rounds closeless with starter = dealer's-left convention (INVENTED rule — violates never-invent), (c) escalate to source-document review. Recommendation: keep (a); it's flagged in-place, astronomically rare, and reversible. Cost to flip if overruled: one comparison in `RulesEngine::determineCloser` + two test cases.
 2. **Ambiguity #8 — One Domino Rule mechanics.** Genuinely underspecified (how a Domino victory occurs INSIDE a draw-one/play-one ritual). Present the three worked readings side-by-side with concrete tile traces; recommend a physical-tiles walkthrough with the owner before ANY implementation. Explicitly OUT of implementation scope until ruled — this is the one item where guessing would violate the never-invent rule in gameplay-visible ways.
 3. **`probabilityHoldsAtLeast` independence approximation.** Recommend ACCEPT-as-documented (≤7 Bernoulli trials, exact DP over the approximation, marginals feed explainability — while SEARCH-critical worlds come from capacity-exact Determinizer sampling and are unaffected). Alternative (joint-exact via iterative proportional fitting) priced honestly: days of work, zero search-quality delta, marginal explanation-precision gain. Owner may simply initial the acceptance in this file.
-4. **Evaluation weights sequencing.** Not a new decision — CONFIRM that placeholder 1.0 weights stay frozen until `isolyn roadmap.md` Phase 3's calibration harness exists (changing evaluation while introducing opponents confounds the ladder signals — already documented there). One checkbox.
+4. **Evaluation weights sequencing.** Not a new decision — CONFIRM that placeholder 1.0 weights stay frozen until `docs/roadmaps/strategy-roadmap.md` Phase 3's calibration harness exists (changing evaluation while introducing opponents confounds the ladder signals — already documented there). One checkbox.
 
 ### Exit criteria (all of Phase 5)
-- `docs/OPEN_DECISIONS.md` exists; every item carries either an owner ruling or a dated recommendation awaiting one.
+- `docs/engineering/OPEN_DECISIONS.md` exists; every item carries either an owner ruling or a dated recommendation awaiting one.
 - Any ≤-few-line rulings implemented WITH their tests in the same commit; everything else explicitly deferred with a pointer from handoff §5.5 to the new file (§5.5 edited to reference it — the map must not fork).
 - One commit: `docs: open-decisions ledger — ambiguity #6/#8, approximation acceptance, weights sequencing (audit OA-5)`.
 
@@ -170,7 +175,7 @@ Inventory (each item: file → anchor → action):
 
 1. **Fix-log entries** in the 12-field protocol format: FIX-27 (OA-1, citing the recorded macOS soak outputs), FIX-28 (OA-4 + BoardLayoutTests anchor), FIX-29 (OA-3 + resolver-suite anchor), FIX-30 (OA-2 doc inventory compressed), OPS-09 (Open-Decisions ledger + any rulings).
 2. **Tag the baseline:** `git tag audit-remediated-1 && git push origin main --tags`. This is the first tag in history where EVERY layer — engine, bridge, Swift consumer, environment, UI geometry, and now the measurement harness itself — is machine-verified on the shipping platform. Name it so the feature roadmap starts from an immutable, citable state.
-3. **Rule-8 map sync:** regenerate `tree.md` from a fresh listing (now including this roadmap + the two new test files + OPEN_DECISIONS.md); `graphify update . --force`; verify node/edge counts moved plausibly.
+3. **Rule-8 map sync:** regenerate the tree listing from a fresh run (now including this roadmap + the two new test files + OPEN_DECISIONS.md); `graphify update . --force`; verify node/edge counts moved plausibly. *(The `tree.md` snapshot was retired on 2026-11-13; the register in `docs/README.md` replaced it, so this step is now the register update.)*
 4. **Final gates, verbatim into the session log:** `./run_tests.sh` · `./run_bridge_tests.sh` (soak now printing real numbers) · `swift build` · `swift test`.
 5. **`./clean.sh`** — zero residue handed back (OPS-03/OPS-07 lesson, permanently applied).
 
@@ -188,7 +193,7 @@ Inventory (each item: file → anchor → action):
 | 5 | Open-decisions ledger (OA-5) | **7%** | writing down what only the owner can decide |
 | 6 | Closeout: tag, sync, clean | **5%** | commands and paperwork |
 
-Strictly descending ✓ · heavy lifting exhausted by Phase 3 ✓ · zero features ✓ · hands off to `isolyn roadmap.md` Phase 3 (AI) with a fully-remediated, tagged base ✓.
+Strictly descending ✓ · heavy lifting exhausted by Phase 3 ✓ · zero features ✓ · hands off to `docs/roadmaps/strategy-roadmap.md` Phase 3 (AI) with a fully-remediated, tagged base ✓.
 
 ## RISK REGISTER
 
@@ -196,9 +201,9 @@ Strictly descending ✓ · heavy lifting exhausted by Phase 3 ✓ · zero featur
 2. **P2 touches the visually-signed-off board.** Mitigation: 2a is provably behavior-neutral (pure extraction, consumed identically); 2b activates ONLY past the overflow threshold ordinary games never reach; §29-step-7 trace re-walked; owner eyeballs the long-chain case once, same sign-off pattern as UI-QA.
 3. **P2d's visibility widening could be reverted as "tidying."** Mitigation: the anchor comment states the test-seam justification verbatim; BoardLayoutTests + TileKnowledgeResolverTests FAIL TO COMPILE if it regresses — the suite IS the guardrail.
 4. **P5's #8 discussion spawns implementation pressure mid-phase.** Mitigation: scope table is binding — no One-Domino-Rule code until ruled, per the never-invent rule; the ledger captures the conversation instead.
-5. **Scope gravity toward AI features.** Mitigation: `isolyn roadmap.md` Phase 3 is fully specified and waiting; this document's exit criteria end at a tag.
+5. **Scope gravity toward AI features.** Mitigation: `docs/roadmaps/strategy-roadmap.md` Phase 3 is fully specified and waiting; this document's exit criteria end at a tag.
 
-## EXPLICITLY DEFERRED (post-roadmap, governed by isolyn roadmap.md)
+## EXPLICITLY DEFERRED (post-roadmap, governed by docs/roadmaps/strategy-roadmap.md)
 
 DifficultyModel/AI turns + calibration harness (P3) · PositionConstructor/Sandbox (P4) · ExplanationEngine/Training (P5) · drag-and-drop placement · packaging/app-shell execution (checklist ready) · One Domino Rule IMPLEMENTATION (blocked on its P5 ruling, not on code).
 

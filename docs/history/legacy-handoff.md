@@ -1,12 +1,21 @@
 # ISOLYN — LEGACY HANDOFF (read me before anything else)
 
+> **Status: historical onboarding record (2026-08), retained verbatim.**
+> The scoreboard in §2 and the proof outputs in §6 are 2026-08 measurements and
+> no longer describe the tree (the engine suite was 380 checks then, 429 now).
+> They are kept because they are receipts for the state the project was in, not
+> because they are current. For current numbers, defects and priorities use
+> `docs/audits/2026-11-13-audit.md`; for the architecture use
+> `docs/architecture/BRIDGE_ARCHITECTURE.md`; for the product rules that are
+> still open, use `docs/engineering/OPEN_DECISIONS.md`.
+
 **Who this is for:** a human who has never coded, OR an AI model that is
 small, weak, and has no memory of anything. Both should be able to do useful,
 safe work after reading only this file.
 
 **Relationship to history:** the original `HANDOFF.md` was retired (deleted)
 after every load-bearing fact inside it was extracted into §5 below, code
-comments, `fix-log.md`, or `docs/`. Nothing important was lost — §5 is the
+comments, `docs/history/fix-log.md`, or `docs/`. Nothing important was lost — §5 is the
 condensed survival of its rules, ambiguities, and hard-won lessons. This file
 is now the SINGLE source of truth for status AND rules.
 
@@ -36,7 +45,7 @@ it only asks the engine and displays answers.
 
 ---
 
-## 2. CURRENT STATE — SCOREBOARD (current run; §6 re-proves the core gates)
+## 2. SCOREBOARD — 2026-08 SNAPSHOT (§6 re-proves the 2026-08 gates)
 
 | Layer | Check | Result |
 |---|---|---|
@@ -79,14 +88,14 @@ builder (Phase 4), or packaging/notarization. Those are roadmap items, not bugs.
 | `run_sanitize.sh` | Sanitizer battery: `address` (ASan+UBSan everywhere) / `thread` (TSan on threaded parts). |
 | `clean.sh` | House-rule #7 enforcement: erases `.build/`, `build/`, and `.DS_Store`; never touches source or docs. |
 | `.github/workflows/ci.yml` | CI: all suites on push/PR, weekly fuzz job. |
-| `core hardening roadmap.md` | Plan of record for the pre-UI-revival hardening session. |
-| `isolyn current audit.md` | Live-platform audit (F-01…F-12 findings + resolution ledger in Appendix D). |
-| `tree.md` | Regenerated file listing — must match reality (house rule #8). |
+| `docs/history/roadmaps/core-hardening-roadmap.md` | Plan of record for the pre-UI-revival hardening session. |
+| `docs/audits/2026-08-24-audit.md` | Live-platform audit (F-01…F-12 findings + resolution ledger in Appendix D). |
+| ~~`tree.md`~~ | **Retired 2026-11-13.** Regenerable snapshot that had gone stale; the current map is the register in `docs/README.md`. |
 | `graphify-out/` | Code knowledge graph (HTML map + report). Owner says keep. Refresh via `graphify update . --force` (rule #8). |
 | `docs/` | Bridge, lab, accelerator, feature, strategy, release, and decision records. Read `STRATEGY_NOTES.md` before touching AI/heuristics and `OPEN_DECISIONS.md` before changing boundaries. |
 | `Accelerator/` | Standalone Metal batch evaluator: runtime MSL, CPU reference, parity/benchmark harness. Not yet wired into search. |
 | `lab/` + `tools/selfplay/` | Offline calibration lab and real C++ engine-vs-engine data generator. |
-| `fix-log.md` | Every bug fixed recently, with proof anchors. |
+| `docs/history/fix-log.md` | Every bug fixed recently, with proof anchors. |
 | `Package.swift` | Build recipe for the whole package. |
 | *(HANDOFF.md)* | Retired — its surviving content lives in §5. |
 | `.gitignore` | Keeps machine junk out of git. Never delete. |
@@ -97,7 +106,7 @@ builder (Phase 4), or packaging/notarization. Those are roadmap items, not bugs.
 
 Everything below is DONE. Earlier batches are pushed; the current engine,
 search, evaluation, and accelerator overhaul remains uncommitted. Full per-bug
-detail lives in `fix-log.md`. Anchors in the last column are search strings: open the file,
+detail lives in `docs/history/fix-log.md`. Anchors in the last column are search strings: open the file,
 Cmd+F, paste, land on the exact lines.
 
 | # | WHAT was done | WHY | HOW | WHERE (file → search anchor) |
@@ -115,7 +124,7 @@ Cmd+F, paste, land on the exact lines.
 | 11 | Wrote headless gameplay tests | UI can't be auto-tested here, but the brain can: tests deal REAL random games through the same code the screen uses | 3 XCTest cases incl. hunting rare blocked deals across 24 fresh games | `Tests/IsolynAppTests/GameViewModelTests.swift` |
 | 12 | Slimmed folder 597 MB → 7 MB | Compiled leftovers (482 MB Swift cache + 108 MB sanitizer binaries) are junk, not project | deleted both dirs; they regenerate on demand | n/a (ops) |
 
-**Core-hardening session (post-Phase-2, owner-directed pre-UI-revival):** full detail per fix in `fix-log.md` FIX-15…FIX-26 + OPS-04…06; plan of record in `core hardening roadmap.md`.
+**Core-hardening session (post-Phase-2, owner-directed pre-UI-revival):** full detail per fix in `docs/history/fix-log.md` FIX-15…FIX-26 + OPS-04…06; plan of record in `docs/history/roadmaps/core-hardening-roadmap.md`.
 
 | # | WHAT was done | WHY | HOW | WHERE (anchor) |
 |---|---|---|---|---|
@@ -129,7 +138,7 @@ Cmd+F, paste, land on the exact lines.
 | H8 | Appearance drawer honesty + small truths (N-2/F-09/N-4/N-6) | edge controls decorative; formatter rebuilt each tick; 7-tile rack rendered blank; Info.plist warning | edge rendering wired under semanticEdge precedence; formatter cache; truthful digit for counts ≥7; plist excluded | `IsolynDominoTile.swift` → `FIX-22` |
 | H9 | Hover-chain overlay finally dismissible (N-3); dead code decided | comments promised exit logic that never existed | grace-period dismissal + close button + dismiss-on-play; EnvironmentSettingsView now in ⌘, Settings scene | `HoverChainController.swift` → `FIX-26` |
 
-**UI-rebuild session (owner mandate `dominoes_ui_fix_non_negotiable.md`, executed in its own §29 order):**
+**UI-rebuild session (owner mandate `docs/history/2026-08-ui-rebuild-mandate.md`, executed in its own §29 order):**
 
 | # | WHAT was done | WHY | HOW | WHERE (anchor) |
 |---|---|---|---|---|
@@ -269,10 +278,10 @@ rewritten to per-draw OS CSPRNG (owner-supplied design; rejection-sampled
 Fisher–Yates) → bridge designed, built, fuzzed (two compile bugs in an
 independently-drafted bridge fixed, including a missing namespace brace that
 would have given every public function internal linkage) → independent audit
-(see `fix-log.md`) → Phases 1–2 (recent commits).
+(see `docs/history/fix-log.md`) → Phases 1–2 (recent commits).
 
 Full batch-by-batch narratives were retired with the old file on purpose;
-everything load-bearing survives in code comments, `docs/`, `fix-log.md`,
+everything load-bearing survives in code comments, `docs/`, `docs/history/fix-log.md`,
 and this section.
 
 
@@ -402,11 +411,15 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
    ZERO generated weight behind. `./clean.sh` removes `.build/`, `build/`,
    `.DS_Store` and nothing else; steady-state folder ≈ 10 MB. This rule exists
    because residue hit 597 MB twice (OPS-03) before being caught (OPS-07).
-8. NEW (owner directive, same session): **fix-log.md, tree.md, and graphify
-   must always match the exact project state at the end of every session or
-   phase.** Concretely: append protocol-format entries to fix-log.md;
-   regenerate tree.md from a fresh `tree` listing; run `graphify update . --force`
-   so the code graph reflects reality. A stale map is a false map.
+8. NEW (owner directive, same session): **`docs/history/fix-log.md`, the
+   document register in `docs/README.md`, and graphify must always match the
+   exact project state at the end of every session or phase.** Concretely:
+   append protocol-format entries to `docs/history/fix-log.md`; update the
+   register when a document is added, moved or deleted; run
+   `graphify update . --force` so the code graph reflects reality. A stale map is
+   a false map. *(The `tree.md` snapshot this rule originally required was
+   retired on 2026-11-13 — it went stale by construction and is regenerable in
+   seconds.)*
 
 ---
 
@@ -414,7 +427,7 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
 
 1. Run PROOFS 1–4 above. If any output differs → STOP, report the mismatch
    verbatim, change nothing.
-2. Read `fix-log.md` top-to-bottom once. It is the map of recent mines.
+2. Read `docs/history/fix-log.md` top-to-bottom once. It is the map of recent mines.
 3. Only then read code — starting with `Sources/IsolynEngine/include/*.hpp`
    comments (they explain intent better than any external doc).
 4. Make ONE small change at a time. After each: rerun PROOFS 1–3. Green?

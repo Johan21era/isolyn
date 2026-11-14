@@ -7,10 +7,10 @@
 //
 // This is the narrow, deterministic, ownership-safe boundary between the
 // SwiftUI application and the authoritative C++ IsolynEngine. See
-// docs/BRIDGE_ARCHITECTURE.md for the full design rationale; this header is
+// docs/architecture/BRIDGE_ARCHITECTURE.md for the full design rationale; this header is
 // the contract itself, deliberately kept small enough to read end to end.
 //
-// GOVERNING RULES (see docs/BRIDGE_ARCHITECTURE.md for why each exists):
+// GOVERNING RULES (see docs/architecture/BRIDGE_ARCHITECTURE.md for why each exists):
 //
 // 1. POD-only public surface. Every type below is a plain enum, a plain
 //    struct of fixed-size fields (primitives, fixed C arrays, nested POD
@@ -32,7 +32,7 @@
 //    internally thread-safe with respect to a session's own engine
 //    state, and mutating calls on the SAME session must be serialized by
 //    the caller (intended: a single Swift actor per session; see
-//    docs/BRIDGE_ARCHITECTURE.md). This matches the underlying engine
+//    docs/architecture/BRIDGE_ARCHITECTURE.md). This matches the underlying engine
 //    exactly: IsolynEngine has zero internal synchronization primitives
 //    (verified by direct audit -- zero mutex/atomic/thread usage
 //    anywhere in Sources/IsolynEngine), so "the bridge is thread-safe"
@@ -71,7 +71,7 @@
 //    uint64_t values have zero ambiguity crossing into Swift regardless
 //    of exactly which Cxx-interop version ends up importing this header,
 //    unlike an opaque pointer type, which this project has no way to
-//    verify without a Swift toolchain (see legacy handoff.md §5.6 -- no session
+//    verify without a Swift toolchain (see docs/history/legacy-handoff.md §5.6 -- no session
 //    building this codebase has ever had one). IDs are never reused
 //    (monotonic per-process counters), so there is no ABA-style risk of
 //    a stale handle silently addressing a different, later session.
@@ -149,7 +149,7 @@ enum class BridgeStatus : int32_t {
 
 // The game has exactly 28 tiles, full stop -- every fixed-size array below
 // is sized against that hard, provable ceiling rather than a "realistic"
-// smaller number, specifically because Sandbox Mode (docs/FEATURE_SPECS.md)
+// smaller number, specifically because Sandbox Mode (docs/architecture/FEATURE_SPECS.md)
 // is explicit that positions may be arbitrary and user-constructed, not
 // only ever normally-dealt hands. Truncating real data to fit an assumed
 // "typical" bound would silently corrupt whatever didn't fit -- see the
@@ -191,7 +191,7 @@ struct ChainDTO {
 // remaining tiles are revealed together with scores (see finalRevealedTiles),
 // exactly as physical dominoes are turned face up at the end. This is the
 // mechanism that keeps hidden information hidden --
-// see docs/BRIDGE_ARCHITECTURE.md's "Snapshot model" section. This is
+// see docs/architecture/BRIDGE_ARCHITECTURE.md's "Snapshot model" section. This is
 // not a UI convenience choice: the shim has no way to know whether a
 // future caller intends to render another player's hand, so it never
 // hands over the data at all, the same way the C++ engine's own
@@ -248,7 +248,7 @@ struct SnapshotDTO {
     // round 2? who calls RulesEngine::determineNextRoundStarter and
     // holds the running ScoreSystem in between rounds?) that is real,
     // scoped, undone work -- not something to guess at here. See
-    // docs/BRIDGE_ARCHITECTURE.md's "Explicitly out of scope" section.
+    // docs/architecture/BRIDGE_ARCHITECTURE.md's "Explicitly out of scope" section.
     // roundOutcome/decidingPlayerIndex below are what THIS round
     // produced; turning that into match scores and starting the next
     // round is the caller's job for now.
@@ -389,7 +389,7 @@ CommandResultDTO bridge_end_turn_with_no_play(SessionHandle session, uint64_t ex
 // is cheap and must run on the session's serial context (it reads live
 // session state). Phase 2 is expensive and is SAFE to run on any thread,
 // because by the time it is called it no longer touches the session at
-// all -- see docs/BRIDGE_ARCHITECTURE.md's "Analysis / threading"
+// all -- see docs/architecture/BRIDGE_ARCHITECTURE.md's "Analysis / threading"
 // section for the full reasoning (it rests directly on
 // SearchEngine::chooseBestMove's own const-correctness and GameState's
 // documented cheap-clone design).

@@ -1,6 +1,6 @@
 # IsolynV2.0 Offline Lab
 
-**Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` produces a real calibration report. The Python trainer, weight export, and Elo ladder are still scaffolds.
+**Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` produces a real calibration report with Wilson intervals and Spearman correlations. The Python trainer and weight export are still scaffolds; the Elo report itself is implemented.
 
 This directory is the home for offline self-play, calibration, and (later) learned-evaluation experiments. It is deliberately **outside the shipped app**: Python is a tooling language here, never a runtime dependency of IsolynV2.0.
 
@@ -75,6 +75,6 @@ isolyn-lab selfplay --dry-run
 
 ## Related decisions
 
-- `docs/OPEN_DECISIONS.md` — ADR-001 (languages) and ADR-002 (lab/trainer).
-- `docs/LAB.md` — full lab architecture and acceptance criteria.
-- `docs/ACCELERATOR.md` — the Metal compute track that will consume stronger evaluation.
+- `docs/engineering/OPEN_DECISIONS.md` — ADR-001 (languages) and ADR-002 (lab/trainer).
+- `docs/subsystems/LAB.md` — full lab architecture and acceptance criteria.
+- `docs/subsystems/ACCELERATOR.md` — the Metal compute track that will consume stronger evaluation.

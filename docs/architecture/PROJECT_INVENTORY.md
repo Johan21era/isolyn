@@ -1,5 +1,9 @@
 # IsolynV2.0 Project Inventory
 
+> **Status: living inventory (tier 3).** All figures measured 2026-11-13. They
+> move with every commit — re-measure before quoting and update the date above
+> the table.
+
 **Identity:** `IsolynV2.0` is the package, product, window, and app-bundle
 display name. The Swift targets (`IsolynEngine`, `IsolynEngineBridge`,
 `IsolynApp`) and the C++ `isolyn` namespace are intentionally unchanged: dots
@@ -14,17 +18,25 @@ Physical lines in tracked files, excluding generated graphs, build products,
 and local lab data. Counts include comments and blank lines; they are a layout
 inventory, not a code-golf target.
 
+**Measured 2026-11-13** with `git ls-files <dir> | xargs cat | wc -l`. The
+previous table was measured 2026-11-11, before the 2026-11-12 UI commit and the
+uncommitted UI work, and understated the app by 9 files / 1,555 lines.
+
 | Surface | Tracked files | Physical LOC |
 |---|---:|---:|
-| `Sources/IsolynEngine` | 50 | 3,766 |
-| `Sources/IsolynEngineBridge` | 2 | 1,054 |
-| `Sources/IsolynApp` | 47 | 5,869 |
-| `Tests` | 29 | 4,056 |
-| `Accelerator` | 13 | 1,640 |
+| `Sources/IsolynEngine` | 50 | 3,842 |
+| `Sources/IsolynEngineBridge` | 2 | 1,082 |
+| `Sources/IsolynApp` | 56 | 7,424 |
+| `Tests` | 35 | 4,597 |
+| `Accelerator` | 13 | 1,702 |
 | `tools` | 5 | 735 |
 | `lab` | 9 | 651 |
 | `scripts` (including vendored graph viewer) | 5 | 2,513 |
-| **Total** | **160** | **20,284** |
+| **Total** | **175** | **22,546** |
+
+Re-measure before quoting these; they move with every commit. Do not add
+`graphify-out/` or `lab/data/` to this table — both are generated and would
+dominate it.
 
 ## Relevant callers
 
@@ -53,11 +65,12 @@ Accelerator/src/MetalAccelerator.mm
   -> standalone CPU-parity evaluator; not linked into SearchEngine
 ```
 
-The key caller files are `Sources/IsolynApp/Game/GameViewModel.swift` (539
-lines), `Sources/IsolynApp/Engine/EngineSession.swift` (276),
-`Sources/IsolynEngineBridge/IsolynBridge.cpp` (633),
-`Sources/IsolynEngine/SearchEngine.cpp` (593),
-`Sources/IsolynEngine/EvaluationEngine.cpp` (299), and
+The key caller files, with line counts measured 2026-11-13:
+`Sources/IsolynApp/Game/GameViewModel.swift` (636),
+`Sources/IsolynApp/Engine/EngineSession.swift` (276),
+`Sources/IsolynEngineBridge/IsolynBridge.cpp` (647),
+`Sources/IsolynEngine/SearchEngine.cpp` (609),
+`Sources/IsolynEngine/EvaluationEngine.cpp` (349), and
 `tools/selfplay/main.cpp` (475).
 
 ## Naming boundary

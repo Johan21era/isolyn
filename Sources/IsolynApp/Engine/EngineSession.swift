@@ -20,7 +20,7 @@ import IsolynEngineBridge
 /// command/query/analysis shape -- no game-flow policy lives here (e.g.
 /// this does NOT auto-call resolveForcedDraw when a player is blocked).
 /// The bridge itself stays "boring" on purpose (see
-/// docs/BRIDGE_ARCHITECTURE.md); layering policy like that belongs in
+/// docs/architecture/BRIDGE_ARCHITECTURE.md); layering policy like that belongs in
 /// whatever consumes EngineSession once real gameplay UI exists, not in
 /// this wrapper.
 ///
@@ -59,7 +59,7 @@ actor EngineSession {
     /// eventual match-orchestration layer does with the PREVIOUS round's
     /// decidingPlayerIndex) -- this bridge is explicitly round-scoped,
     /// not match-scoped, and doesn't know or care how rounds chain
-    /// together. See docs/BRIDGE_ARCHITECTURE.md's "Explicitly out of
+    /// together. See docs/architecture/BRIDGE_ARCHITECTURE.md's "Explicitly out of
     /// scope" section.
     static func createSubsequentRound(mode: MatchFormat, startingPlayerIndex: Int) -> EngineSession? {
         let h = isolyn.bridge.bridge_session_create_subsequent_round(mode.bridgeMode, Int32(startingPlayerIndex))
@@ -170,7 +170,7 @@ actor EngineSession {
     /// move (SearchEngine::chooseBestMove's own precondition -- see
     /// IsolynBridge.cpp's bridge_analysis_snapshot_create comment; the
     /// exact real bug this guards against was found by fuzzing, see
-    /// docs/BRIDGE_TESTING.md). The bridge intentionally doesn't
+    /// docs/engineering/BRIDGE_TESTING.md). The bridge intentionally doesn't
     /// distinguish these three cases at this call -- if a caller needs
     /// to tell them apart, check a fresh snapshot() first rather than
     /// expecting a more specific error here.

@@ -26,20 +26,27 @@ identifiers, and keeping them stable preserves the bridge ABI and test imports.
 - `lab/` — offline lab (Python; calibration reports real, trainer still scaffold).
 - `tools/selfplay/` — real C++ engine-vs-engine data generator.
 - `Accelerator/` — Metal batch evaluator (standalone; search integration pending).
-- `legacy handoff.md` — deep onboarding, history, and house rules.
+- `docs/history/legacy-handoff.md` — deep onboarding, history, and house rules.
 
-## Decisions
+## Documentation
 
-- `docs/OPEN_DECISIONS.md` — ADR-001..004: C++/Swift product, Python offline,
+The full index of every project document is [`docs/README.md`](docs/README.md). Key documents:
+
+- `docs/engineering/OPEN_DECISIONS.md` — ADR-001..004: C++/Swift product, Python offline,
   Metal as a first-class backend, one source of game truth.
-- `docs/LAB.md` — offline lab architecture and milestones.
-- `docs/ACCELERATOR.md` — Metal architecture, parity gates, and throughput evidence.
-- `docs/PROJECT_INVENTORY.md` — project identity, caller map, and current LOC inventory.
+- `docs/subsystems/LAB.md` — offline lab architecture and milestones.
+- `docs/subsystems/ACCELERATOR.md` — Metal architecture, parity gates, and throughput evidence.
+- `docs/architecture/PROJECT_INVENTORY.md` — project identity, caller map, and current LOC inventory.
 
 ## Status
 
-Late alpha. Rules, bridge, search, self-play, AI match play, and calibration
-reports are green and tested, and a measured internal 1v1 calibration ladder
-exists. The Metal accelerator has a parity-tested batch evaluator but is not yet
-wired into search. Sandbox, Training, and packaging remain incomplete. No
-external-engine Elo or "strongest engine" claim is made.
+Prototype, 57.5% complete against its own feature specification. Rules, bridge,
+search, self-play and AI match play are green and tested (429 engine, 73 bridge
+checks, 75 Swift tests with 1 skipped). The internal 1v1 ladder is real, but
+only the widest gap is statistically resolved, so the five difficulty bands are
+labels rather than measured strengths. The Metal accelerator is a
+parity-tested standalone evaluator and is not wired into search. Sandbox,
+Training, the One Domino Rule, match persistence and packaging are not
+implemented. No external-engine Elo or "strongest engine" claim is made.
+
+Current defects, evidence and priorities: [`docs/audits/2026-11-13-audit.md`](docs/audits/2026-11-13-audit.md).
