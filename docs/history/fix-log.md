@@ -2130,3 +2130,162 @@ refused the AppleScript minimize (`Not authorized to send Apple events to System
 Events. (-1743)`), so the live window could not be miniaturized by the agent. The
 window-level behaviour is unit-tested; whether the Dock click now restores the
 real app window needs the owner's live test, which outranks this note.
+
+## OPS-34 — Closeout Initiative (2026-11-14: local sweep, docs drift, graph refresh)
+
+**Scope:** everything since the OPS-12 receipt (`1352063`): the owner's rulebook
+and its seal, the board-layout repairs, the voluntary draw, the resumable lab
+runner, the app's Lab screen, the TCC and window-lifecycle fixes, the run table
+and the workspace pass. 41 commits, 70 files, +7,200/−317 lines before this
+receipt.
+
+**What the commits did, by area.**
+
+- **Rulebook (tier 0):** adopted the owner's dictated rules, closed the last
+  ambiguities, retired 1v1v1, added `RULES_VERSION` plus `scripts/rules_audit.py`,
+  and stamped every pre-rulebook measurement VOID. The engine's double-blank
+  score was corrected to ten points in the same pass.
+- **Table and chain:** the chain became a path with real corners, bounded by the
+  table rather than the window, with mirrored westbound tiles, physical tile
+  sizes and probe-driven layout tests. The opener must play.
+- **Draw:** Analyze can consider and report a voluntary draw, and the app plays
+  it. Stale suggestions that no longer match the board were removed.
+- **Lab:** `scripts/lab` and a resumable sharded runner; the app's Lab screen with
+  one-run-at-a-time guards; multi-input analyses; the Kaggle bridge design; the
+  measured workload meter; the Desktop/TCC fix; a cached run library; the run
+  table; window restoration.
+- **Process:** `scripts/ci/local.sh` replaced the blocked hosted workflow; the
+  hosted failure was diagnosed as account billing, not code.
+
+### Commits analysed (`1352063..4a1af04`)
+
+- `5959ccf` docs: add AGENTS.md as the operating contract, and correct a false graph claim
+- `d9e699f` docs: record the confirmed CI root cause (billing) and teach agents to spot it
+- `c916f9a` feat(app): stop drawing tiles on the player's behalf when blocked
+- `68c1bb8` feat(app): lay the chain out as runs with real corners, the way it is played
+- `8b3e16a` fix: let Analyze actually consider — and report — a voluntary draw
+- `aec2616` fix: bound the table so a run turns instead of crossing the whole window
+- `207c387` fix: give each run room for its own corner and space the rows for doubles
+- `6c06eef` fix: drop suggestions that no longer match the board, and end a chain in line
+- `4f2293e` chore: probe the real layout inputs, and prove the binary carries them
+- `be81ef9` feat(board): let the chain grow into the table it has
+- `7b3b458` fix(rules): the opener must play; fix(board): the run turns at the table, not at 760pt
+- `f3de6d6` docs: OPS-18 records the measured layout diagnosis, the table-width fix and the opener-draw rule
+- `b7e39d5` fix(board): dominoes keep their physical size; the chain turns at the table edge
+- `8e00c1c` fix(board): put the readout on the board that actually drew the tiles
+- `1330137` fix(board): the chain coils in the middle of the table instead of stretching edge to edge
+- `63d4de7` fix(board): corners sit on their run's line, so the return run clears them
+- `bf2de62` test(board): sweep every chain length and window for overlap, escapes and row drift
+- `6df9e5e` fix(board): give dominoes a visible gap, and couple the row pitch to it
+- `baa70dd` fix(board): start the return run from the corner's edge, not its centre
+- `dcc8519` fix(board): mirror tiles on westbound runs so faces actually meet
+- `9ba2fd9` feat(board): close the round summary to inspect the finished layout
+- `064fc87` fix(board): put the summary's close button above the scroll view
+- `39569b3` fix(scoring): the double blank is worth ten points, not zero
+- `d031559` feat(rules): make the rulebook the top authority, and enforce it
+- `5aea61f` ci: run the hosted workflow locally while GitHub Actions is blocked
+- `538da9f` feat(rules): adopt the owner's dictated rulebook and make the engine obey it
+- `be8e78a` docs(rules): fold the owner's eight answers into the rulebook
+- `e9dc6b9` docs(rules): close the last three ambiguities
+- `b4542fe` docs(rules): record the 1v1v1 elimination and retire table talk
+- `19e6ab3` feat(engine): seal the engine to the rulebook and reset the strength baseline
+- `805779d` docs(research): stamp pre-rulebook measurements VOID, repeatedly
+- `6d4a40a` feat(lab): resumable sharded self-play runner behind scripts/lab
+- `39e9b20` feat(app): reach the offline lab from the app, and make Start idempotent
+- `f552a9e` test(app): render the Lab screen offscreen at the default window size
+- `5743253` feat(lab): multi-report analyses in the app, and make side B match side A
+- `23f759e` docs(research): design the Kaggle bridge and record its two blockers
+- `d7bc019` feat(lab): measured workload meter, custom game counts, plain-language controls
+- `f5cd237` fix(app): keep the Lab out of the Desktop, so macOS stops asking for access
+- `b644ec5` feat(lab): cached run library, per-run actions and a softer workspace
+- `5c15f3f` feat(lab): read runs as a table instead of decoding the run id
+- `36dbbc9` fix(app): make a minimized window reachable again
+- `4a1af04` chore: close out locally — docs drift corrected, graphs refreshed
+
+### Verification sweep (literal output, local only)
+
+- `./tools/selfplay/build.sh` → `built .../tools/selfplay/build/selfplay`
+- `./scripts/ci/test_engine.sh` → `Executables run: 19`,
+  `TOTAL CHECKS PASSED: 451`, `TOTAL CHECKS FAILED: 0`,
+  `Compile failures: none`, `Runtime failures: none`
+- `./scripts/ci/test_bridge.sh` → `Executables run: 2`,
+  `TOTAL CHECKS PASSED: 74`, `TOTAL CHECKS FAILED: 0`
+- `swift build` → `Build complete! (16.08 sec)`
+- `swift test` → `Executed 112 tests, with 0 failures (0 unexpected)`
+- `./scripts/ci/local.sh` → `LOCAL CI: PASS — 6 step(s), 0 failed`
+- `python3 scripts/rules_audit.py` → `RESULT: PASS — ... 6 declared hole(s)`
+- `python3 scripts/docs_audit.py` → `RESULT: PASS — links, paths, status
+  headers, register, banners and figures are consistent`
+
+**Finding — the documented counts were stale.** The process document expected
+432 engine checks, 73 bridge checks and 75 Swift tests with one skip. This tree
+produced 451 / 74 / 112 with zero skips and zero failures. The cause is
+legitimate growth: the rulebook rewrite added checks and the Lab work added Swift
+suites; it is not a counting regression. `test_engine.sh` greps `[pass]` from
+combined stdout/stderr; a manual count of the log matched its 451. Rather than
+silently rewriting the numbers, they were corrected in `AGENTS.md` §2 (with the
+old values recorded there), `docs/engineering/BRIDGE_TESTING.md`,
+`docs/README.md`, `docs/architecture/BRIDGE_ARCHITECTURE.md` and
+`docs/research/PROJECT_OVERDRIVE.md`.
+
+### Cleanup (allowlist only)
+
+Removed after confirming each path was both ignored and untracked:
+`build/` (29,032 KB), `.build/` (327,344 KB), `Accelerator/build/` (228 KB),
+`tools/selfplay/build/` (196 KB), `graphify-out/cache/` (11,972 KB), plus
+`__pycache__`, `*.pyc` and `.DS_Store`.
+
+**Total: 368,772 KB (≈360 MiB) reclaimed.** `git status` immediately afterwards
+showed no tracked file touched. `git clean -xfd` was not used; `lab/data/`,
+`graphify-out/graph.json`, the dated graph backups and every source directory
+were left alone. The verification sweep then legitimately recreated the build
+output it needs.
+
+### Documentation updated
+
+- `docs/subsystems/LAB.md` — status brought to 2026-11-14 (measured ~22.7 games/s,
+  5M ≈ 61 h); boundary now states the app ships no Python but runs a staged copy
+  from Application Support; CLI vs app data locations separated; new “App
+  integration” section (staging, `--runs-dir`, one-run guards, cached run table,
+  window restoration); the 2026-11-11 ladder is now explicitly **VOID** and
+  points at `STRENGTH_BASELINE.md`.
+- `docs/README.md` — LAB register date; engine-check claim 432 → 451.
+- `docs/engineering/BRIDGE_TESTING.md` — engine 429 → 451, bridge 73 → 74,
+  Swift 75/1 skip → 112/0, dated; states plainly that sanitizer, fuzz and
+  Accelerator rows were **not** re-run and are last-recorded figures.
+- `docs/architecture/BRIDGE_ARCHITECTURE.md` — 432 → 451.
+- `docs/research/PROJECT_OVERDRIVE.md` — standing-method counts 432/73/75 →
+  451/74/112, dated. Its VOID champion table was left as the historical record.
+- `AGENTS.md` §2 — expected counts updated with the old values named, so the
+  change is auditable rather than silent.
+
+**Retractions.** The pre-rulebook ladder in `LAB.md` is void; the old test counts
+(432/73/75-with-a-skip) are superseded by 451/74/112. No strength claim exists.
+
+### Graphs refreshed (both artifacts)
+
+- 2D: `graphify update . --force` → `Rebuilt: 2843 nodes, 5431 edges, 168
+  communities`; `graph.json`, `graph.html` and `GRAPH_REPORT.md` updated;
+  curated backup written to `graphify-out/2026-11-14/`.
+- 3D: `python3 scripts/build-graph-3d.py` → `wrote .../graph-3d-full.html (2,843
+  nodes / 5,431 links, 3.18 MiB)`; `--check` → `ok`, counts match `graph.json`.
+
+### CI
+
+GitHub Actions was **not executed**, at the owner's explicit instruction to run
+the checks locally. The known hosted blocker remains account billing (OPS-12b),
+so no hosted run would have executed steps. Local CI is the authority here and
+passed 6/6; this receipt does not claim a green hosted check.
+
+### Not done, deliberately
+
+- No hosted CI run (billing block; owner asked for local checks).
+- Sanitizer, fuzz and Accelerator suites were not re-run: they are outside the
+  §2 sweep, and their documented figures are now labelled as last-recorded.
+- The Lab UI and window restoration were not visually verified; the render test
+  proves `LabView` draws, not that it looks right, and macOS refused the
+  AppleScript minimize needed to reproduce the window bug live.
+- The Kaggle bridge remains a design with two verified blockers, not an
+  implementation.
+- Rule gaps R-06, R-07, R-15, R-17, R-18 and R-22 remain open.
+- No trainer, exported weights, or strength claim.
