@@ -395,10 +395,14 @@ enum SnakeChainLayout {
     /// well before the edge of the room it is played in; without this cap a
     /// desktop-width window lets a whole chain run in one straight line.
 
-    static let hGap: CGFloat = 4
+    /// Visible separation between dominoes. At 4pt a run of flat tiles reads as
+    /// one continuous bar (a live report: "the left side has almost all of the
+    /// dominoes fucked up"); physical dominoes sitting on a table have a clear
+    /// edge between them.
+    static let hGap: CGFloat = 10
     /// Row pitch leaves room for perpendicular doubles (long axis 76)
     /// to protrude into the inter-row band without touching neighbours.
-    static var rowPitch: CGFloat { tileShortAxis * 2 + 4 }
+    static var rowPitch: CGFloat { tileShortAxis * 2 + hGap }
     /// Invisible end-target hit area. The visible affordance stays a thin
     /// 2.25pt tick, but a release anywhere inside this generous square (plus
     /// `HandDropResolver.dropPadding`) counts as landing on the end.
