@@ -46,7 +46,12 @@ STALE_NUMBERS = [
 ]
 
 LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
-DOC_PATH_RE = re.compile(r"`(docs/[^`\n]+?\.(?:md|pdf))`")
+# Any repo-relative path in backticks that names a real file. Glob patterns
+# (containing *) are ignored: they are queries, not references.
+CODE_PATH_RE = re.compile(
+    r"`((?:docs|Sources|Tests|scripts|lab|tools|Accelerator|Assets)/[^`\n\s]+?\."
+    r"(?:md|pdf|swift|cpp|hpp|h|sh|py|plist|json|icns|png))`"
+)
 
 
 def strip_fences(text: str) -> str:
@@ -95,8 +100,10 @@ def main() -> int:
             if not resolved.exists():
                 failures["link-resolution"].append(f"{rel} -> {target}")
 
-        # 2. docs/ paths written in backticks
-        for target in DOC_PATH_RE.findall(text):
+        # 2. repo paths written in backticks
+        for target in CODE_PATH_RE.findall(text):
+            if "*" in target or "<" in target or "{" in target:
+                continue
             if not (ROOT / target).exists():
                 failures["path-resolution"].append(f"{rel} -> {target}")
 

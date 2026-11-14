@@ -57,7 +57,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `history/2026-08-ui-rebuild-mandate.md` | The rebuild mandate; §2–§3 still binding | Historical (normative excerpts) | 2026-11-13 |
 | `history/legacy-handoff.md` | Onboarding, house rules, ambiguities | Historical (rules still binding) | 2026-08 |
 | `history/fix-log.md` | Append-only fix receipts | Historical | append-only |
-| `history/roadmaps/audit-remediation-roadmap.md` | Completed remediation plan | Historical | 2026-08-25 |
+| `history/roadmaps/audit-remediation-roadmap.md` | Partially executed remediation plan (Phases 0–2 of 6) | Historical | 2026-08-25 |
 | `history/roadmaps/core-hardening-roadmap.md` | Completed hardening plan | Historical | 2026-08 |
 
 Component documentation lives next to its code, where its readers already are:
@@ -69,10 +69,10 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 
 | Claim | Home | Reproduce with |
 |---|---|---|
-| Engine checks (429, 19 exes) | `engineering/BRIDGE_TESTING.md` | `./run_tests.sh` |
-| Bridge checks (73, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./run_bridge_tests.sh` |
+| Engine checks (429, 19 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
+| Bridge checks (73, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
 | Swift tests (75, 1 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
-| Sanitizer (502 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./run_sanitize.sh address` |
+| Sanitizer (502 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
 | Accelerator (100 checks, throughput) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |
 | 1v1 strength ladder | `subsystems/LAB.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |

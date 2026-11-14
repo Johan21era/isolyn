@@ -52,8 +52,8 @@ it only asks the engine and displays answers.
 | C++ engine | 19 test programs | **380/380 checks pass**, zero warnings |
 | Bridge | smoke + soak suite | **68/68 checks pass** |
 | Swift app | `swift test` | **49 tests: 0 failures, 1 honest skip** |
-| Memory safety | AddressSanitizer + UBSan on everything (`./run_sanitize.sh address`) | **448 checks, zero findings** |
-| Thread safety | ThreadSanitizer on threaded parts (`./run_sanitize.sh thread`) | **82 checks, zero findings** |
+| Memory safety | AddressSanitizer + UBSan on everything (`./scripts/ci/sanitize.sh address`) | **448 checks, zero findings** |
+| Thread safety | ThreadSanitizer on threaded parts (`./scripts/ci/sanitize.sh thread`) | **82 checks, zero findings** |
 | Adversarial input | fuzz harness | 37,500 current standalone-fallback runs, zero crashes |
 | CI | GitHub Actions macOS runner (push/PR suites + weekly fuzz) | wired — `.github/workflows/ci.yml` |
 | Version control | git → GitHub | private repo `Johan21era/isolyn`, branch `main`, uncommitted overhaul in worktree |
@@ -82,11 +82,11 @@ builder (Phase 4), or packaging/notarization. Those are roadmap items, not bugs.
 | `Tests/IsolynEngineTests/` | 19 C++ test programs (the 380 checks). Each is its own executable. |
 | `Tests/IsolynEngineBridgeTests/` | SmokeTest + SoakTest (68 checks total), FuzzBridge + StandaloneFuzzDriver (garbage-input attacks). |
 | `Tests/IsolynAppTests/` | Swift tests (49 total, 1 skip). UI logic, environment, AI, and headless game flow. |
-| `run_tests.sh` | One command: build+run all engine tests. |
-| `run_bridge_tests.sh` | One command: build+run the bridge suite. |
-| `run_bridge_fuzz.sh` | Garbage-input attack runner (auto-falls back if libFuzzer missing). |
-| `run_sanitize.sh` | Sanitizer battery: `address` (ASan+UBSan everywhere) / `thread` (TSan on threaded parts). |
-| `clean.sh` | House-rule #7 enforcement: erases `.build/`, `build/`, and `.DS_Store`; never touches source or docs. |
+| `scripts/ci/test_engine.sh` | One command: build+run all engine tests. |
+| `scripts/ci/test_bridge.sh` | One command: build+run the bridge suite. |
+| `scripts/ci/fuzz_bridge.sh` | Garbage-input attack runner (auto-falls back if libFuzzer missing). |
+| `scripts/ci/sanitize.sh` | Sanitizer battery: `address` (ASan+UBSan everywhere) / `thread` (TSan on threaded parts). |
+| `scripts/dev/clean.sh` | House-rule #7 enforcement: erases `.build/`, `build/`, and `.DS_Store`; never touches source or docs. |
 | `.github/workflows/ci.yml` | CI: all suites on push/PR, weekly fuzz job. |
 | `docs/history/roadmaps/core-hardening-roadmap.md` | Plan of record for the pre-UI-revival hardening session. |
 | `docs/audits/2026-08-24-audit.md` | Live-platform audit (F-01…F-12 findings + resolution ledger in Appendix D). |
@@ -112,8 +112,8 @@ Cmd+F, paste, land on the exact lines.
 | # | WHAT was done | WHY | HOW | WHERE (file → search anchor) |
 |---|---|---|---|---|
 | 1 | Put project under git, pushed to private GitHub | Project had ZERO version control; owner lost work to a sandbox wipe once before. Un-reversible work is forbidden now. | `git init`, wrote `.gitignore`, committed, created private repo, generated SSH key, pushed | `.gitignore` exists; `git log` shows 6 commits |
-| 2 | Fixed scripts so tests actually RUN on Mac | Tests linked against Apple's Security framework without linking it → every test died at link. "356 passing" was unprovable on this machine until fixed. | added `-framework Security` only when `uname` = Darwin | `run_tests.sh` → `PLATFORM_FLAGS` |
-| 3 | Made test script survive Mac's missing `timeout` command | Linux-only tool; script falsely failed passing tests | helper falls back to direct run | `run_bridge_tests.sh` → `run_with_timeout` |
+| 2 | Fixed scripts so tests actually RUN on Mac | Tests linked against Apple's Security framework without linking it → every test died at link. "356 passing" was unprovable on this machine until fixed. | added `-framework Security` only when `uname` = Darwin | `scripts/ci/test_engine.sh` → `PLATFORM_FLAGS` |
+| 3 | Made test script survive Mac's missing `timeout` command | Linux-only tool; script falsely failed passing tests | helper falls back to direct run | `scripts/ci/test_bridge.sh` → `run_with_timeout` |
 | 4 | Killed random test flake (suite failed ~1-in-7) | Tests assumed dealt player always has a move; ~13% of deals say no. Also first fix attempt spun forever in no-boneyard modes because "draw" succeeds while drawing nothing there. | new helper resolves blocked players EXACTLY like real play, switching to pass-turn when yard is dry | `SmokeTest.cpp` → `ensureCurrentPlayerCanMove` |
 | 5 | Restored fuzzing on Xcode 26 | Apple stopped shipping libFuzzer for macOS | auto-detect + standalone driver feeding identical attack function under memory sanitizers | `StandaloneFuzzDriver.cpp` |
 | 6 | **Sealed the biggest correctness hole:** finished rounds were still playable | After someone plays their last tile (win), OTHER players could keep playing — nothing said "round over, stop". | new error `RoundAlreadyOver`; all four mutating commands check it AFTER the duplicate-guard so double-taps still self-heal | `IsolynBridge.hpp` → `RoundAlreadyOver = 10` |
@@ -133,7 +133,7 @@ Cmd+F, paste, land on the exact lines.
 | H3 | applyOpponentDraw made total (F-11) | NDEBUG divide-by-zero / negative-drift corruption | early-return guard replacing debug assert, test-first | `BeliefState.cpp` → `FIX-17` |
 | H4 | Unknown analysis handle fails truthfully (F-07) | SessionClosed violated AnalysisResultDTO's own status set | BridgeFailure + header contract note + SmokeTest check (57→58) | `IsolynBridge.cpp` → `FIX-18` |
 | H5 | Enum divergence observable; HandleTable comment true (F-08/F-12) | silent fallbacks masked future C++ enum evolution; fake clamp line misled | os_log faults in every @unknown default; no-op clamp removed | `EngineTypes.swift` → `bridgeDTOLogger` |
-| H6 | CI + recorded sanitizer baseline | make drift structurally impossible; pin memory-safety post-fixes | ci.yml push/PR+weekly fuzz; run_sanitize.sh (420 ASan/UBSan checks + 73 TSan checks, zero findings) | `.github/workflows/ci.yml`, `run_sanitize.sh` |
+| H6 | CI + recorded sanitizer baseline | make drift structurally impossible; pin memory-safety post-fixes | ci.yml push/PR+weekly fuzz; scripts/ci/sanitize.sh (420 ASan/UBSan checks + 73 TSan checks, zero findings) | `.github/workflows/ci.yml`, `scripts/ci/sanitize.sh` |
 | H7 | Hue slider fixed — tiles no longer snap to black (N-1) | Color-keyed hex cache never populated; S/B read as zero | cache deleted; pure hex↔HSB functions; 7 new tests (swift 28→35) | `DominoAppearance.swift` → `FIX-21` |
 | H8 | Appearance drawer honesty + small truths (N-2/F-09/N-4/N-6) | edge controls decorative; formatter rebuilt each tick; 7-tile rack rendered blank; Info.plist warning | edge rendering wired under semanticEdge precedence; formatter cache; truthful digit for counts ≥7; plist excluded | `IsolynDominoTile.swift` → `FIX-22` |
 | H9 | Hover-chain overlay finally dismissible (N-3); dead code decided | comments promised exit logic that never existed | grace-period dismissal + close button + dismiss-on-play; EnvironmentSettingsView now in ⌘, Settings scene | `HoverChainController.swift` → `FIX-26` |
@@ -297,7 +297,7 @@ temporarily; that's normal, see §4#12).
 
 **PROOF 1 — Engine really passes 380**
 ```
-./run_tests.sh
+./scripts/ci/test_engine.sh
 ```
 Last lines MUST read exactly:
 ```
@@ -310,7 +310,7 @@ Runtime failures: none
 
 **PROOF 2 — Bridge really passes 68**
 ```
-./run_bridge_tests.sh
+./scripts/ci/test_bridge.sh
 ```
 Must end:
 ```
@@ -336,7 +336,7 @@ flow behave.
 
 **PROOF 4 — Fuzzing works here**
 ```
-./run_bridge_fuzz.sh 15
+./scripts/ci/fuzz_bridge.sh 15
 ```
 Must print `standalone fuzz: … executions, zero crashes` and exit Clean.
 *Proves:* garbage input cannot crash the safety wall.
@@ -366,7 +366,7 @@ outcome ≠ InProgress, zeros otherwise. Cross-check C++ side:
 *Proves:* hidden information stays hidden structurally.
 
 **PROOF 8 — The game screen is wired (not vaporware)**
-Search `Sources/IsolynApp/RootView.swift` for `GameBoardView` → routed.
+Search `Sources/IsolynApp/Application/RootView.swift` for `GameBoardView` → routed.
 Folder `Sources/IsolynApp/Game/` contains six .swift files totaling ~46 KB.
 Search `GamePlaceholderView` anywhere in `Sources/` → **zero hits**
 (deleted; menu path now leads somewhere real).
@@ -408,7 +408,7 @@ OPS‑03); `.gitignore` blocked it from day one — verify:
 7. NEW (owner directive, core-hardening session): **test and script freely,
    but erase every artifact when the session or phase ends.** Run as many
    builds, tests, sanitizers, and Unix scripts as the work needs — then leave
-   ZERO generated weight behind. `./clean.sh` removes `.build/`, `build/`,
+   ZERO generated weight behind. `./scripts/dev/scripts/dev/clean.sh` removes `.build/`, `build/`,
    `.DS_Store` and nothing else; steady-state folder ≈ 10 MB. This rule exists
    because residue hit 597 MB twice (OPS-03) before being caught (OPS-07).
 8. NEW (owner directive, same session): **`docs/history/fix-log.md`, the

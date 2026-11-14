@@ -45,10 +45,10 @@ jobs:
         run: swift test
 
       - name: Engine suite (19 executables, 429 checks)
-        run: ./run_tests.sh
+        run: ./scripts/ci/test_engine.sh
 
       - name: Bridge suite (SmokeTest + SoakTest, 73 checks)
-        run: ./run_bridge_tests.sh
+        run: ./scripts/ci/test_bridge.sh
 
   weekly-fuzz:
     name: Weekly adversarial-input fuzz
@@ -57,4 +57,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bridge fuzz (auto-falls back to standalone driver when libFuzzer is absent)
-        run: ./run_bridge_fuzz.sh 15
+        run: ./scripts/ci/fuzz_bridge.sh 15

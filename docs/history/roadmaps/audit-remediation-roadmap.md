@@ -1,13 +1,16 @@
 # ISOLYN AUDIT REMEDIATION ROADMAP
 
-> **Status: completed plan (2026-08-25), archived 2026-11-13.** All phases were
-> executed; receipts are in `docs/history/fix-log.md` (FIX-27 onward). Kept as
-> the record of how the work was scoped and ordered, not as open work. Current
-> state and remaining work: `docs/audits/2026-11-13-audit.md`.
+> **Status: partially executed (Phases 0–2 of 6), archived 2026-11-13.** The
+> session header in `docs/history/fix-log.md` records owner approval for
+> Phases 0–2 only. Phases 3–6 — the resolver regression suite, the doc-truth
+> sweep, the decision ledger and the closeout — were deferred, and at least one
+> deliverable they specify (`TileKnowledgeResolverTests.swift`) was never
+> created. Do not read the later phases as done. Current state:
+> `docs/audits/2026-11-13-audit.md`.
 
 **Purpose:** fix every finding from the ox-alpha full-read audit (findings **OA-1…OA-5**, delivered 2026‑08‑25) so the tree is measurement-honest, doc-honest, analytically correct, and geometrically resilient before any feature work resumes.
 **Companion to:** `docs/roadmaps/strategy-roadmap.md` (feature roadmap — UNCHANGED, still governs Phases 3–7 feature work; this document contains ZERO features) · `docs/history/legacy-handoff.md` (house rules — ALL binding) · `docs/history/fix-log.md` (protocol-format entries land here per fix) · `docs/audits/2026-08-24-audit.md` (the prior audit whose findings are already fully resolved — nothing in this document re-opens F-series items).
-**Baseline (verified live this session, on-target macOS):** `run_tests.sh` → **362/362**, zero warnings · `run_bridge_tests.sh` → **58/58** (caveat: SoakTest contributes 0 checks on macOS — that is OA-1) · `swift build` → **zero warnings** · `swift test` → **35 tests, 1 honest skip, 0 failures** · git clean · folder restored steady-state via `clean.sh`.
+**Baseline (verified live this session, on-target macOS):** `scripts/ci/test_engine.sh` → **362/362**, zero warnings · `scripts/ci/test_bridge.sh` → **58/58** (caveat: SoakTest contributes 0 checks on macOS — that is OA-1) · `swift build` → **zero warnings** · `swift test` → **35 tests, 1 honest skip, 0 failures** · git clean · folder restored steady-state via `scripts/dev/clean.sh`.
 **Owner directive:** descending workload per phase. Heavy lifting exhausted by Phase 3; Phases 4–6 shrink to sweeps, conversations, and paperwork. Total budget ≈ one working day.
 
 ---
@@ -49,7 +52,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 
 ## STEP 0 — HYGIENE GATE *(minutes — do before anything else)*
 
-1. Re-pin the baseline verbatim (house rule §8.1): `./run_tests.sh` → 362/362 · `./run_bridge_tests.sh` → 58/58 · `swift build` zero warnings · `swift test` → 35/0-failures/1-skip. If ANY differs → STOP, report mismatch verbatim, change nothing.
+1. Re-pin the baseline verbatim (house rule §8.1): `./scripts/ci/test_engine.sh` → 362/362 · `./scripts/ci/test_bridge.sh` → 58/58 · `swift build` zero warnings · `swift test` → 35/0-failures/1-skip. If ANY differs → STOP, report mismatch verbatim, change nothing.
 2. `git status` must be clean. Commit this roadmap file itself first (`docs: adopt audit remediation roadmap`) so every subsequent diff maps to a reviewable intent.
 3. Note for closeout: adding this file made `tree.md` stale by exactly one entry — rule-8 sync is scheduled as P6's job, not skipped. *(That snapshot was retired on 2026-11-13; the register in `docs/README.md` is the map now.)*
 
@@ -57,7 +60,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 
 ## PHASE 1 — MEASUREMENT TRUTH: THE SOAK TEST MUST ACTUALLY MEASURE ON MACOS *(~30% — heaviest; the only systems-code lift)*
 
-**Objective:** OA-1. `Tests/IsolynEngineBridgeTests/SoakTest.cpp` reads RSS exclusively from `/proc/self/status` (Linux-only). On macOS — the SHIPPING platform, and the only platform CI runs on — `currentRssKb()` returns −1, the test prints `[inconclusive]`, exits 0, and `run_bridge_tests.sh` counts it as a passing executable contributing zero checks. The "12,000 cycles, flat memory" claim is therefore currently unreproducible on the machine everyone actually uses. Every other claim in this project survived live re-verification; this one didn't, and the fix is known.
+**Objective:** OA-1. `Tests/IsolynEngineBridgeTests/SoakTest.cpp` reads RSS exclusively from `/proc/self/status` (Linux-only). On macOS — the SHIPPING platform, and the only platform CI runs on — `currentRssKb()` returns −1, the test prints `[inconclusive]`, exits 0, and `scripts/ci/test_bridge.sh` counts it as a passing executable contributing zero checks. The "12,000 cycles, flat memory" claim is therefore currently unreproducible on the machine everyone actually uses. Every other claim in this project survived live re-verification; this one didn't, and the fix is known.
 
 ### 1a. Darwin RSS reader
 - File: `Tests/IsolynEngineBridgeTests/SoakTest.cpp` (anchor: `currentRssKb`).
@@ -69,13 +72,13 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 - Post-fix behavior: inconclusive STILL exits 0 (never false-fail an exotic environment) but prints a `*** WARNING: RSS measurement unavailable on this platform — leak signal ABSENT from this run ***` banner that greps loudly. On Linux + macOS — the two platforms this project has ever run on — inconclusive should simply never happen again; if it does, something platform-shaped changed and the log must scream.
 
 ### 1c. Verify the measurement is REAL before trusting it
-- Run the soak on macOS (`./run_bridge_tests.sh`, then a manual 2,000-cycle run) and confirm: real KB values print, warmup-vs-end deltas behave sanely, and the 500 B/cycle threshold verdict is computed from actual numbers.
-- Cross-check against an independent detector: one ASan run of SmokeTest + SoakTest (`./run_sanitize.sh address`) — ASan's leak checker is the second opinion that the flat curve isn't hiding anything.
+- Run the soak on macOS (`./scripts/ci/test_bridge.sh`, then a manual 2,000-cycle run) and confirm: real KB values print, warmup-vs-end deltas behave sanely, and the 500 B/cycle threshold verdict is computed from actual numbers.
+- Cross-check against an independent detector: one ASan run of SmokeTest + SoakTest (`./scripts/ci/sanitize.sh address`) — ASan's leak checker is the second opinion that the flat curve isn't hiding anything.
 - Record both outputs verbatim in the fix-log entry — they are the receipts P4 will cite.
 
 ### Exit criteria (all of Phase 1)
 - `grep -n "__APPLE__" Tests/IsolynEngineBridgeTests/SoakTest.cpp` finds the Mach branch; `/proc` path intact for Linux.
-- macOS `./run_bridge_tests.sh` output shows SoakTest printing real VmRSS numbers and a computed growth-per-cycle figure — pasted verbatim into `docs/history/fix-log.md`.
+- macOS `./scripts/ci/test_bridge.sh` output shows SoakTest printing real VmRSS numbers and a computed growth-per-cycle figure — pasted verbatim into `docs/history/fix-log.md`.
 - Engine suite untouched-green (362/362); bridge suite green with the soak NOW CONTRIBUTING A REAL VERDICT.
 - One commit: `fix(soak): darwin RSS measurement — macOS soak test measures instead of passing silently (audit OA-1)`.
 
@@ -86,7 +89,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 **Objective:** OA-4. A pathological near-full-board chain lays out rows downward without limit while `BoardCamera` caps pan at ±300/±200 — worst case, the tail end renders out of reachable view. This is rare, cosmetic, and it is also the LAST UNCLOSED ITEM of `docs/history/2026-08-ui-rebuild-mandate.md` §17 ("scale the board intelligently … prevent horizontal overflow … avoid crushing dominoes"): the mandate's responsive clause was never finished because the failure needed a huge chain to appear. Fixing it COMPLETES the signed-off mandate rather than reopening it.
 
 ### 2a. Extract pure layout metrics (testability first)
-- File: `Sources/IsolynApp/Game/ChainAndZonesView.swift` (anchor: `computeLayout`).
+- File: `Sources/IsolynApp/Game/Board/ChainAndZonesView.swift` (anchor: `computeLayout`).
 - Hoist the extent calculation into a pure, internal-static function: given tile sequence + available size, returns `{placed, headPos, tailPos, contentWidth, contentHeight, suggestedScale}`. `SnakeChainBoard.body` consumes it unchanged — zero rendering-behavior change intended or permitted in this sub-step.
 
 ### 2b. Auto-fit scale (uniform ⇒ the 2:1 law survives)
@@ -118,7 +121,7 @@ Sizing is strictly descending within that skeleton: P1 carries the only genuine 
 - `HoverChainOverlay.knowledgeLabel` already prints a percentage; its wording stays truthful under the new definition (verify, adjust one string if needed).
 
 ### 3b. Regression suite — the resolver gets its FIRST tests ever
-- New file: `Tests/IsolynAppTests/TileKnowledgeResolverTests.swift`, consuming Phase 2d's snapshot seam.
+- New file: `TileKnowledgeResolverTests.swift` under `Tests/IsolynAppTests/`, consuming Phase 2d's snapshot seam. **Never created — Phase 3 was deferred** (verified 2026-11-13: no test references `TileKnowledgeResolver` or `HoverChain`).
 - Coverage (each a named check):
   1. Family completeness: every pip 0–6 yields exactly 7 family members, doubles included exactly once.
   2. Precedence chain: a tile on the chain classifies `.historical` even when it's ALSO inferable-predicted; own-hand beats locked-off; locked-off requires dry yard + non-empty chain (empty-chain case explicitly `.unknown`-ward).
@@ -176,8 +179,8 @@ Inventory (each item: file → anchor → action):
 1. **Fix-log entries** in the 12-field protocol format: FIX-27 (OA-1, citing the recorded macOS soak outputs), FIX-28 (OA-4 + BoardLayoutTests anchor), FIX-29 (OA-3 + resolver-suite anchor), FIX-30 (OA-2 doc inventory compressed), OPS-09 (Open-Decisions ledger + any rulings).
 2. **Tag the baseline:** `git tag audit-remediated-1 && git push origin main --tags`. This is the first tag in history where EVERY layer — engine, bridge, Swift consumer, environment, UI geometry, and now the measurement harness itself — is machine-verified on the shipping platform. Name it so the feature roadmap starts from an immutable, citable state.
 3. **Rule-8 map sync:** regenerate the tree listing from a fresh run (now including this roadmap + the two new test files + OPEN_DECISIONS.md); `graphify update . --force`; verify node/edge counts moved plausibly. *(The `tree.md` snapshot was retired on 2026-11-13; the register in `docs/README.md` replaced it, so this step is now the register update.)*
-4. **Final gates, verbatim into the session log:** `./run_tests.sh` · `./run_bridge_tests.sh` (soak now printing real numbers) · `swift build` · `swift test`.
-5. **`./clean.sh`** — zero residue handed back (OPS-03/OPS-07 lesson, permanently applied).
+4. **Final gates, verbatim into the session log:** `./scripts/ci/test_engine.sh` · `./scripts/ci/test_bridge.sh` (soak now printing real numbers) · `swift build` · `swift test`.
+5. **`./scripts/dev/scripts/dev/clean.sh`** — zero residue handed back (OPS-03/OPS-07 lesson, permanently applied).
 
 ---
 
@@ -199,7 +202,7 @@ Strictly descending ✓ · heavy lifting exhausted by Phase 3 ✓ · zero featur
 
 1. **P1's Mach reader could disagree with Linux numbers** (different accounting: resident vs. proportional share). Mitigation: the 500 B/cycle threshold has enormous headroom; the acceptance is "real, stable, plausible numbers," not byte-equality across OSes — say THAT in the fix-log entry.
 2. **P2 touches the visually-signed-off board.** Mitigation: 2a is provably behavior-neutral (pure extraction, consumed identically); 2b activates ONLY past the overflow threshold ordinary games never reach; §29-step-7 trace re-walked; owner eyeballs the long-chain case once, same sign-off pattern as UI-QA.
-3. **P2d's visibility widening could be reverted as "tidying."** Mitigation: the anchor comment states the test-seam justification verbatim; BoardLayoutTests + TileKnowledgeResolverTests FAIL TO COMPILE if it regresses — the suite IS the guardrail.
+3. **P2d's visibility widening could be reverted as "tidying."** Mitigation: the anchor comment states the test-seam justification verbatim; BoardLayoutTests + TileKnowledgeResolverTests FAIL TO COMPILE if it regresses — the suite IS the guardrail. *(Half-realised: only `BoardLayoutTests` exists, so the seam has one of its two intended guards.)*
 4. **P5's #8 discussion spawns implementation pressure mid-phase.** Mitigation: scope table is binding — no One-Domino-Rule code until ruled, per the never-invent rule; the ledger captures the conversation instead.
 5. **Scope gravity toward AI features.** Mitigation: `docs/roadmaps/strategy-roadmap.md` Phase 3 is fully specified and waiting; this document's exit criteria end at a tag.
 

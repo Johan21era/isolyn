@@ -7,7 +7,7 @@
 // a deliberately small slice of what libFuzzer's coverage guidance does,
 // never claimed to be equivalent. Value here is sanitizer-backed execution
 // of adversarial bridge arguments on macOS where -fsanitize=fuzzer cannot
-// link at all. Build with ASan+UBSan (see run_bridge_fuzz.sh fallback).
+// link at all. Build with ASan+UBSan (see scripts/ci/fuzz_bridge.sh fallback).
 //
 // Usage: standalone_fuzz_driver [iterations] [seed]
 #include <cstdint>

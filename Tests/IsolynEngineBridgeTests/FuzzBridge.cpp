@@ -13,7 +13,7 @@
 // dressed up as findings.
 //
 // Build with -fsanitize=fuzzer,address,undefined for this to be worth
-// running at all -- see run_bridge_fuzz.sh.
+// running at all -- see scripts/ci/fuzz_bridge.sh.
 #include "IsolynBridge.hpp"
 #include <fuzzer/FuzzedDataProvider.h>
 #include <cstdint>

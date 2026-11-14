@@ -38,7 +38,7 @@ docs/history/legacy-handoff.md §CHECK-MY-WORK.
 ## FIX‑02 — Engine/bridge scripts failed to link on macOS
 - **Severity:** HIGH (headline "356/356" claim unreproducible on shipping OS)
 - **Confidence:** High
-- **Files:** `run_tests.sh`, `run_bridge_tests.sh`, `run_bridge_fuzz.sh` (anchors: `framework Security`, `PLATFORM_FLAGS`)
+- **Files:** `scripts/ci/test_engine.sh`, `scripts/ci/test_bridge.sh`, `scripts/ci/fuzz_bridge.sh` (anchors: `framework Security`, `PLATFORM_FLAGS`)
 - **Root cause:** EntropySource calls `SecRandomCopyBytes` (Security.framework) on Apple platforms; Package.swift declared the linker setting for SPM consumers only — raw clang/g++ script invocations never linked it.
 - **Failure scenario:** all 18 engine executables + bridge suite die at link: undefined `_SecRandomCopyBytes`/`_kSecRandomDefault`.
 - **Fix:** Darwin-conditional `-framework Security` injected into compile/link lines (`uname` guard keeps the original Linux workflow intact).
@@ -46,7 +46,7 @@ docs/history/legacy-handoff.md §CHECK-MY-WORK.
 
 ## FIX‑03 — Bridge test harness assumed GNU coreutils
 - **Severity:** MEDIUM (script false-negatives on macOS)
-- **Files:** `run_bridge_tests.sh` (anchor: `run_with_timeout`)
+- **Files:** `scripts/ci/test_bridge.sh` (anchor: `run_with_timeout`)
 - **Root cause:** macOS lacks `timeout(1)`. `if ! out=$(timeout 60 …)` returned command-not-found failure for tests that actually PASS.
 - **Fix:** `run_with_timeout()` helper — uses timeout when present, direct exec otherwise (CI images can install coreutils to restore hang protection).
 - **Verification:** SoakTest flipped Runtime-failure → pass.
@@ -69,7 +69,7 @@ docs/history/legacy-handoff.md §CHECK-MY-WORK.
 
 ## FIX‑06 — libFuzzer runtime absent from Xcode 26 toolchain (infrastructure)
 - **Severity:** MEDIUM (fuzzing impossible on macOS as-shipped)
-- **Files:** new `Tests/IsolynEngineBridgeTests/StandaloneFuzzDriver.cpp`; `run_bridge_fuzz.sh` (anchor: `StandaloneFuzzDriver`)
+- **Files:** new `Tests/IsolynEngineBridgeTests/StandaloneFuzzDriver.cpp`; `scripts/ci/fuzz_bridge.sh` (anchor: `StandaloneFuzzDriver`)
 - **Root cause:** Apple ships `libclang_rt.fuzzer_osx.a` selectively; Xcode 26.6 link fails: library not found.
 - **Fix:** script auto-probes (`echo 'int main(){return 0;}' | clang++ -fsanitize=fuzzer`); on failure builds StandaloneFuzzDriver — SAME `LLVMFuzzerTestOneInput` harness under ASan+UBSan with pseudo-random inputs + previous-input mutation. Honest scope note printed: less coverage-guided than real libFuzzer.
 - **Verification:** 50,000 executions post-FIX‑07, zero findings.
@@ -170,7 +170,7 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 - **Root cause:** debug-only assert guarded boneyard-mass precondition; under NDEBUG division by zero mass (and worse: FP-drift NEGATIVE mass silently corrupts every distribution).
 - **Honesty note:** the new test cannot be red-first for exact-zero (old code no-op'd safely there); its value is pinning the contract + the guard's protection is the negative-drift case. Stated in-test.
 - **Fix:** early-return guard replaces assert; header documents totality ("no-op is safety netting, not license").
-- **Verification:** `run_tests.sh` **356 → 362**, zero warnings.
+- **Verification:** `scripts/ci/test_engine.sh` **356 → 362**, zero warnings.
 
 ## FIX‑18 — Unknown analysis handle reports truthfully (audit F‑07)
 - **Severity:** LOW · **Confidence:** High
@@ -187,10 +187,10 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 
 ## FIX‑20 — CI pipeline (roadmap P3a / audit remediation-plan item 10)
 - **OPS severity** · **Files:** new `.github/workflows/ci.yml`
-- Push/PR: swift build + swift test + run_tests.sh + run_bridge_tests.sh. Weekly scheduled fuzz job keeps adversarial coverage fresh. Makes F-02-class drift structurally impossible to reintroduce unnoticed.
+- Push/PR: swift build + swift test + scripts/ci/test_engine.sh + scripts/ci/test_bridge.sh. Weekly scheduled fuzz job keeps adversarial coverage fresh. Makes F-02-class drift structurally impossible to reintroduce unnoticed.
 
 ## OPS‑05 — Sanitizer baseline harness + recorded results (roadmap P3b)
-- **Files:** new `run_sanitize.sh` (address|thread modes; compile-once/link-many; `-fno-sanitize-recover=all`; bash-3.2-safe array expansion)
+- **Files:** new `scripts/ci/sanitize.sh` (address|thread modes; compile-once/link-many; `-fno-sanitize-recover=all`; bash-3.2-safe array expansion)
 - **Results this session, verbatim:** address mode = 20 executables, **420 checks, ZERO findings**; thread mode = SmokeTest + SearchEngineCancellationTests, **73 checks, ZERO findings**.
 - One script bug found-and-fixed during its own shakedown (empty-array expansion under `set -u`).
 
@@ -228,7 +228,7 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 - **Resolution:** deleted both dirs on the spot — folder back to **9.7 MB**
   steady-state in under a minute. Git unaffected (both paths gitignored from
   day one; .git = 2.6 MB). Nothing tracked was touched.
-- **Guardrail:** new `clean.sh` — one command restores steady state; deletes
+- **Guardrail:** new `scripts/dev/clean.sh` — one command restores steady state; deletes
   only `.build/`, `build/`, `.DS_Store`; sources/tests/docs/git untouchable by
   construction. Standing rule for every future session: run it before handing
   the machine back.
@@ -236,7 +236,7 @@ Build residue peaked 597 MB (SwiftPM .build 482 MB + sanitizer binaries 108 MB).
 ## OPS‑08 — Two new standing house rules (owner directive)
 1. **Unlimited testing, zero residue.** Builds/tests/sanitizers/scripts are
    unrestricted DURING work; every generated artifact must be erased when the
-   session or phase ends (`./clean.sh`). Codified as handoff §7 rule 7.
+   session or phase ends (`./scripts/dev/scripts/dev/clean.sh`). Codified as handoff §7 rule 7.
 2. **Docs must match reality at every session/phase boundary:** docs/history/fix-log.md
    (protocol entries), docs/history/repo-tree-2026-08.md (fresh `tree` regeneration), and graphify-out
    (`graphify update . --force`) refreshed to the exact project state.
@@ -315,21 +315,21 @@ residue per house rule 7.
 
 ## FIX-27 - SoakTest measures RSS on macOS; sanitizer sweep de-confounded (audit OA-1)
 - **Severity:** MEDIUM (a headline verification claim was silently unmeasured on the shipping platform) . **Confidence:** High (reproduced both directions, fixed, re-run)
-- **Files:** `Tests/IsolynEngineBridgeTests/SoakTest.cpp` (anchor: `Platform RSS reader`, `WARNING: RSS MEASUREMENT UNAVAILABLE`), `run_sanitize.sh` (anchor: `FIX-27 companion`)
-- **Root cause:** `currentRssKb()` read only `/proc/self/status` -- Linux-only. On macOS (the shipping platform AND the only CI platform) it returned -1, the run printed one quiet "[inconclusive]" line, exited 0, and `run_bridge_tests.sh` counted it as a passing executable contributing zero checks. The "12,000 cycles, flat memory" claim was unreproducible on the machine everyone actually uses.
+- **Files:** `Tests/IsolynEngineBridgeTests/SoakTest.cpp` (anchor: `Platform RSS reader`, `WARNING: RSS MEASUREMENT UNAVAILABLE`), `scripts/ci/sanitize.sh` (anchor: `FIX-27 companion`)
+- **Root cause:** `currentRssKb()` read only `/proc/self/status` -- Linux-only. On macOS (the shipping platform AND the only CI platform) it returned -1, the run printed one quiet "[inconclusive]" line, exited 0, and `scripts/ci/test_bridge.sh` counted it as a passing executable contributing zero checks. The "12,000 cycles, flat memory" claim was unreproducible on the machine everyone actually uses.
 - **Failure scenario:** a genuine slow leak on macOS would have been invisible to this suite forever; every scoreboard citation of soak coverage was Linux-scoped without saying so.
 - **Finality:** *"A soak test whose measurement is unavailable must be LOUD about measuring nothing; on supported platforms it must produce numbers."* -> proven by run.
-- **Fix:** (1) Mach task introspection branch (`task_info(MACH_TASK_BASIC_INFO)` -> resident_size), /proc path preserved for Linux, loud WARNING banner + exit 0 on truly exotic platforms. (2) During verification, the instrumented sweep exposed a SECOND real finding: clang ASan's default ~256MB freed-memory quarantine fills PAST the soak's 200-cycle warmup, so the post-warmup growth check measured the QUARANTINE (~27KB/cycle false FAIL) instead of the program. `run_sanitize.sh` address-mode now pins `quarantine_size_mb=16` so saturation completes inside warmup -- the exact phase that exists to absorb it. LeakSanitizer itself is unsupported on this platform ("detect_leaks is not supported" -- recorded verbatim); the independent detectors are the native-allocator run and the de-confounded instrumented run.
+- **Fix:** (1) Mach task introspection branch (`task_info(MACH_TASK_BASIC_INFO)` -> resident_size), /proc path preserved for Linux, loud WARNING banner + exit 0 on truly exotic platforms. (2) During verification, the instrumented sweep exposed a SECOND real finding: clang ASan's default ~256MB freed-memory quarantine fills PAST the soak's 200-cycle warmup, so the post-warmup growth check measured the QUARANTINE (~27KB/cycle false FAIL) instead of the program. `scripts/ci/sanitize.sh` address-mode now pins `quarantine_size_mb=16` so saturation completes inside warmup -- the exact phase that exists to absorb it. LeakSanitizer itself is unsupported on this platform ("detect_leaks is not supported" -- recorded verbatim); the independent detectors are the native-allocator run and the de-confounded instrumented run.
 - **Verification (verbatim, macOS, Apple silicon):**
   - Native allocator, 10,000 lifecycles: `VmRSS after warmup: 6352 KB` -> `after all 10000 cycles: 6432 KB` = **80 KB over 9800 cycles (8.4 bytes/cycle)** vs 500 B/cycle threshold; checkpoints flat (6416 KB at cycles 2000/4000/6000). `[pass]`.
   - Quarantine A/B on the same instrumented binary: default -> 32,610 B/cycle plateau artifact [FAIL]; `quarantine_size_mb=16` -> **136 B/cycle, checkpoints 52,240/52,256/52,400 KB [pass]**.
-  - Full sweep post-fix: `./run_sanitize.sh address` -> **20 executables, 421 checks passed, 0 failed, Runtime failures: none** (was 420 + silent-no-op).
-  - Bridge suite post-fix: **59/58->59 checks** -- SoakTest now contributes a REAL verdict (`./run_bridge_tests.sh`: `Executables run: 2, TOTAL CHECKS PASSED: 59`). SmokeTest cross-thread hammer: 30.4M concurrent queries during one analysis run.
+  - Full sweep post-fix: `./scripts/ci/sanitize.sh address` -> **20 executables, 421 checks passed, 0 failed, Runtime failures: none** (was 420 + silent-no-op).
+  - Bridge suite post-fix: **59/58->59 checks** -- SoakTest now contributes a REAL verdict (`./scripts/ci/test_bridge.sh`: `Executables run: 2, TOTAL CHECKS PASSED: 59`). SmokeTest cross-thread hammer: 30.4M concurrent queries during one analysis run.
 
 
 ## FIX-28 - Board layout truth + auto-fit resilience + snapshot test seam; FOUND+FIXED latent off-board snake bug (audit OA-4)
 - **Severity:** MEDIUM (OA-4 proper) / the discovered snake bug is HIGH-visibility-but-low-probability (any chain >1 row once rendered off-board) . **Confidence:** High (bug reproduced by test BEFORE fix; fix verified by same suite)
-- **Files:** `Sources/IsolynApp/Game/ChainAndZonesView.swift` (anchors: `SnakeChainLayout`, `FIX-28 discovery`, `P2b/P2c application`), `Sources/IsolynApp/Game/Camera/BoardCamera.swift` (anchor: `defaultMaxOffsetX`), `Sources/IsolynApp/Engine/EngineTypes.swift` (anchor: `Test construction seam`), NEW `Tests/IsolynAppTests/BoardLayoutTests.swift`
+- **Files:** `Sources/IsolynApp/Game/Board/ChainAndZonesView.swift` (anchors: `SnakeChainLayout`, `FIX-28 discovery`, `P2b/P2c application`), `Sources/IsolynApp/Game/Camera/BoardCamera.swift` (anchor: `defaultMaxOffsetX`), `Sources/IsolynApp/Engine/EngineTypes.swift` (anchor: `Test construction seam`), NEW `Tests/IsolynAppTests/BoardLayoutTests.swift`
 - **Root cause (OA-4):** serpentine rows stacked downward without limit while BoardCamera capped pan at fixed +/-300/+200 -- a near-full-board chain could lay its tail out of reachable view. Also the last unclosed clause of `docs/history/2026-08-ui-rebuild-mandate.md` §17 ("scale intelligently ... prevent overflow").
 - **FOUND EN ROUTE (pre-existing, not introduced here -- confirmed verbatim in HEAD):** `advance()` incremented the column UNSIGNED (`col += n`) while x moved signed. After the FIRST row-break corner, no second corner could ever fire ((dir<0 && col==0) unreachable going left; col had already passed cols-1 going right), so any chain longer than one row continued LEFT FOREVER off the board's edge instead of snaking. Latent since the snake board shipped; invisible with real mid-game chains (<13 tiles on an 800pt plane); exposed immediately by BoardLayoutTests' synthetic 40-tile chains (diagnostic trace showed y stuck at two values, x running to -720). Fixed with signed advance (`col += n * Int(dir)`), anchor-commented in place.
 - **Fix:** (1) ALL placement/extent/fit math hoisted VERBATIM into internal pure `SnakeChainLayout` (orient/compute/fitScale + named constants) -- rendering consumes its data unchanged. (2) Auto-fit: ONE UNIFORM `scaleEffect(suggestedScale)`, engaged only past 94% axis occupancy, clamped 0.62...1.0 -- uniform scaling multiplies both axes equally, so the mandate's exact-2:1 law holds BY CONSTRUCTION; below the floor scaling STOPS and pan takes over (§17 priority order encoded). (3) Content-aware camera bounds: post-scale residual overflow (halved -- offset moves the plane's center) raises maxOffsetX/Y from new named defaults; bounds only ever GROW; mutated in onAppear/onChange closures, never during body evaluation. (4) Test seam: internal test-only `GameSnapshot` init -- tuple DTOs are unfillable element-wise from Swift and `init?(dto:)` suppresses the memberwise initializer, so without this NO headless test can fabricate controlled snapshots (real sessions deal CSPRNG hands). Production paths untouched: snapshots still come ONLY from EngineSession.snapshot(for:) so hidden-info enforcement stays bridge-side.
@@ -884,7 +884,7 @@ the session; all earlier entries retain their original historical numbers.
   `RoundRevealTests` additionally asserts the opening 1v1 count and that
   locked identities stay hidden while drawable tiles remain.
 - **Verification:** `swift build` succeeds; `swift test` passes **69 tests,
-  1 skipped, 0 failures**; `./run_bridge_tests.sh` passes **73 checks, 0
+  1 skipped, 0 failures**; `./scripts/ci/test_bridge.sh` passes **73 checks, 0
   failed**; `git diff --check` clean. Graph refresh: **2,209 nodes / 4,142
   edges**; `python3 scripts/build-graph-3d.py --check` passes. The app bundle
   was rebuilt and relaunched through `run.sh`. No commit or push.
@@ -926,7 +926,7 @@ the session; all earlier entries retain their original historical numbers.
   (random selection always one of the legal sides), different-ends refusal,
   no-move, and other-tile cases.
 - **Verification:** `swift build` succeeds; `swift test` passes **75 tests,
-  1 skipped, 0 failures**; `./run_bridge_tests.sh` passes **73 checks, 0
+  1 skipped, 0 failures**; `./scripts/ci/test_bridge.sh` passes **73 checks, 0
   failed**; `git diff --check` clean. Graph refresh: **2,227 nodes / 4,179
   edges**; `python3 scripts/build-graph-3d.py --check` passes. The app bundle
   was rebuilt and relaunched.
@@ -1097,7 +1097,7 @@ the session; all earlier entries retain their original historical numbers.
   launches normally and the icon resource is byte-identical. The in-app
   entry wordmark remains typographic.
 - **Files:** `Assets/Isolyn-1024.png`, `Assets/Isolyn.icns`, `run.sh`,
-  `Sources/IsolynApp/Info.plist`, `docs/design/UI_CHARTER.md`.
+  `Sources/IsolynApp/Resources/Info.plist`, `docs/design/UI_CHARTER.md`.
 
 ## OPS-11 — Closeout Initiative (2026-11-13: documentation audit, tree reorganisation, gate execution)
 
@@ -1132,8 +1132,8 @@ gate that OPS-10 recorded as missing and therefore **SKIPPED**.
   replaces the permanent SKIP recorded in OPS-10.
 - **Verification sweep (2026-11-13, macOS arm64, Apple silicon):**
   - `swift build` → `Build complete!`, exit 0
-  - `./run_tests.sh` → 19 executables, **429 checks passed, 0 failed**
-  - `./run_bridge_tests.sh` → 2 executables, **73 checks passed, 0 failed**
+  - `./scripts/ci/test_engine.sh` → 19 executables, **429 checks passed, 0 failed**
+  - `./scripts/ci/test_bridge.sh` → 2 executables, **73 checks passed, 0 failed**
   - `swift test` → **75 tests, 1 skipped, 0 failures** (the skip is the known
     vacuous forced-draw test at `GameViewModelTests.swift:81`, unchanged and
     tracked in audit §13.3 — not counted as a pass)

@@ -49,7 +49,7 @@ Front-loading rule satisfied by construction: P1/P2/P3 are design-and-infrastruc
 Non-negotiable preconditions, per house rules §5.2 and §7.4:
 
 1. `git add "docs/audits/2026-08-24-audit.md"` + commit — the audit is meaningful work living in exactly one place (**closes N‑7**).
-2. Re-run the three proofs to pin the baseline in-session: `./run_tests.sh` → 356/356 · `./run_bridge_tests.sh` → 57/57 · `swift test` → 28/0-failures. Record outputs in the session log. If ANY differs → STOP and report verbatim (handoff §8.1).
+2. Re-run the three proofs to pin the baseline in-session: `./scripts/ci/test_engine.sh` → 356/356 · `./scripts/ci/test_bridge.sh` → 57/57 · `swift test` → 28/0-failures. Record outputs in the session log. If ANY differs → STOP and report verbatim (handoff §8.1).
 
 ---
 
@@ -72,7 +72,7 @@ Non-negotiable preconditions, per house rules §5.2 and §7.4:
 - Files: `Sources/IsolynEngine/BeliefState.cpp` (+ header precondition doc), new case in `Tests/IsolynEngineTests/BeliefStateTests.cpp`.
 - Under NDEBUG, `applyOpponentDraw` with boneyard mass ≤ 0 divides by zero → NaN beliefs. Unreachable through today's bridge, but public API.
 - Fix: write the failing/guarded test FIRST (construct belief, reveal the locked pair to empty the yard-mass, call `applyOpponentDraw`, assert probabilities stay finite and sum to 1), then add the early-return guard + precondition comment.
-- Acceptance: new test passes; full `run_tests.sh` ≥ 357 checks, zero warnings.
+- Acceptance: new test passes; full `scripts/ci/test_engine.sh` ≥ 357 checks, zero warnings.
 
 ### Exit criteria (all of Phase 1)
 `swift build` zero warnings · `swift test` 28/0 · engine suite green incl. new check · one commit per sub-item (1a, 1b, 1c separately — 1c cites its test).
@@ -100,7 +100,7 @@ Non-negotiable preconditions, per house rules §5.2 and §7.4:
 - Acceptance: bridge suite still 58/58 (no behavior change intended or permitted).
 
 ### Exit criteria
-`./run_bridge_tests.sh` → 58/58 through the repo's own tooling · engine suite untouched-green · commits per sub-item.
+`./scripts/ci/test_bridge.sh` → 58/58 through the repo's own tooling · engine suite untouched-green · commits per sub-item.
 
 ---
 
@@ -109,7 +109,7 @@ Non-negotiable preconditions, per house rules §5.2 and §7.4:
 **Objective:** make F‑02-class drift structurally impossible and pin a memory-safety baseline measured against post-Phase‑1 code.
 
 ### 3a. CI pipeline
-- New file: `.github/workflows/ci.yml` — macOS runner: `swift build && swift test`, then `./run_tests.sh` and `./run_bridge_tests.sh`. Trigger: push + PR to main; optional weekly scheduled job for fuzz (`./run_bridge_fuzz.sh 15`) so coverage keeps refreshing without slowing merges.
+- New file: `.github/workflows/ci.yml` — macOS runner: `swift build && swift test`, then `./scripts/ci/test_engine.sh` and `./scripts/ci/test_bridge.sh`. Trigger: push + PR to main; optional weekly scheduled job for fuzz (`./scripts/ci/fuzz_bridge.sh 15`) so coverage keeps refreshing without slowing merges.
 - Acceptance: workflow passes on a pushed branch (owner pushes; agent verifies YAML locally + documents expected runtime).
 
 ### 3b. Full sanitizer baseline (post-fix code)
@@ -183,7 +183,7 @@ No comment in `Sources/` promises behavior that doesn't exist (spot-audit) · se
 1. **docs/history/fix-log.md** — append entries in the 12-field protocol format: FIX‑15 (F‑04), FIX‑16 (F‑10), FIX‑17 (F‑11 + test anchor), FIX‑18 (F‑07), FIX‑19 (F‑08/F‑12), FIX‑20 (N‑1…N‑6 compressed), OPS‑04 (CI), OPS‑05 (sanitizer baseline log). Each with grep-able anchors, per protocol.
 2. **docs/history/legacy-handoff.md** — refresh the scoreboard table (356→357+, 57→58, 28 tests, CI row added) and §4 table with this session's rows.
 3. **Audit ledger** — mark F‑04, F‑07, F‑08, F‑09, F‑10, F‑11, F‑12 resolved in a short addendum to `docs/audits/2026-08-24-audit.md` (do NOT rewrite history — append).
-4. **Final proofs, verbatim outputs into the log:** `./run_tests.sh` · `./run_bridge_tests.sh` · `swift test` · `./run_bridge_fuzz.sh 15` · CI badge green on GitHub.
+4. **Final proofs, verbatim outputs into the log:** `./scripts/ci/test_engine.sh` · `./scripts/ci/test_bridge.sh` · `swift test` · `./scripts/ci/fuzz_bridge.sh 15` · CI badge green on GitHub.
 5. Push. Tag the state (e.g. `core-hardened-1`) so the UI revival starts from a named, immutable baseline.
 
 ---

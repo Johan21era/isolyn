@@ -2,13 +2,13 @@
 # Sanitizer sweep for the whole native stack (FIX-20 infra / core-hardening
 # roadmap Phase 3b).
 #
-#   ./run_sanitize.sh address   # ASan + UBSan: ALL 19 engine test binaries
+#   ./scripts/ci/sanitize.sh address   # ASan + UBSan: ALL 19 engine test binaries
 #                               # AND the bridge suite (SmokeTest + SoakTest)
-#   ./run_sanitize.sh thread    # TSan on the genuinely-threaded parts:
+#   ./scripts/ci/sanitize.sh thread    # TSan on the genuinely-threaded parts:
 #                               # SmokeTest + SearchEngineCancellationTests
 #
 # Design notes:
-#  * Mirrors run_bridge_tests.sh's compile-once/link-many pattern so the
+#  * Mirrors scripts/ci/test_bridge.sh's compile-once/link-many pattern so the
 #    expensive sanitizer instrumentation happens once per translation unit,
 #    not once per test binary.
 #  * -fno-sanitize-recover=all makes every UB finding a hard failure -- a
@@ -16,7 +16,7 @@
 #  * Security.framework linked on Darwin (same audit F-02 lesson as the
 #    other scripts; EntropySource calls SecRandomCopyBytes).
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 MODE="${1:-address}"
 CXX="${CXX:-g++}"

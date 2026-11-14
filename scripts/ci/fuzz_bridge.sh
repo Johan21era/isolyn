@@ -5,7 +5,7 @@
 # See docs/engineering/BRIDGE_TESTING.md for how to read the output and for the
 # specific run `docs/engineering/BRIDGE_TESTING.md` cites results from.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 SECONDS_TO_RUN="${1:-120}"
 BUILD_DIR="build/fuzz"

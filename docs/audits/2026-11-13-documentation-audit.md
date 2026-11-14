@@ -16,7 +16,7 @@ Documents do not all have equal standing. Where two disagree, the higher tier wi
 
 | Tier | Source | Rationale |
 |---:|---|---|
-| 1 | Running code and its output (`swift test`, `./run_tests.sh`, `git log`) | Reproducible; cannot be argued with |
+| 1 | Running code and its output (`swift test`, `./scripts/ci/test_engine.sh`, `git log`) | Reproducible; cannot be argued with |
 | 2 | `docs/audits/2026-11-13-audit.md` | Point-in-time measurement of the current tree, with per-claim evidence |
 | 3 | Living docs (`architecture/`, `engineering/`, `subsystems/`, `design/UI_CHARTER.md`) | Must be updated in the same change as the code they describe |
 | 4 | Plans (`roadmaps/`) | Intent, not status; never evidence of completion |
@@ -50,7 +50,7 @@ tier 5 that contradicts tier 1 is expected and is labelled as such.
 | A16 | `history/2026-08-ui-rebuild-mandate.md` | Historical mandate | Executed | **Restructure** | Moved out of `design/`; binding clauses scoped; "not a live order" |
 | A17 | `history/fix-log.md` | Historical receipts | Accurate for its dates | **Retain** | Append-only; scope banner already implied by §22 of the audit |
 | A18 | `history/legacy-handoff.md` | Historical onboarding | Stale numbers | **Restructure** | Banner; §2 retitled as a 2026-08 snapshot |
-| A19 | `history/roadmaps/audit-remediation-roadmap.md` | Completed plan | Executed | **Restructure** | Moved to history; completed banner |
+| A19 | `history/roadmaps/audit-remediation-roadmap.md` | Plan | **Partially executed (Phases 0–2)** | **Restructure** | Moved to history; banner corrected after the path gate found a never-created deliverable |
 | A20 | `history/roadmaps/core-hardening-roadmap.md` | Completed plan | Executed | **Restructure** | Moved to history; completed banner |
 | A21 | `history/repo-tree-2026-08.md` | Generated snapshot | Stale + misleading | **Delete** | Removed (`git rm`); regenerable, and house rule #8 requires it match reality |
 | A22 | `lab/README.md` | Component | One stale claim | **Update** | "Elo ladder is scaffold" corrected |
@@ -69,7 +69,7 @@ Each entry: the conflict, the evidence, and which side wins.
 | C1 | `LAB.md` claims 3/16 beats 4/24 190–210 (−17.4 Elo) | `ladder-900-1600.csv` → A 202, B 198, **+3.5** | **Data wins.** Table corrected |
 | C2 | `LAB.md` claims 4/24 beats 5/40 196–204 (−6.9) | `ladder-1600-2300.csv` → A 205, B 195, **+8.7** | **Data wins.** Table corrected |
 | C3 | `LAB.md` claims "directionally monotonic" | Two of three adjacent pairs favour the shallower side | **Claim retracted** |
-| C4 | `BRIDGE_ARCHITECTURE.md` says 426 engine checks | `./run_tests.sh` → **429** | Code wins. Corrected |
+| C4 | `BRIDGE_ARCHITECTURE.md` says 426 engine checks | `./scripts/ci/test_engine.sh` → **429** | Code wins. Corrected |
 | C5 | `BRIDGE_ARCHITECTURE.md` says 68 Swift tests | `swift test` → **75 tests, 1 skipped** | Code wins. Corrected |
 | C6 | `BRIDGE_TESTING.md` says 426 checks | 429 | Corrected |
 | C7 | `BRIDGE_TESTING.md` says 68 tests | 75 | Corrected |
@@ -140,7 +140,7 @@ Each entry: the conflict, the evidence, and which side wins.
 - **What:** the verification matrix, what the suite covers, what it does not.
 - **Why:** distinguishes "tested" from "claimed".
 - **How:** command → result table from real runs.
-- **Where:** `run_tests.sh`, `run_bridge_tests.sh`, `swift test`, `run_sanitize.sh`, `Accelerator/build.sh`.
+- **Where:** `scripts/ci/test_engine.sh`, `scripts/ci/test_bridge.sh`, `swift test`, `scripts/ci/sanitize.sh`, `Accelerator/build.sh`.
 - **Validity:** honest in structure; four counts stale, and it omitted the one path that crashes.
 - **Fate:** Update — counts corrected, mode-mismatch gap added to "Not covered".
 
@@ -245,8 +245,8 @@ Each entry: the conflict, the evidence, and which side wins.
 - **Why:** they scoped work that was then executed.
 - **How:** prioritised by dependency, with explicit gates.
 - **Where:** findings from the 2026-08 audit.
-- **Validity:** complete; keeping them in `roadmaps/` implied open work.
-- **Fate:** Restructure — moved to `history/roadmaps/`, completed banners.
+- **Validity:** A20 (core hardening) was executed in full. **A19 (audit remediation) only ran Phases 0–2** — Phase 3's `TileKnowledgeResolverTests.swift` was never created (verified: no test references `TileKnowledgeResolver`). Keeping either in `roadmaps/` implied open work.
+- **Fate:** Restructure — moved to `history/roadmaps/`; A20 carries a completed banner, A19 now records the deferral and is not described as done.
 
 ### A21. `history/repo-tree-2026-08.md` (deleted)
 - **What:** a 278-line directory listing from 2026-08.
@@ -300,7 +300,7 @@ Re-measured 2026-11-13 on this machine.
 
 ## 6. What changed in this pass
 
-1. **Four files moved, one deleted** — the UI mandate and two completed roadmaps into `history/`; the stale tree snapshot removed.
+1. **Four files moved, one deleted** — the UI mandate and two archived roadmaps into `history/`; the stale tree snapshot removed.
 2. **Two of those moves also renamed the file** to say what it is: `UI_UX_OVERHAUL` → `UI_CHARTER`, `ui-fix-directive` → `2026-08-ui-rebuild-mandate`.
 3. **Every numeric claim that re-measurement contradicted was corrected** — see §5 — across `LAB`, `BRIDGE_TESTING`, `BRIDGE_ARCHITECTURE`, `PROJECT_INVENTORY`, `strategy-roadmap`, `ci.yml` and `README`.
 4. **Nine provenance banners added** so a historical file can no longer be read as current.

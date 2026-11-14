@@ -2,9 +2,9 @@
 # Compiles Sources/IsolynEngine + Sources/IsolynEngineBridge ONCE into
 # reusable .o files, then links every Tests/IsolynEngineBridgeTests/*.cpp
 # against them individually. Deliberately not recompiling the engine per
-# test file, unlike the original run_tests.sh -- see docs/engineering/BRIDGE_TESTING.md.
+# test file, unlike the original scripts/ci/test_engine.sh -- see docs/engineering/BRIDGE_TESTING.md.
 set -uo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 CXX="${CXX:-g++}"
 STD_FLAGS="-std=c++20 -Wall -Wextra -Wpedantic"
@@ -59,8 +59,8 @@ RUNTIME_FAILURES=""
 for test_file in Tests/IsolynEngineBridgeTests/*.cpp; do
     [ -e "$test_file" ] || continue
     case "$(basename "$test_file")" in
-        Fuzz*.cpp) continue ;; # libFuzzer harnesses have their own main() via -fsanitize=fuzzer -- see run_bridge_fuzz.sh
-        Standalone*Driver.cpp) continue ;; # fallback fuzz driver -- built only by run_bridge_fuzz.sh (needs FuzzBridge.o)
+        Fuzz*.cpp) continue ;; # libFuzzer harnesses have their own main() via -fsanitize=fuzzer -- see scripts/ci/fuzz_bridge.sh
+        Standalone*Driver.cpp) continue ;; # fallback fuzz driver -- built only by scripts/ci/fuzz_bridge.sh (needs FuzzBridge.o)
     esac
     name="$(basename "$test_file" .cpp)"
     exe="$BUILD_DIR/$name"

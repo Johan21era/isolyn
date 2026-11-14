@@ -38,6 +38,63 @@ Re-measure before quoting these; they move with every commit. Do not add
 `graphify-out/` or `lab/data/` to this table — both are generated and would
 dominate it.
 
+## Repository layout
+
+The tree encodes the architecture: each top level is one kind of artefact, and
+each subdirectory is one responsibility. Generated output never shares a
+directory with maintained source.
+
+```text
+.
+├── Package.swift            SwiftPM manifest: 3 targets + 2 test targets
+├── README.md                entry point
+├── run.sh                   the one supported launch command (shell aliases target it)
+├── Sources/
+│   ├── IsolynEngine/        C++20 domain: rules, chain, belief, search, evaluation
+│   │   └── include/         public headers (flat namespace by design)
+│   ├── IsolynEngineBridge/  POD C boundary; include/IsolynBridge.hpp IS the contract
+│   └── IsolynApp/           SwiftUI client
+│       ├── Application/     @main, AppState, RootView
+│       ├── Engine/          actor session, DTO projections, match coordinator
+│       ├── Game/            GameViewModel + Opponent (orchestration)
+│       │   ├── Board/       chain, board, tile, round overlay
+│       │   ├── Hand/        racks, drag resolution, tap routing
+│       │   ├── Boneyard/    boneyard view, draw flight
+│       │   └── Camera/ Appearance/ HoverChain/ Inspection/
+│       ├── Components/      reusable presentation pieces
+│       ├── Environment/     time phase, weather, sky
+│       ├── Theme/           palette, typography, responsive layout
+│       ├── Views/           entry, mode selection, placeholders
+│       └── Resources/       Info.plist for the future app shell
+├── Tests/                   1:1 mirrors of the three targets
+├── Accelerator/             standalone Metal evaluator (include/src/shaders/tests)
+├── tools/                   bench/, selfplay/ — C++ developer binaries
+├── lab/                     Python offline analysis (src/isolyn_lab, configs, data, tests)
+├── scripts/
+│   ├── ci/                  test_engine, test_bridge, sanitize, fuzz_bridge
+│   ├── dev/                 clean
+│   ├── docs_audit.py        documentation gate (runs in CI)
+│   ├── build-graph-3d.py    graph viewer build
+│   └── iso                  alias entry point; executes run.sh
+├── docs/                    see docs/README.md for the authority model
+├── Assets/                  app icon source render + .icns ladder
+└── graphify-out/            generated code graph — never hand-edited
+```
+
+### Where new code belongs
+
+| Adding… | Goes in | Never in |
+|---|---|---|
+| A rule, scoring formula, legality check | `Sources/IsolynEngine/` | Swift, bridge, lab |
+| Data crossing to Swift | `Sources/IsolynEngineBridge/` (POD DTO + accessor) | engine headers exposed to the app |
+| A new screen or journey | `Sources/IsolynApp/Views/` | `Game/` |
+| A table element (chain, tile, hand, boneyard) | the matching `Game/` subdomain | `Components/` |
+| A reusable visual atom | `Sources/IsolynApp/Components/` | a feature folder |
+| A CI check | `scripts/ci/` | repository root |
+| A developer helper | `scripts/dev/` | repository root |
+| Offline analysis or calibration | `lab/src/isolyn_lab/` | the shipped app |
+| A generated artefact | `graphify-out/` or `build/` | `docs/` or `Sources/` |
+
 ## Relevant callers
 
 ```text

@@ -44,7 +44,7 @@ P1 ──► P2 ──► P3
 
 ### 1a. Version control + verification harness repair *(small, blocking everything)*
 - `git init` + `.gitignore`: `.build/`, `build/`, `.DS_Store`, `*.o`, `*.dSYM`, `.swiftpm/`, `graphify-out/cache/`. Initial commit of the audited green tree **before** touching anything else.
-- Add `-framework Security` to the compile/link invocations in `run_tests.sh`, `run_bridge_tests.sh`, and `run_bridge_fuzz.sh` (exact fix already validated manually during the audit — F‑02). Re-run: expect **356/356** and **33/33** through the project's own scripts.
+- Add `-framework Security` to the compile/link invocations in `scripts/ci/test_engine.sh`, `scripts/ci/test_bridge.sh`, and `scripts/ci/fuzz_bridge.sh` (exact fix already validated manually during the audit — F‑02). Re-run: expect **356/356** and **33/33** through the project's own scripts.
 - Full sanitizer sweep while touching nothing: ASan+UBSan across all 18 engine binaries + bridge suite; TSan on SmokeTest and SearchEngineCancellationTests. Baseline must be zero-findings before edits begin (any finding found *now* becomes a Phase 1 work item, not a surprise later).
 
 ### 1b. Terminal-round guard (F‑03) — the highest-severity unfixed bug
@@ -119,7 +119,7 @@ Transitions occur only on successful commands; every mutation sends `expectedSta
 
 **Objective:** engine-driven opponents with a calibrated strength dial (100–3000), honoring STRATEGY_NOTES' twin requirements: strong play ≈ 5–7 ply lookahead, and win-rate-vs-hand-quality correlation as the measurable calibration proxy.
 
-**Calibration harness (engine-only, no UI):** `tools/selfplay.cpp` — sweeps a `(maxDepthPlies × determinizationCount × strength-label)` grid, plays N≥200 games/cell pairwise between adjacent strengths, emits CSV: win rate, average score delta, and Spearman correlation between initial hand quality and outcome. Committed under `tools/calibration/` so recalibration is reproducible evidence, not vibes.
+**Calibration harness (engine-only, no UI):** `tools/selfplay/main.cpp` — sweeps a `(maxDepthPlies × determinizationCount × strength-label)` grid, plays N≥200 games/cell pairwise between adjacent strengths, emits CSV: win rate, average score delta, and Spearman correlation between initial hand quality and outcome. Committed under `tools/calibration/` so recalibration is reproducible evidence, not vibes.
 **Initial mapping hypothesis to be validated, then frozen into `DifficultyModel`:**
 | Strength | Depth | Determinizations | Expected character |
 |---|---|---|---|
