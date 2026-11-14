@@ -2017,3 +2017,48 @@ Lab — it was the Lab living inside a protected folder.
 `lab/data/runs` and no longer appear in the app's Recent list; the app's runs
 live in Application Support. Merging the two would mean reading Desktop again,
 which is the thing being fixed.
+
+## OPS-31 — Lab workspace pass: caching, run library, softer surfaces
+
+**Goal.** Make the lab pleasant to work in at volume and cheap to redraw, without
+touching what a run means or how it is measured.
+
+**Performance, structural rather than claimed.**
+
+- The Runs tab no longer lists and decodes the run directory while drawing.
+  `LabService.refreshLibrary()` scans at most once a second, and the views read
+  `library` from memory; a two-second timer (cancelled when the tab closes)
+  requests the scan. Before this, every redraw re-read every manifest on disk.
+- `LabManifest` parses its start time once during decoding. Earlier, `body`
+  rebuilt an ISO-8601 formatter for each rate/estimate it displayed.
+- Analysis input listings are cached and invalidated by the run directory's
+  modification stamp, so selecting rows does not re-list shard folders, while a
+  merge still shows up immediately. (A time-based cache was tried first and the
+  test suite caught it returning the pre-merge list; the stamp version is what
+  ships.)
+
+**Quality of life.**
+
+- Run library: search by run id or mode, filter All / Unfinished / Finished,
+  hover feedback, progress bar and status pill per row, and a detail sheet with
+  config, batch counts, row count, start time and full path.
+- Per-run actions: resume, combine, show in Finder, copy run id, copy folder
+  path — from the row menu or the detail sheet.
+- The active-run card now shows a predicted finish time ("~14:32 tomorrow"),
+  derived from that run's own measured pace, not a fixed estimate.
+- The workload meter also shows when the job would finish if started now.
+- Shortcuts: ⌘R refreshes the library, ⌘. pauses the active run, ⌘↩ starts.
+- One softer surface system (`LabCard`, `LabStatusPill`, `LabSectionTitle`)
+  replaces ad-hoc backgrounds, so spacing, corner radius, hairline and shadow
+  are consistent across the tab.
+
+**Verification.**
+
+- `swift test`: `Executed 106 tests, with 0 failures` — including new tests for
+  library filtering/search/order and for the finish-time prediction.
+- `./scripts/ci/local.sh`: PASS 6/6; docs audit: PASS.
+- The rendered-window test still renders `LabView` at 1080×720.
+
+**Not verified.** The new layout was not inspected visually; the render test
+proves it draws, not that it looks right. If a row or the detail sheet crowds at
+small window sizes, that needs a human look before it is called done.

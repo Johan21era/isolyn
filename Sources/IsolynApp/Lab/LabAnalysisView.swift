@@ -9,7 +9,7 @@ struct LabAnalysisView: View {
     @State private var selection: Set<String> = []
 
     private var completedRuns: [LabManifest] {
-        lab.recentRuns(limit: 12).filter { $0.isComplete }
+        lab.runs(filter: .finished)
     }
 
     private var selectedInputs: [URL] {
@@ -22,6 +22,7 @@ struct LabAnalysisView: View {
         VStack(alignment: .leading, spacing: 22) {
             intro
             picker
+                .labCard()
             if analysis.isRunning {
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
@@ -31,6 +32,13 @@ struct LabAnalysisView: View {
                 }
             }
             results
+        }
+        .onAppear { lab.refreshLibrary(force: true) }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                lab.refreshLibrary()
+            }
         }
     }
 
@@ -214,9 +222,8 @@ struct LabAnalysisView: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
         }
-        .padding(18)
+        .labCard()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(IsolynTheme.ebonyElevated))
     }
 
     private func tableHeader(_ title: String, align: HorizontalAlignment = .leading) -> some View {

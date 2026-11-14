@@ -89,6 +89,8 @@ final class LabService {
     private(set) var phase: Phase = .idle
     private(set) var config = LabRunConfig()
     private(set) var manifest: LabManifest?
+    /// Every run on disk, decoded once per refresh rather than on every redraw.
+    private(set) var library: [LabManifest] = []
     private(set) var message: String?
     private(set) var logTail: String?
     private(set) var startedAt: Date?
@@ -103,6 +105,7 @@ final class LabService {
     private var handle: LabProcessHandle?
     private var pollTask: Task<Void, Never>?
     private var lastAttempt: (config: LabRunConfig, date: Date)?
+    private var libraryLoadedAt: Date?
 
     /// A second Start for the same run inside this window is treated as noise.
     private let repeatWindow: TimeInterval = 2.0
@@ -242,12 +245,18 @@ final class LabService {
 
     // MARK: - Other run actions
 
-    func recentRuns(limit: Int = 6) -> [LabManifest] {
+    /// Re-reads the run directory at most once a second unless forced. Views
+    /// call this from a timer; they read `library` while drawing, so a redraw
+    /// never touches the filesystem.
+    func refreshLibrary(force: Bool = false) {
+        if !force, let libraryLoadedAt, Date().timeIntervalSince(libraryLoadedAt) < 1.0 {
+            return
+        }
         let directory = LabPaths.runsDirectory(dataRoot: dataRoot)
-        guard let entries = try? FileManager.default.contentsOfDirectory(
+        let entries = (try? FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: nil
-        ) else { return [] }
+        )) ?? []
 
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -256,13 +265,33 @@ final class LabService {
             guard let data = try? Data(contentsOf: url) else { return nil }
             return try? decoder.decode(LabManifest.self, from: data)
         }
-        return Array(
-            manifests
-                // Warm-up probes are measurements, not runs the owner asked for.
-                .filter { !$0.runId.hasPrefix("probe-") }
-                .sorted { ($0.startedAt ?? $0.createdAt) > ($1.startedAt ?? $1.createdAt) }
-                .prefix(limit)
-        )
+
+        library = manifests
+            // Warm-up probes are measurements, not runs the owner asked for.
+            .filter { !$0.runId.hasPrefix("probe-") }
+            .sorted { ($0.startedDate ?? .distantPast) > ($1.startedDate ?? .distantPast) }
+        libraryLoadedAt = Date()
+    }
+
+    func runs(filter: LabRunFilter = .all, query: String = "") -> [LabManifest] {
+        let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
+        return library.filter { run in
+            let matchesFilter: Bool
+            switch filter {
+            case .all: matchesFilter = true
+            case .unfinished: matchesFilter = !run.isComplete
+            case .finished: matchesFilter = run.isComplete
+            }
+            guard matchesFilter else { return false }
+            guard !needle.isEmpty else { return true }
+            return run.runId.lowercased().contains(needle)
+                || run.config.mode.lowercased().contains(needle)
+        }
+    }
+
+    func recentRuns(limit: Int = 6) -> [LabManifest] {
+        refreshLibrary()
+        return Array(library.prefix(limit))
     }
 
     func merge(runID: String) {
@@ -318,6 +347,7 @@ final class LabService {
         handle = nil
         stopPolling()
         refresh()
+        refreshLibrary(force: true)
         switch phase {
         case .stopped:
             message = "Stopped. Unfinished shards are kept and will resume."

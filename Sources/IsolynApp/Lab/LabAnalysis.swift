@@ -86,6 +86,10 @@ final class LabAnalysisService {
     private var handle: LabProcessHandle?
     private var lastInputs: [String] = []
     private var lastStarted: Date?
+    /// Listing a run directory per row per redraw is wasted work. The cache is
+    /// keyed on the directory's modification stamp, so a merge or a new shard
+    /// invalidates it immediately instead of after a timeout.
+    private var inputCache: [String: (urls: [URL], stamp: Date?)] = [:]
     private let repeatWindow: TimeInterval = 1.5
 
     /// A command line has limits and a report per shard stops being useful long
@@ -106,6 +110,23 @@ final class LabAnalysisService {
     /// shard CSVs. Unmerged shards are legitimate separate analyses — each file
     /// carries its own game ids.
     func inputs(for runID: String) -> [URL] {
+        let stamp = directoryStamp(for: runID)
+        if let hit = inputCache[runID], hit.stamp == stamp {
+            return hit.urls
+        }
+        let urls = readInputs(for: runID)
+        inputCache[runID] = (urls, stamp)
+        return urls
+    }
+
+    private func directoryStamp(for runID: String) -> Date? {
+        guard LabPaths.isSafeRunID(runID) else { return nil }
+        let directory = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
+        let attributes = try? FileManager.default.attributesOfItem(atPath: directory.path)
+        return attributes?[.modificationDate] as? Date
+    }
+
+    private func readInputs(for runID: String) -> [URL] {
         guard LabPaths.isSafeRunID(runID) else { return [] }
         let directory = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
         let merged = directory.appendingPathComponent("merged.csv")

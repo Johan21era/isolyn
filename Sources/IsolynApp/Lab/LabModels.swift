@@ -27,19 +27,33 @@ struct LabRunConfig: Equatable, Codable {
             "--run-id", runID,
         ]
     }
+
+    var searchSummary: String {
+        "\(mode) · \(depth) moves · \(determinizations) worlds"
+    }
+}
+
+enum LabRunFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case unfinished = "Unfinished"
+    case finished = "Finished"
+
+    var id: String { rawValue }
 }
 
 struct LabShard: Decodable, Identifiable {
     let index: Int
     let games: Int
     let status: String
+    let rows: Int?
+    let reason: String?
 
     var id: Int { index }
 }
 
-/// The subset of `<run>/manifest.json` the UI needs. Decoded with
-/// `.convertFromSnakeCase`, which is why the property names are camelCase.
-struct LabManifest: Decodable {
+/// One run's manifest. Parsed once: `startedDate` is decoded here rather than
+/// re-parsed by every view that wants to show a rate or an estimate.
+struct LabManifest: Decodable, Identifiable {
     struct Config: Decodable {
         let games: Int
         let mode: String
@@ -51,17 +65,38 @@ struct LabManifest: Decodable {
     let runId: String
     let createdAt: String
     let startedAt: String?
+    let startedDate: Date?
     let config: Config
     let shards: [LabShard]
+
+    var id: String { runId }
+
+    private enum CodingKeys: String, CodingKey {
+        case runId, createdAt, startedAt, config, shards
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        runId = try container.decode(String.self, forKey: .runId)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        startedAt = try container.decodeIfPresent(String.self, forKey: .startedAt)
+        config = try container.decode(Config.self, forKey: .config)
+        shards = try container.decode([LabShard].self, forKey: .shards)
+        startedDate = Self.parse(startedAt) ?? Self.parse(createdAt)
+    }
+
+    private static func parse(_ value: String?) -> Date? {
+        guard let value else { return nil }
+        return ISO8601DateFormatter().date(from: value)
+    }
 
     var doneShards: Int { shards.filter { $0.status == "done" }.count }
     var failedShards: Int { shards.filter { $0.status == "failed" }.count }
     var totalGames: Int { shards.reduce(0) { $0 + $1.games } }
     var doneGames: Int { shards.filter { $0.status == "done" }.reduce(0) { $0 + $1.games } }
     var isComplete: Bool { !shards.isEmpty && doneShards == shards.count }
-    var fraction: Double {
-        totalGames > 0 ? Double(doneGames) / Double(totalGames) : 0
-    }
+    var fraction: Double { totalGames > 0 ? Double(doneGames) / Double(totalGames) : 0 }
+    var rowCount: Int { shards.compactMap(\.rows).reduce(0, +) }
 
     var runConfig: LabRunConfig {
         LabRunConfig(
@@ -75,32 +110,37 @@ struct LabManifest: Decodable {
     }
 
     func gamesPerSecond(now: Date = Date()) -> Double? {
-        guard let startedAt, let start = ISO8601DateFormatter().date(from: startedAt), doneGames > 0 else {
-            return nil
-        }
-        let elapsed = now.timeIntervalSince(start)
+        guard let startedDate, doneGames > 0 else { return nil }
+        let elapsed = now.timeIntervalSince(startedDate)
         return elapsed > 1 ? Double(doneGames) / elapsed : nil
     }
 
     func estimatedRemaining(now: Date = Date()) -> TimeInterval? {
-        guard let rate = gamesPerSecond(now: now), rate > 0 else { return nil }
+        guard let rate = gamesPerSecond(now: now), rate > 0, !isComplete else { return nil }
         return TimeInterval(totalGames - doneGames) / rate
+    }
+
+    func estimatedFinish(now: Date = Date()) -> Date? {
+        guard let remaining = estimatedRemaining(now: now) else { return nil }
+        return now.addingTimeInterval(remaining)
+    }
+
+    /// Short, human line: "0/18 batches · 1v1 · 8 moves".
+    var summaryLine: String {
+        "\(doneGames) of \(totalGames) games · \(config.mode) · \(config.depth) moves · \(config.determinizations) worlds"
     }
 }
 
 enum LabPaths {
     /// The app is launched from `build/IsolynV2.0.app`, so neither the working
-    /// directory nor `Bundle.main` points at the repository. Walk up from the
-    /// executable until the runner appears; this also makes `swift test` work,
-    /// where the working directory *is* the package root.
+    /// directory nor `Bundle.main` points at the repository. The staged runtime
+    /// in Application Support is preferred; walking up from the executable
+    /// remains the fallback for `swift test` and terminal use.
     static func repositoryRoot(fileManager: FileManager = .default) -> URL? {
         if let override = ProcessInfo.processInfo.environment["ISOLYN_ROOT"], !override.isEmpty {
             let url = URL(fileURLWithPath: override)
             if isRepository(url, fileManager: fileManager) { return url }
         }
-        // Prefer the runtime staged in Application Support. Touching the
-        // checkout under ~/Desktop makes macOS demand Desktop access, and
-        // ad-hoc re-signing on every build means that permission never sticks.
         if let staged = stagedRuntime(fileManager: fileManager) {
             return staged
         }
@@ -119,8 +159,7 @@ enum LabPaths {
     }
 
     /// Walks up from an executable's directory. Split out from
-    /// `repositoryRoot` so the app-bundle case
-    /// (`build/IsolynV2.0.app/Contents/MacOS`) is testable without a real bundle.
+    /// `repositoryRoot` so the app-bundle case is testable without a real bundle.
     static func findRoot(startingAt start: URL, fileManager: FileManager = .default) -> URL? {
         var directory = start
         for _ in 0..<8 {
@@ -137,9 +176,6 @@ enum LabPaths {
         return fileManager.fileExists(atPath: marker.path)
     }
 
-    /// Where the app keeps its run data. Application Support is not a
-    /// TCC-protected location, so a rebuilt (re-signed) app keeps working
-    /// without asking for permission again.
     static func applicationSupport(fileManager: FileManager = .default) -> URL {
         let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
@@ -152,6 +188,9 @@ enum LabPaths {
         return isRepository(staged, fileManager: fileManager) ? staged : nil
     }
 
+    /// Where the app keeps its run data. Application Support is not a
+    /// TCC-protected location, so a rebuilt (re-signed) app keeps working
+    /// without asking for permission again.
     static func dataDirectory(fileManager: FileManager = .default) -> URL {
         if let override = ProcessInfo.processInfo.environment["ISOLYN_RUNS_DIR"], !override.isEmpty {
             return URL(fileURLWithPath: override, isDirectory: true)

@@ -217,6 +217,94 @@ final class LabServiceTests: XCTestCase {
         XCTAssertNotNil(renderer.nsImage, "the Lab screen must render at the default window size")
     }
 
+    // MARK: - Library
+
+    private func writeManifest(
+        root: URL,
+        id: String,
+        started: String,
+        games: Int,
+        done: Int,
+        total: Int
+    ) throws {
+        let shards = (0..<total).map { index in
+            "{\"index\": \(index), \"games\": \(games / total), \"status\": \"\(index < done ? "done" : "pending")\", \"rows\": 10}"
+        }.joined(separator: ",")
+        let json = """
+        {
+          "version": 1,
+          "run_id": "\(id)",
+          "created_at": "\(started)",
+          "started_at": "\(started)",
+          "config": {"games": \(games), "mode": "1v1", "depth": 2, "determinizations": 4, "seed": 1},
+          "shards": [\(shards)]
+        }
+        """
+        let directory = LabPaths.runDirectory(dataRoot: root, runID: id)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try json.write(
+            to: LabPaths.manifestURL(dataRoot: root, runID: id),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    func test_libraryFiltersSearchesAndOrdersRuns() throws {
+        let root = try makeRepository()
+        let service = LabService(launcher: FakeLauncher(), root: root, dataRoot: root)
+        try writeManifest(
+            root: root,
+            id: "1v1-d2x4-n10-s1",
+            started: "2026-11-14T09:00:00+00:00",
+            games: 10, done: 1, total: 2
+        )
+        try writeManifest(
+            root: root,
+            id: "1v1v1-d2x4-n20-s2",
+            started: "2026-11-14T10:00:00+00:00",
+            games: 20, done: 2, total: 2
+        )
+
+        service.refreshLibrary(force: true)
+
+        XCTAssertEqual(
+            service.library.map(\.runId),
+            ["1v1v1-d2x4-n20-s2", "1v1-d2x4-n10-s1"],
+            "newest run first"
+        )
+        XCTAssertEqual(service.runs(filter: .finished).map(\.runId), ["1v1v1-d2x4-n20-s2"])
+        XCTAssertEqual(service.runs(filter: .unfinished).map(\.runId), ["1v1-d2x4-n10-s1"])
+        XCTAssertEqual(service.runs(query: "1v1v1").count, 1)
+        XCTAssertTrue(service.runs(query: "nothing-matches").isEmpty)
+    }
+
+    func test_manifestPredictsAFinishTimeFromItsOwnPace() throws {
+        let started = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-20))
+        let json = """
+        {
+          "run_id": "1v1-d2x4-n2000-s1",
+          "created_at": "\(started)",
+          "started_at": "\(started)",
+          "config": {"games": 2000, "mode": "1v1", "depth": 2, "determinizations": 4, "seed": 1},
+          "shards": [
+            {"index": 0, "games": 1000, "status": "done", "rows": 10},
+            {"index": 1, "games": 1000, "status": "pending"}
+          ]
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let manifest = try decoder.decode(LabManifest.self, from: Data(json.utf8))
+
+        XCTAssertNotNil(manifest.startedDate, "the start time must be parsed once, not per view")
+        XCTAssertEqual(manifest.fraction, 0.5, accuracy: 0.0001)
+        let rate = try XCTUnwrap(manifest.gamesPerSecond())
+        XCTAssertEqual(rate, 50, accuracy: 5, "1000 games in ~20 s")
+        let finish = try XCTUnwrap(manifest.estimatedFinish())
+        XCTAssertGreaterThan(finish, Date())
+        XCTAssertLessThan(finish.timeIntervalSinceNow, 60)
+    }
+
     // MARK: - Real process
 
     func test_realRunnerCompletesASmokeRun() async throws {
