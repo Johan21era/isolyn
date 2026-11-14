@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct IsolynApp: App {
+    @NSApplicationDelegateAdaptor(IsolynAppDelegate.self) private var appDelegate
+
     @State private var appState = AppState()
     @State private var environmentManager = EnvironmentManager()
     // Owned at app scope so a run keeps its handle while the owner moves
@@ -28,6 +30,14 @@ struct IsolynApp: App {
         .defaultSize(width: 1080, height: 720)
         .defaultPosition(.center)
         .windowStyle(.hiddenTitleBar)
+        .commands {
+            CommandGroup(after: .windowList) {
+                Button("Show Isolyn Window") {
+                    WindowRestoration.restore(windows: NSApp.windows)
+                }
+                .keyboardShortcut("0", modifiers: .command)
+            }
+        }
 
         // FIX-26b (roadmap 5b): ends the audit's oldest "wire-or-remove
         // limbo". EnvironmentSettingsView was compiled-but-unreachable

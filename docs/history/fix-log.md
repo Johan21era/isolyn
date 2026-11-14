@@ -2091,3 +2091,42 @@ sheet now also spells the configuration out as a sentence: *"5,000,000 games of
 **Not verified.** The table was not inspected visually. Column widths were chosen
 to fit the 740 pt content column (478 pt of cells + 70 pt of gaps + menu), but a
 cramped window or very large accessibility text size is untested.
+
+## OPS-33 — A minimized window can always be brought back
+
+**Symptom the owner reported.** Clicking the yellow button minimized the window,
+and afterwards the app could not be reached again; the only way out was Force
+Quit and a fresh launch.
+
+**Cause.** The app is a SwiftUI `WindowGroup` inside a hand-wrapped `.app`, and
+that combination does not reliably deminiaturize on Dock reopen. There was no
+application delegate to handle `applicationShouldHandleReopen`, and the usual
+one-line workaround (`makeKeyAndOrderFront`) does nothing for a window that is
+already miniaturized — it has to be deminiaturized first. With no path back, a
+running process held its window forever.
+
+**Fix.**
+
+- `IsolynAppDelegate` (installed with `@NSApplicationDelegateAdaptor`) restores
+  windows on `applicationShouldHandleReopen`, i.e. a Dock click or `open` against
+  an already-running app.
+- `applicationDidBecomeActive` does the same when the app becomes active with no
+  visible window, which covers Cmd-Tab and Dock activation.
+- `WindowRestoration.restore` deminiaturizes every real window first, then orders
+  one front. Panels and transient windows are excluded.
+- A `Window ▸ Show Isolyn Window` command (⌘0) gives a guaranteed manual escape
+  hatch that does not depend on Dock behaviour.
+
+**Verification.**
+
+- `swift test`: `Executed 112 tests, with 0 failures`, including six restoration
+  tests: miniaturized window deminiaturizes and orders front, no-window case is a
+  no-op, an already-visible window is left open, panels are ignored, and multiple
+  windows are all restored.
+- `swift build`: clean. `./scripts/ci/local.sh`: PASS. Docs audit: PASS.
+
+**Limitation of the evidence.** The failure was not reproduced here: macOS
+refused the AppleScript minimize (`Not authorized to send Apple events to System
+Events. (-1743)`), so the live window could not be miniaturized by the agent. The
+window-level behaviour is unit-tested; whether the Dock click now restores the
+real app window needs the owner's live test, which outranks this note.
