@@ -212,8 +212,8 @@ private struct SnakeChainBoard: View {
 
             ForEach(Array(metrics.placed.enumerated()), id: \.offset) { index, placed in
                 IsolynDominoTile(
-                    displayingLeft: placed.tile.left,
-                    right: placed.tile.right,
+                    displayingLeft: placed.mirrored ? placed.tile.right : placed.tile.left,
+                    right: placed.mirrored ? placed.tile.left : placed.tile.right,
                     isDouble: placed.vertical,
                     height: SnakeChainLayout.tileShortAxis,
                     appearance: appearance
@@ -377,7 +377,17 @@ private struct SnakeChainBoard: View {
 /// law holds BY CONSTRUCTION at any scale).
 enum SnakeChainLayout {
     struct Oriented: Equatable { let left: Int; let right: Int; let isDouble: Bool }
-    struct Placed { let x: CGFloat; let y: CGFloat; let tile: Oriented; let vertical: Bool }
+    struct Placed {
+        let x: CGFloat
+        let y: CGFloat
+        let tile: Oriented
+        let vertical: Bool
+        /// True on a westbound run, where the previous tile lies to the RIGHT.
+        /// The view paints `left` on the left, so without mirroring every tile
+        /// in that row presents its far face to its neighbour and the chain
+        /// visibly fails to join -- the broken faces a live test caught.
+        var mirrored: Bool = false
+    }
     struct Metrics {
         let placed: [Placed]
         let headPosition: CGPoint?
@@ -508,7 +518,7 @@ enum SnakeChainLayout {
                 let center = CGPoint(x: east ? cursorX + width / 2 : cursorX - width / 2,
                                      y: rowY)
                 placed.append(Placed(x: center.x, y: center.y, tile: tile,
-                                     vertical: tile.isDouble))
+                                     vertical: tile.isDouble, mirrored: !east))
                 rects.append(rect(center: center, vertical: tile.isDouble))
                 cursorX += east ? width + gap : -(width + gap)
                 continue
@@ -528,7 +538,8 @@ enum SnakeChainLayout {
                                : max(cursorX - short / 2, minX + short / 2)
             let cornerY = rowY
             let corner = CGPoint(x: cornerX, y: cornerY)
-            placed.append(Placed(x: corner.x, y: corner.y, tile: tile, vertical: true))
+            placed.append(Placed(x: corner.x, y: corner.y, tile: tile,
+                                 vertical: true, mirrored: !east))
             rects.append(rect(center: corner, vertical: true))
 
             rowY += rowPitch
@@ -555,7 +566,8 @@ enum SnakeChainLayout {
                              vertical: candidate.vertical)
             while cleanRects.contains(where: { $0.intersects(probe) }) && attempts < 200 {
                 candidate = Placed(x: candidate.x, y: candidate.y + short / 2,
-                                   tile: candidate.tile, vertical: candidate.vertical)
+                                   tile: candidate.tile, vertical: candidate.vertical,
+                                   mirrored: candidate.mirrored)
                 probe = rect(center: CGPoint(x: candidate.x, y: candidate.y),
                              vertical: candidate.vertical)
                 attempts += 1
@@ -590,7 +602,7 @@ enum SnakeChainLayout {
             let shiftY = H / 2 - (minPY + maxPY) / 2
             finalPlaced = placed.map {
                 Placed(x: $0.x + shiftX, y: $0.y + shiftY,
-                       tile: $0.tile, vertical: $0.vertical)
+                       tile: $0.tile, vertical: $0.vertical, mirrored: $0.mirrored)
             }
             head = CGPoint(x: head.x + shiftX, y: head.y + shiftY)
             tail = CGPoint(x: tail.x + shiftX, y: tail.y + shiftY)

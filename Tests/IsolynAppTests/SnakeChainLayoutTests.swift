@@ -65,6 +65,24 @@ final class SnakeChainLayoutTests: XCTestCase {
         }
     }
 
+    /// A westbound row must be mirrored. The view paints `left` on the left,
+    /// so on a return run -- where the previous tile lies to the RIGHT -- every
+    /// tile would otherwise present its far face to its neighbour and the chain
+    /// visibly fails to join. This checks the mirroring against the actual
+    /// direction of travel within each row.
+    func test_westboundRowsAreMirrored() {
+        let size = CGSize(width: 900, height: 620)
+        for count in 3...40 {
+            let m = SnakeChainLayout.compute(orientedTiles: chain(count), availableSize: size)
+            for i in 1..<m.placed.count where abs(m.placed[i].y - m.placed[i - 1].y) < 0.001 {
+                let travelledWest = m.placed[i].x < m.placed[i - 1].x
+                XCTAssertEqual(m.placed[i].mirrored, travelledWest,
+                               "n=\(count): tile \(i) runs \(travelledWest ? "west" : "east") "
+                               + "but mirrored=\(m.placed[i].mirrored)")
+            }
+        }
+    }
+
     private func footprint(_ placed: SnakeChainLayout.Placed) -> CGRect {
         let short = SnakeChainLayout.tileShortAxis
         let width = placed.vertical ? short : short * 2
