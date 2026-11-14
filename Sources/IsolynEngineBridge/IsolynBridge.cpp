@@ -494,6 +494,16 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         std::lock_guard<std::mutex> sLock(sess->mutex);
         std::lock_guard<std::mutex> mMLock(m->mutex);
 
+        // AUD-01: a session and a match must describe the same game. Without
+        // this guard a 1v1 session recorded into a 2v2 match reaches the
+        // team branch below and calls hand(2)/hand(3) on a two-player state;
+        // hand() is guarded only by assert, so Release reads out of bounds
+        // (Debug aborts the process). Reject before touching any score.
+        if (sess->mode != m->mode ||
+            sess->controller.state().playerCount() != Dealer::playerCountForMode(m->mode)) {
+            return failedMatch(BridgeStatus::ModeMismatch);
+        }
+
         if (m->matchEnded)
             return failedMatch(BridgeStatus::InvalidRequest); // match over; no further rounds may be recorded
         if (m->recordedSessions.count(finishedRound))

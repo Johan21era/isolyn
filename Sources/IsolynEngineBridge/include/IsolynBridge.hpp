@@ -141,6 +141,9 @@ enum class BridgeStatus : int32_t {
                           // leaves other players holding legal moves -- play could continue past the round's end).
                           // Checked after the stale-version gate so an accidental duplicate tap still reports
                           // StaleRequest (idempotent), while a genuinely fresh command reports this.
+    ModeMismatch = 11,    // a session and a match describe different games (different mode or player count).
+                          // AUD-01: without this, recording a 1v1 round into a 2v2 match indexed players 2/3
+                          // on a two-player GameState; hand() is assert-only, so Release read out of bounds.
 };
 
 // ---------------------------------------------------------------------------
@@ -336,7 +339,9 @@ MatchHandle bridge_match_begin(GameModeDTO mode);
 // Records ONE completed round into the running score. Fails closed (mutating
 // nothing) with InvalidRequest if the session's round is still InProgress,
 // if THIS session was already recorded against this match, or if the match
-// has already ended. Lock ordering is session->match, consistent everywhere.
+// has already ended; and with ModeMismatch if the session's mode or player
+// count does not match the match. Lock ordering is session->match, consistent
+// everywhere.
 MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finishedRound);
 
 // Idempotent (same HandleTable guarantees as the other surfaces): unknown,

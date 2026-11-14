@@ -160,10 +160,17 @@ else
         extra=()
         if [[ "$t" == *BridgeTests* ]]; then
             BRIDGE_INCLUDES="-ISources/IsolynEngineBridge/include"
-            # Bridge tests need the bridge TU instrumented too; rebuild it here.
+            # Bridge tests need the bridge TU instrumented too. Always rebuild
+            # it: caching it by existence alone silently verified a stale bridge
+            # after any bridge change (found 2026-11-14 when a new guard was
+            # missing from the TSan run). A compile failure is a hard failure,
+            # not something to swallow with `|| true`.
             bobj="$BUILD_DIR/obj/IsolynBridge.tsan.o"
-            if [ ! -f "$bobj" ]; then
-                $CXX $STD_FLAGS $SAN_FLAGS -ISources/IsolynEngine/include -ISources/IsolynEngineBridge/include -c Sources/IsolynEngineBridge/IsolynBridge.cpp -o "$bobj" 2>/dev/null || true
+            if ! $CXX $STD_FLAGS $SAN_FLAGS -ISources/IsolynEngine/include -ISources/IsolynEngineBridge/include -c Sources/IsolynEngineBridge/IsolynBridge.cpp -o "$bobj" 2> "$BUILD_DIR/obj/IsolynBridge.tsan.compile.log"; then
+                echo "  *** COMPILE FAILED: IsolynBridge.cpp (TSan) ***"
+                cat "$BUILD_DIR/obj/IsolynBridge.tsan.compile.log"
+                RUNTIME_FAILURES="$RUNTIME_FAILURES IsolynBridge.tsan(compile)"
+                continue
             fi
             extra+=("$bobj")
         else

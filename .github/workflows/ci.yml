@@ -54,7 +54,7 @@ jobs:
       - name: Engine suite (19 executables, 429 checks)
         run: ./scripts/ci/test_engine.sh
 
-      - name: Bridge suite (SmokeTest + SoakTest, 73 checks)
+      - name: Bridge suite (SmokeTest + SoakTest, 82 checks)
         run: ./scripts/ci/test_bridge.sh
 
   weekly-fuzz:

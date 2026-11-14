@@ -118,14 +118,17 @@ serializes with the session's own command stream.
 
 Verified: SmokeTest match section (record/duplicate-reject/starter/
 accumulation/idempotent close) plus the reveal-on-end assertions -- current
-bridge suite 73/73; ASan+UBSan clean over the new paths; Swift package
-currently 75 tests, 1 skipped, 0 failures (re-measured 2026-11-13).
+bridge suite 82/82; ASan+UBSan clean over the new paths; Swift package
+currently 112 tests, 0 skipped, 0 failures (re-measured 2026-11-14).
 
-**Known gap in this surface.** `bridge_match_record_round` accepts any
-finished session whose player count happens to fit the match's array, but it
-does not verify that the session's mode matches the match's mode. A 1v1 session
-recorded into a 2v2 match reaches `GameState::hand(3)` on a two-player state;
-`hand()` is guarded only by `assert`, so Release builds read out of bounds.
-Reproduced 6/6 on 2026-11-13 (Debug SIGABRT, Release SIGSEGV). This is
-tracked as AUD-01 / TD-1 in `docs/audits/2026-11-13-audit.md` and is not
-covered by the current bridge suite.
+**Closed: AUD-01.** `bridge_match_record_round` now checks that the finished
+session's mode and player count match the match before it touches any score,
+and fails closed with `BridgeStatus::ModeMismatch` otherwise. The regression
+lives in `SmokeTest.cpp` (record a finished 1v1 round into a 2v2 match, assert
+the rejection, then record a genuine 2v2 round into the same match to prove it
+stays usable). The original failure is kept here as history because it is why
+the guard exists: a 1v1 session recorded into a 2v2 match reached
+`GameState::hand(3)` on a two-player state; `hand()` is guarded only by
+`assert`, so Release builds read out of bounds. Reproduced 6/6 on 2026-11-13
+(Debug SIGABRT, Release SIGSEGV) and again on 2026-11-14 before the fix. It is
+tracked as AUD-01 / TD-1 in `docs/audits/2026-11-13-audit.md`.

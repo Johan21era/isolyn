@@ -49,7 +49,7 @@ continuing. Do not skip a failing step and continue as if it passed.
 ```bash
 ./tools/selfplay/build.sh          # engine + harness compile
 ./scripts/ci/test_engine.sh        # expect: 19 executables, 451 checks, 0 failed
-./scripts/ci/test_bridge.sh        # expect: 2 executables, 74 checks, 0 failed
+./scripts/ci/test_bridge.sh        # expect: 2 executables, 82 checks, 0 failed
 swift build                        # expect: Build complete!
 swift test                         # expect: 112 tests, 0 skipped, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each

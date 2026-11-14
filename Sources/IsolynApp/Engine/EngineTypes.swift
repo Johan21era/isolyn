@@ -434,6 +434,11 @@ enum BridgeError: Error, Sendable, Equatable {
         case .NoLegalMove: self = .noLegalMove
         case .BoneyardEmpty: self = .boneyardEmpty
         case .RoundAlreadyOver: self = .roundAlreadyOver
+        case .ModeMismatch:
+            // A caller bug, not a user-facing condition: the app never records a
+            // round into a match of a different mode. Keep it visible as an
+            // internal failure rather than silently accepting the result.
+            self = .bridgeFailure(diagnostic: "session mode does not match match mode")
         case .EngineFailure: self = .engineFailure(diagnostic: diagnostic)
         case .BridgeFailure: self = .bridgeFailure(diagnostic: diagnostic)
         case .Ok:

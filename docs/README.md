@@ -78,9 +78,9 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 | Claim | Home | Reproduce with |
 |---|---|---|
 | Engine checks (451, 19 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
-| Bridge checks (73, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
-| Swift tests (75, 1 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
-| Sanitizer (502 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
+| Bridge checks (82, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
+| Swift tests (112, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
+| Sanitizer (533 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
 | Accelerator (100 checks, throughput) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |
 | 1v1 strength ladder | `research/STRENGTH_BASELINE.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |

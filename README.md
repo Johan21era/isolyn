@@ -41,8 +41,8 @@ The full index of every project document is [`docs/README.md`](docs/README.md). 
 ## Status
 
 Prototype, 57.5% complete against its own feature specification. Rules, bridge,
-search, self-play and AI match play are green and tested (429 engine, 73 bridge
-checks, 75 Swift tests with 1 skipped). The internal 1v1 ladder is real, but
+search, self-play and AI match play are green and tested (451 engine, 82 bridge
+checks, 112 Swift tests with 0 skipped). The internal 1v1 ladder is real, but
 only the widest gap is statistically resolved, so the five difficulty bands are
 labels rather than measured strengths. The Metal accelerator is a
 parity-tested standalone evaluator and is not wired into search. Sandbox,

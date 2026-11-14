@@ -415,6 +415,57 @@ int main() {
         bridge_match_close(m);
     }
 
+    std::printf("== mode mismatch: a 1v1 round cannot be recorded into a 2v2 match (AUD-01 regression) ==\n");
+    {
+        MatchHandle m = bridge_match_begin(GameModeDTO::TwoVsTwo);
+        CHECK(m != kInvalidMatchHandle, "2v2 match tracker created for the mismatch test");
+
+        auto playRound = [](SessionHandle s) -> SnapshotDTO {
+            for (int op = 0; op < 400; ++op) {
+                int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+                SnapshotDTO snap = bridge_get_snapshot(s, current);
+                if (snap.status != BridgeStatus::Ok) return snap;
+                if (snap.roundOutcome != RoundOutcomeDTO::InProgress) {
+                    return bridge_get_snapshot(s, 0);
+                }
+                if (snap.legalMovesForRequestingPlayer.count > 0) {
+                    bridge_submit_move(s, snap.stateVersion, snap.legalMovesForRequestingPlayer.moves[0]);
+                } else if (snap.boneyardDrawableCount > 0) {
+                    CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+                    if (r.status != BridgeStatus::Ok) bridge_end_turn_with_no_play(s, snap.stateVersion);
+                } else {
+                    bridge_end_turn_with_no_play(s, snap.stateVersion);
+                }
+            }
+            return bridge_get_snapshot(s, 0);
+        };
+
+        SessionHandle oneVsOne = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        CHECK(oneVsOne != kInvalidSessionHandle, "1v1 session created for the mismatch test");
+        SnapshotDTO oneDone = playRound(oneVsOne);
+        CHECK(oneDone.roundOutcome != RoundOutcomeDTO::InProgress,
+              "the 1v1 round finished before the mismatched record attempt");
+
+        MatchResultDTO rejected = bridge_match_record_round(m, oneVsOne);
+        CHECK(rejected.status == BridgeStatus::ModeMismatch,
+              "a 1v1 round recorded into a 2v2 match returns ModeMismatch (AUD-01: no out-of-bounds hand read)");
+        CHECK(rejected.participantCount == 0 && rejected.nextRoundStarterIndex == -1,
+              "the rejected record mutates nothing and reports no starter");
+
+        // Fail closed, but do not poison the match: a genuine round still records.
+        SessionHandle twoVsTwo = bridge_session_create_first_round(GameModeDTO::TwoVsTwo);
+        CHECK(twoVsTwo != kInvalidSessionHandle, "a genuine 2v2 session can still be created");
+        SnapshotDTO twoDone = playRound(twoVsTwo);
+        CHECK(twoDone.roundOutcome != RoundOutcomeDTO::InProgress, "the 2v2 round finished");
+        MatchResultDTO accepted = bridge_match_record_round(m, twoVsTwo);
+        CHECK(accepted.status == BridgeStatus::Ok,
+              "the same match still accepts a correctly-typed 2v2 round after the rejection");
+
+        bridge_session_close(oneVsOne);
+        bridge_session_close(twoVsTwo);
+        bridge_match_close(m);
+    }
+
     std::printf("== terminal-state guard: mutators refuse a finished round (audit F-03 regression) ==\n");
     {
         SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
