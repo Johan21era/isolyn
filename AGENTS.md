@@ -48,8 +48,8 @@ continuing. Do not skip a failing step and continue as if it passed.
 
 ```bash
 ./tools/selfplay/build.sh          # engine + harness compile
-./scripts/ci/test_engine.sh        # expect: 19 executables, 451 checks, 0 failed
-./scripts/ci/test_bridge.sh        # expect: 2 executables, 82 checks, 0 failed
+./scripts/ci/test_engine.sh        # expect: 19 executables, 453 checks, 0 failed
+./scripts/ci/test_bridge.sh        # expect: 2 executables, 87 checks, 0 failed
 swift build                        # expect: Build complete!
 swift test                         # expect: 112 tests, 0 skipped, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
@@ -304,5 +304,10 @@ documented number to match a broken run.
 - Known dead ends, do not re-litigate: Metal/GPU end-to-end acceleration (slower at
   every batch size), maximin/win-count/trimmed root aggregation, extra determinization
   samples beyond 64 at depth 8.
-- Known backlog: bridge/app wiring for draws; transposition-table key and
-  depth-preferred replacement; 1v1v1 pruning.
+- Known backlog: the six declared rule gaps (R-06's 101 option, R-07 sets/games,
+  R-15 analysis draws, R-17's private look, R-18 One Domino, R-22 elimination);
+  transposition-table key and depth-preferred replacement; 1v1v1 pruning;
+  production packaging.
+- The 1v1 default is now 151 (R-06), and the locked pair is no longer revealed
+  (R-17). Those rules remain GAP only for the optional 101 pre-game choice and
+  the private look, respectively.

@@ -38,7 +38,7 @@ int main() {
               "boneyard's aggregate mass matches its full remaining size (14), since the locked pair isn't revealed yet");
     }
 
-    section("ProbabilityEngine: constructFromGameState treats a revealed locked pair as known, not tracked");
+    section("ProbabilityEngine: a locked pair stays uncertain, never pre-revealed (RULEBOOK R-17)");
     {
         std::vector<DominoTile> allTiles;
         for (int i = 0; i < DominoTile::kTileCount; ++i) allTiles.push_back(DominoTile::fromIndex(i));
@@ -47,14 +47,14 @@ int main() {
             std::vector<DominoTile>(allTiles.begin(), allTiles.begin() + 7),       // player 0 (believer)
             std::vector<DominoTile>(allTiles.begin() + 7, allTiles.begin() + 26),  // player 1 -- the exact split doesn't matter here
         };
-        std::vector<DominoTile> boneyard(allTiles.begin() + 26, allTiles.end()); // exactly 2 -- both locked, both revealed. 7+19+2=28.
+        std::vector<DominoTile> boneyard(allTiles.begin() + 26, allTiles.end()); // exactly 2 -- both locked, identities hidden. 7+19+2=28.
         GameState state(GameMode::OneVsOne, hands, boneyard);
 
         BeliefState belief = ProbabilityEngine::constructFromGameState(state, 0);
-        check(!belief.isTracked(allTiles[26]) && !belief.isTracked(allTiles[27]),
-              "the revealed locked pair is treated as known -- their identities are visible, just permanently undrawable");
-        check(approxEqual(belief.totalProbabilityMass(BeliefState::kBoneyardLocation), 0.0),
-              "the boneyard's uncertain mass is exactly zero once the locked pair is revealed and excluded from tracking");
+        check(belief.isTracked(allTiles[26]) && belief.isTracked(allTiles[27]),
+              "the locked pair stays uncertain -- the belief holder is never told which tiles are locked");
+        check(approxEqual(belief.totalProbabilityMass(BeliefState::kBoneyardLocation), 2.0),
+              "the boneyard's uncertain mass is its full remaining size (2), not a pre-revealed zero");
     }
 
     section("ProbabilityEngine: observePlay correctly resolves a tile and rebalances the rest");

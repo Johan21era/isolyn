@@ -218,8 +218,8 @@ struct SnapshotDTO {
     ChainDTO chain;
 
     int32_t boneyardDrawableCount;
-    TileDTO boneyardLockedTiles[2]; // {-1,-1} sentinel for a slot not yet revealed
-    int32_t boneyardLockedCount;    // 0, 1 (never in practice, but not disallowed), or 2
+    TileDTO boneyardLockedTiles[2]; // always {-1,-1} today: R-17 keeps the pair private
+    int32_t boneyardLockedCount;    // always 0 until the R-17 private look exists
 
     // REVEAL-ON-END (Phase 1 match orchestration): remaining pip value of EVERY
     // player's hand, populated ONLY when roundOutcome != InProgress -- i.e. at
@@ -420,6 +420,16 @@ AnalysisHandle bridge_analysis_snapshot_create(SessionHandle session, int32_t be
 // itself has no opinion on which.
 AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthPlies,
                                        int32_t determinizationCount, uint64_t rngSeed);
+
+// Production entry point: the same search, with a cooperative wall-clock
+// budget. A positive timeLimitMs stops iterative deepening at the deadline
+// and returns the best FULLY COMPLETED depth (completed == false marks a
+// truncated result); <= 0 preserves the unbounded behaviour above, which is
+// what deterministic tests use. Every UI/AI call must pass a positive
+// budget, otherwise a deep request has no upper latency bound.
+AnalysisResultDTO bridge_analysis_run_with_budget(AnalysisHandle snapshot, int32_t maxDepthPlies,
+                                                   int32_t determinizationCount, uint64_t rngSeed,
+                                                   int32_t timeLimitMs);
 
 // Safe to call from ANY thread, at any time after snapshot creation,
 // including concurrently with an in-flight bridge_analysis_run on the

@@ -40,13 +40,15 @@ The full index of every project document is [`docs/README.md`](docs/README.md). 
 
 ## Status
 
-Prototype, 57.5% complete against its own feature specification. Rules, bridge,
-search, self-play and AI match play are green and tested (451 engine, 82 bridge
-checks, 112 Swift tests with 0 skipped). The internal 1v1 ladder is real, but
-only the widest gap is statistically resolved, so the five difficulty bands are
-labels rather than measured strengths. The Metal accelerator is a
-parity-tested standalone evaluator and is not wired into search. Sandbox,
-Training, the One Domino Rule, match persistence and packaging are not
-implemented. No external-engine Elo or "strongest engine" claim is made.
+Prototype, 52.6% complete by the independent 2026-11-14 audit (the earlier
+57.5% self-assessment is superseded). Rules, bridge, search, self-play and AI
+match play are green and tested (453 engine, 87 bridge checks, 112 Swift tests
+with 0 skipped). **No current strength claim exists:** the 2026-11-14 rulebook
+change voided the old ladder, and the five difficulty bands have not been
+re-measured under the current rules (see `docs/research/STRENGTH_BASELINE.md`).
+The Metal accelerator is not wired into search, and its compact parity suite
+currently fails 6 checks. Sandbox, Training, sets/games, the One Domino Rule,
+1v1v1 elimination, match persistence and packaging are not implemented. No
+external-engine Elo or "strongest engine" claim is made.
 
-Current defects, evidence and priorities: [`docs/audits/2026-11-13-audit.md`](docs/audits/2026-11-13-audit.md).
+Current defects, evidence and priorities: [`docs/audits/2026-11-14-audit.md`](docs/audits/2026-11-14-audit.md).

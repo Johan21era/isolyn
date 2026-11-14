@@ -10,17 +10,18 @@ BeliefState ProbabilityEngine::constructFromGameState(const GameState& state, in
     for (const auto& tile : state.chain().orderedTiles()) {
         otherKnown.push_back(tile);
     }
-    auto locked = state.boneyard().lockedTiles();
-    for (const auto& tile : locked) {
-        otherKnown.push_back(tile);
-    }
 
+    // R-17: the locked pair is never revealed. Keep it in the boneyard's
+    // uncertain count; the sampler may place any unseen identities in the
+    // two locked slots, which is the correct information set. Treating the
+    // pair as known here (the old behavior) told the AI exactly which tiles
+    // could never be drawn.
     std::map<int, int> locationCounts;
     for (int p = 0; p < state.playerCount(); ++p) {
         if (p == believerIndex) continue;
         locationCounts[p] = static_cast<int>(state.hand(p).size());
     }
-    locationCounts[BeliefState::kBoneyardLocation] = locked.empty() ? static_cast<int>(state.boneyard().size()) : 0;
+    locationCounts[BeliefState::kBoneyardLocation] = static_cast<int>(state.boneyard().size());
 
     // Modes that remove tiles from play entirely (currently only
     // OneVsOneVsOne's 0-0) must tell BeliefState so its "every one of

@@ -18,21 +18,22 @@ Physical lines in tracked files, excluding generated graphs, build products,
 and local lab data. Counts include comments and blank lines; they are a layout
 inventory, not a code-golf target.
 
-**Measured 2026-11-13** with `git ls-files <dir> | xargs cat | wc -l`. The
-previous table was measured 2026-11-11, before the 2026-11-12 UI commit and the
-uncommitted UI work, and understated the app by 9 files / 1,555 lines.
+**Measured 2026-11-14** with `git ls-files <dir> | xargs cat | wc -l`. The
+previous table was measured 2026-11-13 and understated the app by 9 files /
+2,659 lines; that drift is exactly why the number is re-measured rather than
+carried forward.
 
 | Surface | Tracked files | Physical LOC |
 |---|---:|---:|
-| `Sources/IsolynEngine` | 50 | 3,842 |
-| `Sources/IsolynEngineBridge` | 2 | 1,082 |
-| `Sources/IsolynApp` | 56 | 7,424 |
-| `Tests` | 35 | 4,597 |
+| `Sources/IsolynEngine` | 50 | 4,251 |
+| `Sources/IsolynEngineBridge` | 2 | 1,091 |
+| `Sources/IsolynApp` | 65 | 10,083 |
+| `Tests` | 40 | 5,750 |
 | `Accelerator` | 13 | 1,702 |
-| `tools` | 5 | 735 |
-| `lab` | 9 | 651 |
-| `scripts` (including vendored graph viewer) | 5 | 2,513 |
-| **Total** | **175** | **22,546** |
+| `tools` | 5 | 859 |
+| `lab` | 10 | 1,391 |
+| `scripts` | 14 | 3,512 |
+| **Total** | **199** | **28,639** |
 
 Re-measure before quoting these; they move with every commit. Do not add
 `graphify-out/` or `lab/data/` to this table — both are generated and would

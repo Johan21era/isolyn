@@ -182,6 +182,20 @@ int main() {
         bridge_analysis_snapshot_destroy(a2);
         bridge_analysis_snapshot_destroy(a2); // double-destroy must be safe too
 
+        // A production caller must be able to bound the expensive phase. A
+        // 1 ms budget against an 8-ply, 1000-sample request cannot finish;
+        // it must return Ok + incomplete + a real fallback move, not hang.
+        AnalysisHandle a3 = bridge_analysis_snapshot_create(s, believer);
+        CHECK(a3 != kInvalidAnalysisHandle, "analysis snapshot created for the budget test");
+        AnalysisResultDTO bounded = bridge_analysis_run_with_budget(a3, 8, 1000, 7, 1);
+        CHECK(bounded.status == BridgeStatus::Ok, "a budgeted run still reports Ok status");
+        CHECK(bounded.completed == false, "a 1 ms budget stops before the full 8-ply search completes");
+        CHECK(bounded.samplesCompleted < bounded.samplesConfigured,
+              "the budget leaves work unfinished rather than pretending it completed");
+        CHECK(bounded.recommendedMove.tile.low >= 0 && bounded.recommendedMove.tile.low <= 6,
+              "a truncated run still returns a real tile, never a sentinel");
+        bridge_analysis_snapshot_destroy(a3);
+
         // FIX-18 (audit F-07): an unknown analysis handle must fail with
         // BridgeFailure -- one of the only two failure classes this
         // result DTO's contract permits -- never SessionClosed, which
@@ -347,7 +361,7 @@ int main() {
         CHECK(done1.finalRevealedTiles[1 * kTotalTileCount + done1.finalHandCounts[1]].low == -1,
               "slots beyond a revealed hand remain explicit {-1,-1} sentinels");
         CHECK(!rec1.matchEnded && rec1.winnerParticipantIndex == -1,
-              "match cannot be over after one round of 101");
+              "match cannot be over after one round of 151");
 
         CommandResultDTO dup = bridge_submit_move(r1s, done1.stateVersion, MoveDTO{TileDTO{6,6}, ChainSideDTO::Left});
         CHECK(dup.status == BridgeStatus::RoundAlreadyOver, "sanity: finished session still refuses mutations");

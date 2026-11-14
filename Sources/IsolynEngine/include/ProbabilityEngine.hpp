@@ -29,11 +29,10 @@ public:
     // Builds a fresh BeliefState for `believerIndex`'s perspective of
     // `state`: their own hand and every tile visible on the chain are
     // fully known and excluded from tracking; each other player's hand
-    // size and the boneyard's genuinely uncertain portion become
-    // locationCounts. If the boneyard's locked pair has already been
-    // revealed (Boneyard::lockedTiles()), those two tiles are added to
-    // the known set instead of contributing to the boneyard's count --
-    // they're no longer uncertain, just permanently unreachable.
+    // size and the boneyard's full remaining size become locationCounts.
+    // The locked pair is deliberately NOT treated as known (R-17): it is
+    // part of the boneyard's uncertainty, so the sampler may place any
+    // unseen identities in those two unreachable slots.
     static BeliefState constructFromGameState(const GameState& state, int believerIndex);
 
     // `tile` was just played by `playerIndex`, confirming (to anyone who

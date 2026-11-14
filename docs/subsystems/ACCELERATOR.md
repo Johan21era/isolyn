@@ -1,9 +1,10 @@
 # Metal Accelerator
 
-**Status:** real standalone batch-evaluation backend, 2026-11-11. The generic
-linear kernel and the compact `EvaluationEngine` kernel compile at runtime and
-pass CPU/GPU parity tests on Apple M3. Search integration is the next phase; the
-backend is not yet linked into the SPM target or allowed to influence moves.
+**Status:** standalone batch-evaluation backend, 2026-11-11; **not green as of
+2026-11-14.** The generic linear kernel passes its synthetic CPU/GPU parity
+checks, but the compact `EvaluationEngine` parity suite currently fails 6 checks
+(`./Accelerator/build.sh` exits 1), so this is not a reliable reference. It also
+remains unwired: not in the SPM target, and it cannot influence moves.
 
 ## Decision
 
@@ -114,7 +115,7 @@ Exercised by `Accelerator/tests/AcceleratorTests.mm`:
 - generic CPU/GPU parity on synthetic feature rows;
 - compact parity against `EvaluationEngine` for 1v1, 1v1v1, 2v2, closed
   positions, terminal wins, empty chains, equal chain ends, and one-tile
-  immediate threats;
+  immediate threats — **currently failing 6 of these checks** (2026-11-14);
 - terminal winner/loser scoring;
 - null, empty, malformed, and oversized batches fail closed;
 - the 65,536-position maximum is accepted with CPU-matching output, while

@@ -11,10 +11,10 @@ GameState SimulationEngine::sampleDeterminizedState(const GameState& realState, 
         if (p == believerIndex) continue;
         locationCounts[p] = static_cast<int>(realState.hand(p).size());
     }
-    auto realLocked = realState.boneyard().lockedTiles();
-    locationCounts[BeliefState::kBoneyardLocation] = realLocked.empty()
-        ? static_cast<int>(realState.boneyard().size())
-        : 0;
+    // The full boneyard size includes the two locked tiles. Their identity
+    // is hidden (R-17), so the sampled world may place any unseen
+    // identities in those two slots -- the correct information set.
+    locationCounts[BeliefState::kBoneyardLocation] = static_cast<int>(realState.boneyard().size());
 
     auto assignment = Determinizer::sample(belief, locationCounts, rng);
 
@@ -32,8 +32,10 @@ GameState SimulationEngine::sampleDeterminizedState(const GameState& realState, 
     }
     std::shuffle(sampledBoneyardTiles.begin(), sampledBoneyardTiles.end(), rng);
 
+    // Do not append the real locked pair: that would reveal its identity to
+    // the search. The sampled boneyard already has the full boneyard size;
+    // its final two tiles become this world's (equally valid) locked pair.
     std::vector<DominoTile> boneyardTiles = sampledBoneyardTiles;
-    for (const auto& tile : realLocked) boneyardTiles.push_back(tile);
 
     // IMPORTANT: realState.chain().leftEnd()/rightEnd() assert-fail if
     // the chain is empty -- must guard this, cannot call

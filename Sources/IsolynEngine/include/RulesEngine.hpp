@@ -99,9 +99,10 @@ public:
     // remaining hands.")
     static int combineTeamValue(int partnerAValue, int partnerBValue);
 
-    static constexpr int kOneVsOneMatchLossThreshold = 101;
-    // 1v1v1 is locked at 151 by the rulebook (R-06); only 1v1 may be played
-    // to 101 instead, and that choice is a pre-game option, not a constant.
+    // All three modes lose at 151 (RULEBOOK R-06). In 1v1 the players may
+    // agree before the game to play the whole game to 101 instead; that
+    // pre-game option is not implemented yet (R-06 remains a declared GAP).
+    static constexpr int kOneVsOneMatchLossThreshold = 151;
     static constexpr int kOneVsOneVsOneMatchLossThreshold = 151;
     static constexpr int kTwoVsTwoMatchLossThreshold = 151;
 

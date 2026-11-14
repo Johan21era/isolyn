@@ -9,7 +9,7 @@ to it rather than restating it.
 | # | Question | Document |
 |---:|---|---|
 | 1 | What is this and how do I run it? | [`../README.md`](../README.md) |
-| 2 | What is true *right now*? | [`audits/2026-11-13-audit.md`](audits/2026-11-13-audit.md) |
+| 2 | What is true *right now*? | [`audits/2026-11-14-audit.md`](audits/2026-11-14-audit.md) |
 | 3 | How is the system built? | [`architecture/BRIDGE_ARCHITECTURE.md`](architecture/BRIDGE_ARCHITECTURE.md) |
 | 4 | What is it supposed to do? | [`architecture/FEATURE_SPECS.md`](architecture/FEATURE_SPECS.md) |
 | 5 | How do I know it works? | [`engineering/BRIDGE_TESTING.md`](engineering/BRIDGE_TESTING.md) |
@@ -26,7 +26,8 @@ evidence about higher ones.**
 |---:|---|---|
 | 0 | [`rules/RULEBOOK.md`](rules/RULEBOOK.md) | **The rules of the game.** The implementation is judged against it; where they differ, the code is wrong |
 | 1 | Running code and its output | Ground truth about *behaviour*; reproducible |
-| 2 | [`audits/2026-11-13-audit.md`](audits/2026-11-13-audit.md) | Current measured state (2026-11-13) |
+| 2 | [`audits/2026-11-14-audit.md`](audits/2026-11-14-audit.md) | Current measured state (2026-11-14) |
+| 2a | [`audits/2026-11-13-audit.md`](audits/2026-11-13-audit.md) | Prior snapshot (2026-11-13); superseded where the newer audit differs |
 | 3 | `architecture/`, `engineering/`, `subsystems/`, `design/UI_CHARTER.md` | Living; must change with the code |
 | 4 | `roadmaps/` | Intent, never status |
 | 5 | `history/` | Frozen receipts for a date |
@@ -59,7 +60,8 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
 | `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, blockers, first session | Proposed design | 2026-11-14 |
-| `audits/2026-11-13-audit.md` | **Current factual baseline** | Authoritative | 2026-11-13 |
+| `audits/2026-11-14-audit.md` | **Current factual baseline** | Authoritative | 2026-11-14 |
+| `audits/2026-11-13-audit.md` | Prior factual baseline; superseded by the 2026-11-14 audit | Historical snapshot | 2026-11-13 |
 | `audits/2026-11-13-documentation-audit.md` | Why each document exists; contradiction register | Authoritative for doc status | 2026-11-13 |
 | `audits/2026-08-24-audit.md` (+`.pdf`) | First audit; 12 findings and their fixes | Historical | 2026-08-24 |
 | `history/2026-08-ui-rebuild-mandate.md` | The rebuild mandate; §2–§3 still binding | Historical (normative excerpts) | 2026-11-13 |
@@ -77,15 +79,15 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 
 | Claim | Home | Reproduce with |
 |---|---|---|
-| Engine checks (451, 19 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
-| Bridge checks (82, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
+| Engine checks (453, 19 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
+| Bridge checks (87, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
 | Swift tests (112, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
-| Sanitizer (533 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
-| Accelerator (100 checks, throughput) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
+| Sanitizer (540 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
+| Accelerator (94 pass / 6 fail, parity red) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |
 | 1v1 strength ladder | `research/STRENGTH_BASELINE.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |
 | Which rules a strength figure belongs to | `rules/RULES_VERSION` | `python3 scripts/rules_audit.py` |
-| Completion %, defects, priorities | `audits/2026-11-13-audit.md` | the commands in its §13.1 |
+| Completion %, defects, priorities | `audits/2026-11-14-audit.md` | the commands in its §3 |
 | Design intent per mode | `architecture/FEATURE_SPECS.md` | — (no implementation yet) |
 | Rules and the assertion behind each | `rules/RULEBOOK.md` | `python3 scripts/rules_audit.py` |
 | Rules decisions and open questions | `engineering/OPEN_DECISIONS.md` | — |

@@ -69,6 +69,29 @@ Every session tracks a monotonically increasing `stateVersion`, bumped on every 
 
 This mirrors how the engine itself keeps hidden and known information structurally separate (`BeliefState`/`ProbabilityEngine`) rather than trusting a caller not to look at something it was handed. Verified directly in `Tests/IsolynEngineBridgeTests/SmokeTest.cpp`: mid-round snapshots requested by one player and by the other both show only their own hand's real contents; at round end, the reveal counts match the racks, the revealed tiles sum to `finalHandValues`, and unused slots remain sentinels.
 
+### The locked pair is never revealed (R-17)
+
+`SnapshotDTO::boneyardLockedTiles` / `boneyardLockedCount` are always empty and
+zero. The older bridge copied `Boneyard::lockedTiles()` into the snapshot once
+the draw pile emptied, and `ProbabilityEngine` added the same pair to
+`otherKnown`; both told the player and the search exactly which tiles could
+never be drawn. The fields remain in the DTO for the future private-look path,
+but nothing populates them today. In the belief model the pair now stays part of
+the boneyard's uncertain count, so the determinizer may place any unseen
+identities in the two unreachable slots -- the correct information set.
+
+## Latency budget
+
+`bridge_analysis_run` preserves the old unbounded behaviour for deterministic
+tests. Production uses `bridge_analysis_run_with_budget`, which passes a
+positive `SearchEngine::Config::timeLimitMs`: iterative deepening stops at the
+deadline and returns the best fully completed depth, with `completed == false`
+when the result was truncated. The app currently budgets 1.5 s for the coach and
+3 s for the AI (`GameViewModel.SearchBudget`), so no user action can start an
+unbounded search. `SmokeTest.cpp` asserts that a 1 ms budget against an 8-ply /
+1000-sample request returns Ok, incomplete, incomplete-sample counts, and a real
+fallback tile.
+
 ## Why the DTOs are POD-only, fixed-size, no STL
 
 Every public type in `IsolynBridge.hpp` is a plain enum, a plain struct of primitives and fixed C arrays, or a `uint64_t` handle — no `std::vector`, `std::string`, `std::optional`, references, or templates cross the boundary. This is the most conservative reading of "narrowest boundary the actual toolchain supports," chosen for stable interop rather than relying on STL bridging behavior that varies by toolchain. The Swift target compiles this header and exercises it in the package tests. Fixed arrays are sized against the game's actual hard ceiling (28 tiles, `kTotalTileCount`) rather than a "typical" smaller number, specifically because Sandbox Mode (`docs/architecture/FEATURE_SPECS.md`) allows arbitrary, user-constructed positions — truncating real data to fit an assumed-typical bound would silently corrupt whatever didn't fit.
@@ -118,7 +141,7 @@ serializes with the session's own command stream.
 
 Verified: SmokeTest match section (record/duplicate-reject/starter/
 accumulation/idempotent close) plus the reveal-on-end assertions -- current
-bridge suite 82/82; ASan+UBSan clean over the new paths; Swift package
+bridge suite 87/87; ASan+UBSan clean over the new paths; Swift package
 currently 112 tests, 0 skipped, 0 failures (re-measured 2026-11-14).
 
 **Closed: AUD-01.** `bridge_match_record_round` now checks that the finished

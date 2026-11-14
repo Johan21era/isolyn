@@ -296,11 +296,10 @@ SnapshotDTO buildSnapshot(EngineSessionImpl& impl, int requestingPlayerIndex) {
 
     // Boneyard
     out.boneyardDrawableCount = static_cast<int32_t>(state.boneyard().drawableCount());
-    auto locked = state.boneyard().lockedTiles();
+    // R-17: the locked pair is never revealed. The fields stay in the DTO
+    // for the future private-look path, but are always empty today.
     out.boneyardLockedTiles[0] = kNoTileDTO; out.boneyardLockedTiles[1] = kNoTileDTO;
-    const std::size_t lockedCopied = locked.size() < 2 ? locked.size() : 2;
-    out.boneyardLockedCount = static_cast<int32_t>(lockedCopied);
-    for (std::size_t i = 0; i < lockedCopied; ++i) out.boneyardLockedTiles[i] = fromEngine(locked[i]);
+    out.boneyardLockedCount = 0;
 
     // FIX: Authoritative Round Outcome from Cache (set by commands), not local heuristic.
     out.roundOutcome = impl.cachedRoundOutcome;
@@ -614,7 +613,7 @@ AnalysisHandle bridge_analysis_snapshot_create(SessionHandle session, int32_t be
     } catch (...) { return kInvalidAnalysisHandle; }
 }
 
-AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthPlies, int32_t determinizationCount, uint64_t rngSeed) {
+AnalysisResultDTO bridge_analysis_run_with_budget(AnalysisHandle snapshot, int32_t maxDepthPlies, int32_t determinizationCount, uint64_t rngSeed, int32_t timeLimitMs) {
     try {
         auto snap = analysisTable().find(snapshot);
         // FIX-18 (audit F-07): an unknown/expired ANALYSIS handle is a
@@ -631,6 +630,7 @@ AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthP
         SearchEngine::Config config;
         config.maxDepthPlies = maxDepthPlies;
         config.determinizationCount = determinizationCount;
+        config.timeLimitMs = timeLimitMs > 0 ? timeLimitMs : 0;
         // The engine's Config defaults to no voluntary draws, which made this
         // path structurally incapable of ever recommending one: the draw
         // branch is gated on this being > 0. Analysis must search the same
@@ -654,6 +654,10 @@ AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthP
         for (std::size_t p = 0; p < copied; ++p) r.expectedValuePerPlayer[p] = decision.expectedValuePerPlayer[p];
         return r;
     } catch (...) { return failedAnalysis(BridgeStatus::EngineFailure); }
+}
+
+AnalysisResultDTO bridge_analysis_run(AnalysisHandle snapshot, int32_t maxDepthPlies, int32_t determinizationCount, uint64_t rngSeed) {
+    return bridge_analysis_run_with_budget(snapshot, maxDepthPlies, determinizationCount, rngSeed, 0);
 }
 
 void bridge_analysis_request_cancel(AnalysisHandle snapshot) {

@@ -174,7 +174,11 @@ actor EngineSession {
     /// distinguish these three cases at this call -- if a caller needs
     /// to tell them apart, check a fresh snapshot() first rather than
     /// expecting a more specific error here.
-    func requestAnalysis(believer playerIndex: Int, maxDepthPlies: Int32, determinizationCount: Int32) throws -> AnalysisTask {
+    /// `timeLimitMs` must be positive in production. The bridge returns the
+    /// best fully completed depth when the budget expires, with
+    /// `completed == false`; it never runs an unbounded search on this path.
+    func requestAnalysis(believer playerIndex: Int, maxDepthPlies: Int32,
+                         determinizationCount: Int32, timeLimitMs: Int32) throws -> AnalysisTask {
         guard let h = handle else { throw BridgeError.sessionClosed }
 
         // PHASE 1 -- on this actor, deliberately: reads live session
@@ -199,7 +203,8 @@ actor EngineSession {
             // Tests/IsolynEngineBridgeTests/SmokeTest.cpp); production
             // analysis has no reason to ever repeat the same search.
             let seed = UInt64.random(in: UInt64.min...UInt64.max)
-            let dto = isolyn.bridge.bridge_analysis_run(snapshotHandle, maxDepthPlies, determinizationCount, seed)
+            let dto = isolyn.bridge.bridge_analysis_run_with_budget(
+                snapshotHandle, maxDepthPlies, determinizationCount, seed, timeLimitMs)
             // Called unconditionally, before the possibly-throwing
             // conversion below -- bridge_analysis_run itself cannot
             // throw (C++ exceptions are contained inside the bridge; see

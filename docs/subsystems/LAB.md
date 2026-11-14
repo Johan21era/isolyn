@@ -157,13 +157,16 @@ one-tile playable threat is only 1000.
 | 4/24 | 5/40 | 400 | **205** | 195 | **+8.7** | [−25.3, +42.7] | `lab/data/ladder-1600-2300.csv` |
 | 2/8 | 8/64 | 1000 | 424 | 576 | −53.2 | [−75.0, −31.4] | `lab/data/ladder-100-3000-8x64.csv` |
 
-All four rows were recomputed from the committed CSVs with
-`PYTHONPATH=src python3 -m isolyn_lab.cli evaluate --input <file>` on 2026-11-13;
-the report was byte-identical across three runs.
+All four rows were recomputed from the lab's CSVs on 2026-11-13 with
+`PYTHONPATH=src python3 -m isolyn_lab.cli evaluate --input <file>`. Those data
+files are not committed, so this table is historical and not reproducible from
+a clean clone (see the VOID note below).
 
-**The ladder is directionally ordered, but the adjacent gaps are small.**
-A 2026-11-14 re-measurement (seed 42, alternating seats) reversed the earlier
-readings that two adjacent pairs favoured the *shallower* configuration:
+**Historical, VOID (2026-11-14): the 4,000-game ladder below is not a current claim.**
+It was recorded before the rulebook change, and its source CSVs (`lab/data/*`)
+are not committed, so it cannot be reproduced from a clean clone. It is kept
+only as history. Current claims belong to `docs/research/STRENGTH_BASELINE.md`,
+which currently records none.
 
 | A vs B | Games | A score | Elo(A) | 95% CI | Resolved? |
 |---|---:|---:|---:|---|---|
@@ -171,16 +174,10 @@ readings that two adjacent pairs favoured the *shallower* configuration:
 | 3/16 vs 4/24 | 4,000 | 47.9% | −14.9 | [−25.7, −4.2] | **yes** |
 | 4/24 vs 5/40 | 600 | 44.3% | −39.5 | [−67.5, −11.6] | **yes** |
 
-The deeper configuration wins every pair and every adjacent step tested is
-statistically separable at these sample sizes. The 400-game inversions recorded
-above (51.2% and 51.3%) do not survive a larger sample and are sampling noise
-around a small true effect.
-
-Consequence: the five `DifficultyModel` bands are **ordered and separable**, at
-roughly 15 Elo per tier for the lower three steps — about a 52% head-to-head win
-rate per step. That is measurable, not dramatic: the ladder is real, but the
-magnitude is modest, and the labels should not promise a dramatic difficulty
-cliff. Full figures and method: `docs/research/BENCHMARK_BASELINE.md`.
+These rows must not be cited as evidence for the current difficulty ladder. The
+five `DifficultyModel` bands are ordered by construction, but their separation
+has not been measured under the 2026-11-14 rules, and the data behind this table
+is absent from the repository.
 
 The depth increase was measured separately rather than assumed. In 1,000-game
 1v1 matches: 2/8 vs 6/8 was -18.8 Elo ([-40.3, +2.8]), 6/8 vs 6/64 was -8.3

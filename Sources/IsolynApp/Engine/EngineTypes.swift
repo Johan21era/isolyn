@@ -209,9 +209,9 @@ struct GameSnapshot: Sendable {
     let chainLeftEnd: Int?
     let chainRightEnd: Int?
     let boneyardDrawableCount: Int
-    /// The permanently locked tail, exposed by the bridge only once the
-    /// boneyard is down to its final two tiles. Empty while more than two
-    /// remain: their identities stay hidden, exactly like a face-down pile.
+    /// Always empty: R-17 keeps the locked pair private, and the bridge no
+    /// longer reveals it when the draw pile empties. The field remains for
+    /// the future private-look path (a player holding one tile may look).
     let boneyardLockedTiles: [Tile]
     /// Reveal-on-end: per-player remaining pip values, ALL ZERO while the
     /// round is live -- mirrors SnapshotDTO's reveal semantics exactly.

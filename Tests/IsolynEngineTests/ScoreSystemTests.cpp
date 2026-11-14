@@ -23,10 +23,10 @@ int main() {
     section("ScoreSystem: hasMatchEnded respects each mode's own threshold");
     {
         ScoreSystem oneVsOne(GameMode::OneVsOne, 2);
-        oneVsOne.applyRoundScores({0, 100});
-        check(!oneVsOne.hasMatchEnded(), "100 hasn't reached 1v1's 101 threshold yet");
+        oneVsOne.applyRoundScores({0, 150});
+        check(!oneVsOne.hasMatchEnded(), "150 hasn't reached 1v1's 151 threshold yet");
         oneVsOne.applyRoundScores({0, 1});
-        check(oneVsOne.hasMatchEnded(), "101 has reached the threshold");
+        check(oneVsOne.hasMatchEnded(), "151 has reached the threshold");
 
         ScoreSystem twoVsTwo(GameMode::TwoVsTwo, 2);
         twoVsTwo.applyRoundScores({0, 150});

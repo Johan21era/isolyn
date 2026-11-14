@@ -115,6 +115,39 @@ language, the design is wrong.
 
 ---
 
+## ADR-005 — Every production search has a wall-clock cap
+
+- **Status:** Accepted
+- **Date:** 2026-11-14
+
+**Decision.** `SearchEngine::Config::timeLimitMs` is the only latency control.
+Production callers use `bridge_analysis_run_with_budget`; the old unbounded
+`bridge_analysis_run` remains for deterministic tests. The app budgets 1.5 s for
+coach analysis and 3 s for the AI.
+
+**Consequences.** No user action can start an unbounded search. A truncated run
+must be presented as incomplete (`completed == false`), never as a fully
+searched recommendation. Any strength measurement must state the budget it ran
+under, because a tighter budget is a different engine.
+
+---
+
+## ADR-006 — The locked pair is never publicly revealed
+
+- **Status:** Accepted (RULEBOOK R-17)
+- **Date:** 2026-11-14
+
+**Decision.** The snapshot DTO carries no locked-tile identities
+(`boneyardLockedCount == 0`), and the belief model keeps the pair inside the
+boneyard's uncertainty rather than adding it to `otherKnown`.
+
+**Consequences.** Neither the player nor the search learns which tiles are
+locked. The R-17 private look is still unimplemented; when it is built it must be
+seat-scoped and must not become a public snapshot field. The previous
+"reveal when the draw pile empties" behavior is forbidden.
+
+---
+
 ## Open questions
 
 - **Learned vs hand-tuned first:** should the lab's first model learn evaluation,

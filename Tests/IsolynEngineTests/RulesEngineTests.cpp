@@ -131,10 +131,10 @@ int main() {
 
     section("RulesEngine: hasReachedMatchLossThreshold -- reaches OR exceeds, not strictly exceeds");
     {
-        check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 100),
-              "1v1: 100 has not reached the 101 threshold");
-        check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 101),
-              "1v1: exactly 101 has reached the threshold");
+        check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 150),
+              "1v1: 150 has not reached the 151 threshold");
+        check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 151),
+              "1v1: exactly 151 has reached the threshold (RULEBOOK R-06 default)");
         check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::TwoVsTwo, 150),
               "2v2: 150 has not reached the 151 threshold");
         check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::TwoVsTwo, 151),

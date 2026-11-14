@@ -434,6 +434,14 @@ final class GameViewModel {
 
     // MARK: - Analysis
 
+    /// Wall-clock caps for the two production search paths. A deep request
+    /// must never leave the player waiting without a bound; a truncated run
+    /// is reported through AnalysisOutcome.completed == false.
+    private enum SearchBudget {
+        static let coachMs: Int32 = 1_500
+        static let aiMs: Int32 = 3_000
+    }
+
     /// Starts (or cancels) a full two-phase search from the given believer's
     /// perspective. Defaults tuned to the engine's documented sweet spot.
     func toggleAnalysis(believer playerIndex: Int) async {
@@ -443,7 +451,8 @@ final class GameViewModel {
             let task = try await session.requestAnalysis(
                 believer: playerIndex,
                 maxDepthPlies: 4,
-                determinizationCount: 20
+                determinizationCount: 20,
+                timeLimitMs: SearchBudget.coachMs
             )
             analysisTask = task
             analysisRunning = true
@@ -586,7 +595,8 @@ final class GameViewModel {
                 let task = try await session.requestAnalysis(
                     believer: seat,
                     maxDepthPlies: profile.maxDepthPlies,
-                    determinizationCount: profile.determinizationCount
+                    determinizationCount: profile.determinizationCount,
+                    timeLimitMs: SearchBudget.aiMs
                 )
                 aiTask = task
                 let outcome = try await task.result

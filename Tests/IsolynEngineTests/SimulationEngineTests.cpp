@@ -44,7 +44,7 @@ int main() {
         check(world.hand(1).size() == real.hand(1).size(), "the opponent's hand SIZE is preserved, even though its contents are hypothetical");
     }
 
-    section("SimulationEngine: the boneyard's already-revealed locked pair is copied exactly, never re-sampled");
+    section("SimulationEngine: the locked pair stays uncertain to the belief holder (RULEBOOK R-17)");
     {
         std::vector<DominoTile> allTiles;
         for (int i = 0; i < DominoTile::kTileCount; ++i) allTiles.push_back(DominoTile::fromIndex(i));
@@ -60,11 +60,14 @@ int main() {
         std::mt19937_64 rng(456);
         GameState world = SimulationEngine::sampleDeterminizedState(real, belief, 0, rng);
 
-        check(world.boneyard().size() == 2, "the determinized world's boneyard is exactly the known, revealed locked pair");
-        auto worldLocked = world.boneyard().lockedTiles();
         auto realLocked = real.boneyard().lockedTiles();
-        check(worldLocked.size() == 2 && worldLocked[0] == realLocked[0] && worldLocked[1] == realLocked[1],
-              "the specific revealed tiles match exactly");
+        check(realLocked.size() == 2, "the real boneyard has a locked pair to hide");
+        check(belief.isTracked(realLocked[0]) && belief.isTracked(realLocked[1]),
+              "R-17: neither locked tile is treated as known or pre-revealed");
+        check(world.boneyard().size() == 2,
+              "the sampled world still has exactly the right boneyard size");
+        check(world.hand(1).size() == real.hand(1).size(),
+              "the sampled opponent hand keeps its real size");
     }
 
     section("SimulationEngine: an empty chain is handled correctly, without touching leftEnd/rightEnd on it");

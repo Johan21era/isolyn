@@ -5,6 +5,13 @@ Records what the accelerator is, what it measures end to end, and why the
 production engine does not call it. **No part of this document is a claim that
 the application is GPU-accelerated. It is not.**
 
+> **Parity regression (2026-11-14).** `./Accelerator/build.sh` currently exits 1:
+> **94 pass, 6 fail** (four compact-GPU total checks, the closed-position total,
+> and the multi-mode scale check). The shader still hard-codes the old `0.25`
+> partnership weight while the engine uses `24.0`. Everything below about parity
+> describes the last green run, not the current tree; do not treat the backend as
+> validated until those checks are restored.
+
 ## Verified state of the production path
 
 - `Sources/IsolynEngine`, `Sources/IsolynEngineBridge` and `Sources/IsolynApp`
@@ -29,11 +36,12 @@ The accelerator is therefore a working, tested, *unused* backend.
 It computes the eight `EvaluationEngine` components for already-determinized
 positions. It never generates moves, validates legality, scores rounds, or
 chooses moves. Parity with `EvaluationEngine` passes for 1v1, 1v1v1, 2v2,
-closed positions, terminal wins, empty chains, equal ends and one-tile threats.
+closed positions, terminal wins, empty chains, equal ends and one-tile threats on
+the last green run; the current tree fails 6 of those checks (see the banner).
 
 ## Measured throughput (this machine, 2026-11-14)
 
-From `./Accelerator/build.sh`, `Accelerator: all checks passed`:
+From the last green `./Accelerator/build.sh` run (the harness now exits 1):
 
 | Batch | CPU positions/s | Metal positions/s | Metal µs/call |
 |---:|---:|---:|---:|
