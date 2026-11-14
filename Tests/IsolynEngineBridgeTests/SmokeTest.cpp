@@ -333,8 +333,12 @@ int main() {
             for (int i = 0; i < done1.finalHandCounts[p]; ++i) {
                 const TileDTO t = done1.finalRevealedTiles[p * kTotalTileCount + i];
                 if (t.low < 0 || t.low > 6 || t.high < 0 || t.high > 6) revealedTilesMatchValues = false;
-                // Double blank: zero pips, ten points (see DominoTile::pointValue).
-                revealedValue += (t.low == 0 && t.high == 0) ? 10 : t.low + t.high;
+                revealedValue += t.low + t.high;
+            }
+            // RULEBOOK R-19: a hand holding only the double blank is worth ten.
+            if (done1.finalHandCounts[p] == 1) {
+                const TileDTO only = done1.finalRevealedTiles[p * kTotalTileCount];
+                if (only.low == 0 && only.high == 0) revealedValue = 10;
             }
             if (revealedValue != done1.finalHandValues[p]) revealedTilesMatchValues = false;
         }

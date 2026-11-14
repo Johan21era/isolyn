@@ -1529,3 +1529,49 @@ rulebook, each rejected with exit 1: a non-existent assertion anchor
 **Not done, deliberately.** R-10 is declared, not fixed: refusing the pass needs
 a bridge status the app can display rather than an `assert` that release builds
 discard. R-26 and R-27 need an owner ruling before any code.
+
+## OPS-20 — The rulebook becomes the owner's, and the engine is made to obey it
+
+**Scope.** Replace the agent-written rulebook with the owner's dictated ruleset
+(2026-11-14) and align the engine with it: scoring, hand values, and the 1v1v1
+threshold.
+
+**Provenance.** The owner dictated the rules from memory and then answered six
+questions where the dictation contradicted itself. The answers are quoted in
+`docs/rules/RULEBOOK.md` §0. 21 rules: 15 enforced, 6 declared gaps, 0 open.
+
+**What changed in code (all from the dictation, not from inference).**
+
+- `RulesEngine::computeRoundScores` — two participants (1v1, and 2v2 teams now
+  score the same way) credit the **winner with the loser's total**; the loser
+  adds nothing. Three participants keep the "0-12-41" form the owner gave.
+  Previously the lowest hand scored 0 and every other hand added its own value,
+  which paid the loser.
+- `RulesEngine::handPoints` — a hand is its pips, except the double blank, which
+  is worth ten **when it is the only tile left** and zero alongside any other
+  tile. This reconciles the two statements that looked contradictory: the
+  rulebook's tally (4-3, 0-0, 2-1 = 10) and the live report of a lone 0-0
+  scoring nothing. `DominoTile::pointValue` is deleted so the wrong rule cannot
+  be reintroduced at tile level.
+- `kOneVsOneVsOneMatchLossThreshold` 101 -> 151 (R-06: only 1v1 may play to 101).
+- `ClosingOpportunityHeuristic` sign flipped: `roundScores` now holds points
+  **won**, not points charged, so the old negation would have rewarded losing.
+
+**Evidence (literal).** `python3 scripts/rules_audit.py`:
+`RESULT: PASS — every enforced rule names real code and a real assertion; 6 declared hole(s)`.
+`./scripts/ci/local.sh`: `LOCAL CI: PASS — 6 step(s), 0 failed`, with
+`TOTAL CHECKS PASSED: 449 TOTAL CHECKS FAILED: 0` (engine),
+`TOTAL CHECKS PASSED: 74 TOTAL CHECKS FAILED: 0` (bridge),
+`Executed 82 tests, with 0 failures` (Swift), `Build complete!`.
+`./tools/selfplay/build.sh` exit 0.
+
+**Behaviour change, and its limits.** The scoring inversion changes what the
+engine's own search considers a good close, because
+`ClosingOpportunityHeuristic` now maximises points won. That is a
+strength-affecting change and it has **not been measured**; no Elo claim is made
+in either direction. The previous heuristic was scoring a model the rulebook no
+longer describes.
+
+**Not done, deliberately.** R-06 (the 101 option), R-07 (sets and games), R-15
+(unlimited draws), R-17 (the locked pair), R-18 (One Domino Rule) and R-21
+(2v2 table talk) remain declared gaps; none was guessed at.

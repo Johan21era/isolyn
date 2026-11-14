@@ -6,8 +6,8 @@ namespace isolyn {
 // Scores how favorable an already-Closed position is for `playerIndex`,
 // given the round scores it would produce (RulesEngine::computeRoundScores,
 // indexed the same way) and who is credited as the closer
-// (RulesEngine::determineCloser). Two components: the negative of the
-// points `playerIndex` would be charged (fewer points charged is
+// (RulesEngine::determineCloser). Two components: the points
+// `playerIndex` would add to his running total this round (more is
 // better), plus a fixed bonus if `playerIndex` is the closer, since the
 // closer always starts the next round regardless of the scoring outcome
 // (Rules Spec Sec. 4) -- exactly the tradeoff docs/design/STRATEGY_NOTES.md

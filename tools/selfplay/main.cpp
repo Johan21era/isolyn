@@ -199,9 +199,7 @@ const char* outcomeName(RoundOutcomeKind outcome) {
 }
 
 int handValueOf(const GameState& state, int player) {
-    int total = 0;
-    for (const auto& tile : state.hand(player)) total += tile.pointValue();
-    return total;
+    return RulesEngine::handPoints(state.hand(player));
 }
 
 // Reproducible deal: the engine's production Dealer deliberately uses OS

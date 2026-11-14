@@ -44,14 +44,15 @@ int main() {
         check(ExpectedValueHeuristic::score(state, 0) == -16.0, "hand value 11+5=16, negated");
     }
 
-    section("ClosingOpportunityHeuristic: rewards being the closer, penalizes points charged");
+    section("ClosingOpportunityHeuristic: rewards points won and rewards being the closer");
     {
+        // roundScores holds points ADDED, not points charged (RULEBOOK R-03).
         std::vector<int> roundScores = { 24, 0 };
         double closerScore = ClosingOpportunityHeuristic::score(roundScores, 0, 0); // player 0 IS the closer
         double nonCloserScore = ClosingOpportunityHeuristic::score(roundScores, 1, 0); // player 1 is not
-        check(closerScore == -24.0 + ClosingOpportunityHeuristic::kNextRoundStartBonus,
-              "player 0 is charged 24 but gets the next-round-start bonus for being the closer");
-        check(nonCloserScore == 0.0, "player 1 isn't charged anything and isn't the closer -- exactly 0");
+        check(closerScore == 24.0 + ClosingOpportunityHeuristic::kNextRoundStartBonus,
+              "player 0 wins 24 and gets the next-round-start bonus for being the closer");
+        check(nonCloserScore == 0.0, "player 1 wins nothing and isn't the closer -- exactly 0");
     }
 
     section("EvaluationEngine: total is the weighted sum of every component");
@@ -131,10 +132,10 @@ int main() {
 
         auto breakdown = EvaluationEngine::evaluate(GameMode::TwoVsTwo, state, 0);
         // Team 0 (players 0,2): hand values 0 + 2 = 2. Team 1 (players 1,3): hand values 2 + 5 = 7.
-        // Team 0 has the lower combined value -> gets 0 points; team 1 is charged 7.
-        // Player 0's team (team 0) also made the closing play -> gets the next-round-start bonus.
-        check(breakdown.closingOpportunity == 0.0 + ClosingOpportunityHeuristic::kNextRoundStartBonus,
-              "player 0's team is charged 0 points (lower combined hand) and gets the closer bonus");
+        // RULEBOOK R-05: team 0 has the lower combined value, so it is credited
+        // with team 1's 7. Player 0's team also made the closing play -> bonus.
+        check(breakdown.closingOpportunity == 7.0 + ClosingOpportunityHeuristic::kNextRoundStartBonus,
+              "player 0's team wins the opponents' 7 and gets the closer bonus");
     }
 
     section("EvaluationEngine: batch totals match per-player evaluation across modes and edge states");

@@ -82,36 +82,47 @@ int main() {
 
     section("RulesEngine: computeRoundScores -- worked examples from both source documents");
     {
+        // R-03 / R-20: the higher hand loses and its total is credited to the
+        // lower hand. "If it's 50-50 and you catch me with 43, it's 93-50."
         auto domino1v1 = RulesEngine::computeRoundScores({0, 22});
-        check(domino1v1 == std::vector<int>({0, 22}), "1v1 Domino: winner 0, opponent's full hand (22) added");
+        check(domino1v1 == std::vector<int>({22, 0}), "1v1 Domino: the winner's empty hand is credited with the opponent's 22");
 
         auto closed1v1 = RulesEngine::computeRoundScores({24, 9});
-        check(closed1v1 == std::vector<int>({24, 0}), "1v1 Close: 24 vs 9 -> closer adds 24, opponent adds 0");
+        check(closed1v1 == std::vector<int>({0, 24}), "1v1 Close: 24 vs 9 -> the lower hand (9) takes the 24");
 
         auto tied1v1 = RulesEngine::computeRoundScores({10, 10});
         check(tied1v1 == std::vector<int>({0, 0}), "1v1 Close, tied at 10: no points awarded to either side");
 
-        auto oneVsOneVsOne = RulesEngine::computeRoundScores({10, 24, 31});
-        check(oneVsOneVsOne == std::vector<int>({0, 24, 31}), "1v1v1: A=10 -> 0, B=24 -> 24, C=31 -> 31");
+        // R-04: with three players each hand above the lowest adds its own.
+        auto oneVsOneVsOne = RulesEngine::computeRoundScores({6, 12, 41});
+        check(oneVsOneVsOne == std::vector<int>({0, 12, 41}), "1v1v1: hands of 6, 12, 41 -> 0-12-41, the rulebook's own example");
+        auto oneVsOneVsOneWorked = RulesEngine::computeRoundScores({10, 24, 31});
+        check(oneVsOneVsOneWorked == std::vector<int>({0, 24, 31}), "1v1v1: A=10 -> 0, B=24 -> 24, C=31 -> 31");
 
+        // R-05: 2v2 combines partners, then the losing team's total moves over.
         int teamA = RulesEngine::combineTeamValue(20, 6);
         int teamB = RulesEngine::combineTeamValue(15, 12);
         check(teamA == 26 && teamB == 27, "2v2 team combination: 20+6=26, 15+12=27");
         auto twoVsTwo = RulesEngine::computeRoundScores({teamA, teamB});
-        check(twoVsTwo == std::vector<int>({0, 27}), "2v2: lower combined (26) gets 0, higher (27) is added");
+        check(twoVsTwo == std::vector<int>({27, 0}), "2v2: lower combined (26) takes the opponent team's 27");
+        auto teamOnSixteen = RulesEngine::computeRoundScores({16, 21});
+        check(teamOnSixteen == std::vector<int>({21, 0}), "2v2: a team on 16 losing to 21 scores the 21");
     }
 
-    section("RulesEngine: the double blank is worth ten points");
+    section("RulesEngine: the double blank -- ten when alone, zero when paired");
     {
         check(DominoTile(0, 0).value() == 0, "double blank bears zero pips");
-        check(DominoTile(0, 0).pointValue() == 10, "double blank scores 10, not 0");
-        check(DominoTile(0, 5).pointValue() == 5, "blank-five scores its five pips");
-        check(DominoTile(6, 3).pointValue() == 9, "ordinary tiles score their pips");
-        check(DominoTile(6, 6).pointValue() == 12, "double six scores twelve");
-        // The reported bug: going out against a hand holding only 0-0 awarded 0.
+        check(RulesEngine::handPoints({DominoTile(0, 0)}) == 10,
+              "a hand of only the double blank is worth ten");
+        check(RulesEngine::handPoints({DominoTile(4, 3), DominoTile(0, 0), DominoTile(2, 1)}) == 10,
+              "the rulebook's tally: 4-3 + 0-0 + 2-1 = 10");
+        check(RulesEngine::handPoints({DominoTile(0, 0), DominoTile(0, 5)}) == 5,
+              "paired with any other tile the blank adds nothing");
+        check(RulesEngine::handPoints({DominoTile(6, 3)}) == 9, "ordinary tiles score their pips");
+        check(RulesEngine::handPoints({DominoTile(6, 6)}) == 12, "double six scores twelve");
         auto blankDoubleLoses = RulesEngine::computeRoundScores({10, 0});
-        check(blankDoubleLoses == std::vector<int>({10, 0}),
-              "a hand of only the double blank is worth 10 points to the winner");
+        check(blankDoubleLoses == std::vector<int>({0, 10}),
+              "the double blank alone hands the winner ten");
     }
 
     section("RulesEngine: hasReachedMatchLossThreshold -- reaches OR exceeds, not strictly exceeds");
@@ -124,6 +135,10 @@ int main() {
               "2v2: 150 has not reached the 151 threshold");
         check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::TwoVsTwo, 151),
               "2v2: exactly 151 has reached the threshold");
+        check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOneVsOne, 150),
+              "1v1v1: 150 has not reached the 151 threshold");
+        check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOneVsOne, 151),
+              "1v1v1: 151 is the locked threshold, not 101 (RULEBOOK R-06)");
     }
 
     section("RulesEngine: determineNextRoundStarter -- pass-through, documented invariant");

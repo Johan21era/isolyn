@@ -38,7 +38,7 @@ int main() {
     section("ScoreSystem: winningParticipant is whoever has the strictly lowest score once the match has ended");
     {
         ScoreSystem scores(GameMode::OneVsOneVsOne, 3);
-        scores.applyRoundScores({0, 60, 101}); // participant 2 crosses 101 this round
+        scores.applyRoundScores({0, 60, 151}); // participant 2 crosses 1v1v1's 151 threshold
         check(scores.hasMatchEnded(), "the match ends the instant anyone crosses the threshold");
         check(scores.winningParticipant() == 0, "participant 0, with the strictly lowest score, is the outright winner");
     }

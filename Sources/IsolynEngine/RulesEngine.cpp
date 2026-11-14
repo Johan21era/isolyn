@@ -86,14 +86,39 @@ int RulesEngine::determineCloser(GameMode mode, const std::vector<PlayRecord>& p
 
 std::vector<int> RulesEngine::computeRoundScores(const std::vector<int>& remainingValues) {
     assert(!remainingValues.empty());
-    const int minimum = *std::min_element(remainingValues.begin(), remainingValues.end());
 
+    // Two participants: the higher hand loses and its total moves to the
+    // lower hand (RULEBOOK.md R-03, R-20). A tie awards nobody.
+    if (remainingValues.size() == 2) {
+        const int a = remainingValues[0];
+        const int b = remainingValues[1];
+        std::vector<int> scores = {0, 0};
+        if (a != b) {
+            const std::size_t winner = a < b ? 0u : 1u;
+            const std::size_t loser = 1u - winner;
+            scores[winner] = remainingValues[loser];
+        }
+        return scores;
+    }
+
+    // Three or more: every hand above the lowest adds its own value, and the
+    // lowest adds nothing (RULEBOOK.md R-04).
+    const int minimum = *std::min_element(remainingValues.begin(), remainingValues.end());
     std::vector<int> scores;
     scores.reserve(remainingValues.size());
     for (int value : remainingValues) {
         scores.push_back(value == minimum ? 0 : value);
     }
     return scores;
+}
+
+int RulesEngine::handPoints(const std::vector<DominoTile>& hand) {
+    if (hand.size() == 1 && hand[0].low() == 0 && hand[0].high() == 0) {
+        return 10;
+    }
+    int total = 0;
+    for (const DominoTile& tile : hand) total += tile.value();
+    return total;
 }
 
 int RulesEngine::combineTeamValue(int partnerAValue, int partnerBValue) {

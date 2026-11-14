@@ -74,20 +74,24 @@ public:
     // for 2v2 -- see combineTeamValue), computes the score each
     // participant adds to their running match total this round.
     //
-    // Unifies Domino-victory and Closed-round scoring -- Rules Spec states
-    // them as separate rules per mode, but a Domino winner's hand is
-    // always trivially zero, which is always the minimum, so "whoever has
-    // the minimum remaining value gets zero, everyone strictly above it
-    // adds their own value" reproduces every worked Domino example in
-    // both documents without a separate code path. It also generalizes
-    // 1v1's explicit tie rule ("if both scores are identical, no points
-    // are awarded") to any number of participants: every participant AT
-    // the minimum gets zero, which for exactly two tied participants is
-    // the same outcome as "neither one's score changes." Extending
-    // 1v1v1's "the player with the fewest" to a tie-for-fewest among 3+
-    // participants the same way is this function's own generalization,
-    // not an explicit example in either document.
+    // Two participants (1v1, and 2v2 once team values are combined): the
+    // higher hand loses the round and its total is credited to the lower
+    // hand. "If it's 50-50 and you catch me with 43 points in my hand, it's
+    // now 93-50." Equal hands award nobody.
+    //
+    // Three participants (1v1v1): every hand above the lowest adds its own
+    // value, and the lowest adds nothing -- "0-12-41" for hands of 6, 12 and
+    // 41. This is not the two-participant rule: with three, a winner who
+    // collected every loser's total would score 53 there, which the rulebook
+    // explicitly rules out.
+    //
+    // See RULEBOOK.md R-03, R-04, R-05, R-20.
     static std::vector<int> computeRoundScores(const std::vector<int>& remainingValues);
+
+    // The points a remaining hand is worth at scoring (RULEBOOK.md R-19):
+    // the sum of its pips, except that the double blank is worth ten when it
+    // is the only tile left and contributes nothing alongside other tiles.
+    static int handPoints(const std::vector<DominoTile>& hand);
 
     // Combines two 2v2 partners' individual remaining hand values into
     // their team's single combined value, for use as one entry in
@@ -96,7 +100,9 @@ public:
     static int combineTeamValue(int partnerAValue, int partnerBValue);
 
     static constexpr int kOneVsOneMatchLossThreshold = 101;
-    static constexpr int kOneVsOneVsOneMatchLossThreshold = 101;
+    // 1v1v1 is locked at 151 by the rulebook (R-06); only 1v1 may be played
+    // to 101 instead, and that choice is a pre-game option, not a constant.
+    static constexpr int kOneVsOneVsOneMatchLossThreshold = 151;
     static constexpr int kTwoVsTwoMatchLossThreshold = 151;
 
     // Whether a running score has reached or exceeded the mode's

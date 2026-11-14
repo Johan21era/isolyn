@@ -96,9 +96,16 @@ struct Tile: Sendable, Equatable, Hashable {
         self.high = high
     }
 
-    /// Points this tile contributes to a scored hand: its pips, except the
-    /// double blank, which is worth ten. Mirrors C++ DominoTile::pointValue().
-    var pointValue: Int { (low == 0 && high == 0) ? 10 : low + high }
+    /// Points a hand is worth at scoring (RULEBOOK.md R-19): the sum of its
+    /// pips, except that the double blank is worth ten when it is the only
+    /// tile left and contributes nothing alongside other tiles. Mirrors C++
+    /// RulesEngine::handPoints.
+    static func handPoints(_ tiles: [Tile]) -> Int {
+        if tiles.count == 1, let only = tiles.first, only.low == 0, only.high == 0 {
+            return 10
+        }
+        return tiles.reduce(0) { $0 + $1.low + $1.high }
+    }
 
     func hasFace(_ pip: Int) -> Bool { low == pip || high == pip }
     func otherFace(_ pip: Int) -> Int { low == pip ? high : low }

@@ -282,16 +282,15 @@ SnapshotDTO buildSnapshot(EngineSessionImpl& impl, int requestingPlayerIndex) {
     }
     if (impl.cachedRoundOutcome != RoundOutcomeDTO::InProgress) {
         for (int p = 0; p < playerCount && p < kMaxPlayers; ++p) {
-            int v = 0;
             const auto& hand = state.hand(p);
             const std::size_t cap = static_cast<std::size_t>(kTotalTileCount);
             const std::size_t count = hand.size() < cap ? hand.size() : cap;
             out.finalHandCounts[p] = static_cast<int32_t>(count);
             for (std::size_t i = 0; i < count; ++i) {
-                v += hand[i].pointValue();
+
                 out.finalRevealedTiles[p * kTotalTileCount + static_cast<int>(i)] = fromEngine(hand[i]);
             }
-            out.finalHandValues[p] = static_cast<int32_t>(v);
+            out.finalHandValues[p] = static_cast<int32_t>(RulesEngine::handPoints(hand));
         }
     }
 
@@ -512,16 +511,13 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
             auto t1 = RulesEngine::playersOnTeam(1);
             auto handValue = [&state](int p) {
                 int v = 0;
-                for (const auto& tile : state.hand(p)) v += tile.pointValue();
-                return v;
+                return RulesEngine::handPoints(state.hand(p));
             };
             participantValues.push_back(RulesEngine::combineTeamValue(handValue(t0.first), handValue(t0.second)));
             participantValues.push_back(RulesEngine::combineTeamValue(handValue(t1.first), handValue(t1.second)));
         } else {
             for (int p = 0; p < players; ++p) {
-                int v = 0;
-                for (const auto& tile : state.hand(p)) v += tile.pointValue();
-                participantValues.push_back(v);
+                participantValues.push_back(RulesEngine::handPoints(state.hand(p)));
             }
         }
 

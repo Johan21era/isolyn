@@ -38,13 +38,6 @@ public:
     constexpr int high() const noexcept { return m_high; }
     constexpr int value() const noexcept { return m_low + m_high; }
 
-    // Points this tile contributes when a hand is scored at the end of a round.
-    // Pips, except the double blank: it bears no pips but is worth ten, the
-    // house rule the table plays by. Keeping this next to value() means scoring
-    // code can never accidentally treat 0-0 as a worthless tile again.
-    constexpr int pointValue() const noexcept {
-        return (m_low == 0 && m_high == 0) ? 10 : m_low + m_high;
-    }
     constexpr bool isDouble() const noexcept { return m_low == m_high; }
 
     // Dense identity in [0, kTileCount).
