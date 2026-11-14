@@ -68,3 +68,57 @@ Verdicts: **ACCEPTED** (promoted to champion), **REJECTED** (measured, reverted)
 - **Measured.** 60 games at 8/64: 3.35 s → 3.58–3.60 s (slower, twice).
 - **Verdict.** REJECTED and reverted; settled at 4,096 as a middle value. The
   contention is in per-node allocation inside the search, not in the reserve.
+
+## E-007 — Sample-count saturation at depth 4
+
+- **Hypothesis.** If 20 → 64 samples was worth +17.6 Elo, more worlds should
+  keep paying, and the app should simply buy more of them.
+- **Measured.** 2,000 games, seed 42, both sides 8 workers, depth 4:
+  192 samples vs 64 → **+2.1 Elo, CI [−13.1, +17.3]**.
+- **Verdict.** REJECTED as a strength lever. Sampling is **saturated** at 64 at
+  this depth: quadrupling the sample count moved the result by ~0.
+
+## E-008 — Beyond saturation (confirmation)
+
+- **Measured.** 1,776 games: 384 samples vs 192 → +6.3 Elo, CI [−9.9, +22.4].
+  Completed 1,776 of 2,000 rounds before the host's command budget elapsed; the
+  interval is wide but still nowhere near significance.
+- **Verdict.** REJECTED. No evidence of return above 64 worlds.
+
+**Consequence for the programme.** The 20 → 64 step (E-004) is the last
+meaningful sampling gain available. Extra compute must go to **depth** or to
+**evaluation quality**, not to more worlds. This also settles the backlog item
+that proposed raising the app's sample counts: the shipped elite tier (8/64) is
+already at the sampling operating point, so there is nothing to bank.
+
+## E-009 — Depth 10 vs depth 8
+
+- **Hypothesis.** With sampling saturated (E-007/E-008), deeper search is the
+  remaining lever.
+- **Measured.** 1,000 games, both sides 64 samples and 8 workers, seed 42:
+  A 48.5%, **−10.4 Elo, CI [−32.0, +11.1]**.
+- **Cost.** 229.9 s against ~53 s for the depth-8-vs-depth-8 equivalent —
+  roughly **4.3× the wall clock for no gain**, and the point estimate favours
+  the *shallower* engine.
+- **Verdict.** REJECTED. Not a resolution either way, but the burden of proof
+  sits with depth 10 and it has not been met at 4× the cost. The likely cause is
+  the classic search pathology: with an uncalibrated static evaluation, extra
+  plies amplify evaluation error instead of reducing it.
+
+## Strategic conclusion after E-007 – E-009
+
+Three experiments now agree on one thing: **scaling compute is finished as a
+strength lever for this engine.**
+
+| Lever | Measured marginal return |
+|---|---|
+| 20 → 64 worlds | +17.6 Elo (E-004) — the last real sampling gain |
+| 64 → 192 worlds | +2.1 Elo, not resolved (E-007) |
+| 192 → 384 worlds | +6.3 Elo, not resolved (E-008) |
+| depth 8 → 10 | −10.4 Elo at 4.3× cost (E-009) |
+
+The binding constraint is **evaluation quality and search selectivity**, not
+nodes per second. That is where the next tranche of work belongs: calibrate the
+eight weights against tournament results, add a tactical-stability pass to stop
+the odd/even horizon wobble that deeper search appears to amplify, and only then
+revisit depth.

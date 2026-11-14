@@ -43,6 +43,10 @@ does not pay.
 
 Ranked by expected strength return, not by how interesting the work is.
 
+**Compute scaling is exhausted (measured 2026-11-14).** More worlds stop paying
+at 64, and depth 10 loses to depth 8 at 4.3× the cost. Any further strength must
+come from better decisions per node, not from more nodes.
+
 1. **The difficulty ladder is not validated per tier.** Adjacent tiers differ by
    ~10–13 Elo and two of the three adjacent comparisons are inside noise at
    1,000 games. Only the 4/24 → 5/40 pair resolved (−39.5 Elo). The five labels
@@ -68,12 +72,16 @@ Ranked by expected strength return, not by how interesting the work is.
 
 | # | Action | Why it is next |
 |---|---|---|
-| 1 | Raise the app's sample count now that sampling is parallel | the +17.6 Elo is already banked and unused by the UI |
+| 1 | **Calibrate the eight evaluation weights against tournament results** | E-007–E-009 show compute scaling is exhausted; evaluation is now the binding constraint |
 | 2 | Re-derive difficulty tiers from measured head-to-head results | five labels currently overstate five strengths |
-| 3 | Replace the TT key and add depth-preferred replacement | free depth, no algorithmic risk |
+| 3 | Replace the TT key and add depth-preferred replacement | the stated blocker on deeper search: tables are diluted across lanes |
 | 4 | Add pruning to 1v1v1 | the weakest mode, and the fix is well understood |
 | 5 | Add a tactical-stability (quiescence) pass | removes a whole class of blunder |
 | 6 | Decide the accelerator's fate: batch real leaves, or archive it | 1,700 lines with zero effect today |
+
+**Superseded.** The earlier first action — raise the app's `determinizationCount` —
+is withdrawn. The shipped elite tier already runs 8/64, which E-007 places at the
+sampling operating point; raising it would cost latency and buy nothing.
 
 ## Limitations of the current evidence
 
