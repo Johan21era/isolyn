@@ -37,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RULEBOOK = ROOT / "docs" / "rules" / "RULEBOOK.md"
 
-STATUSES = {"ENFORCED", "VARIANT", "GAP", "OPEN"}
+STATUSES = {"ENFORCED", "VARIANT", "GAP", "OPEN", "BY_HAND"}
 GAP_STATUSES = {"GAP", "OPEN"}
 ROW_RE = re.compile(r"^\|\s*(R-\d{2})\s*\|")
 ID_RE = re.compile(r"R-\d{2}")
@@ -188,6 +188,7 @@ def main() -> int:
         print(f"  {status.lower():<15}: {counts[status]}")
     print(f"  gaps            : {counts['GAP']}")
     print(f"  open            : {counts['OPEN']}")
+    print(f"  by hand         : {counts['BY_HAND']}")
     for name, hits in failures.items():
         state = "PASS" if not hits else f"FAIL ({len(hits)})"
         print(f"  {name:<15} : {state}")

@@ -1575,3 +1575,32 @@ longer describes.
 **Not done, deliberately.** R-06 (the 101 option), R-07 (sets and games), R-15
 (unlimited draws), R-17 (the locked pair), R-18 (One Domino Rule) and R-21
 (2v2 table talk) remain declared gaps; none was guessed at.
+
+## OPS-21 — The rulebook reaches zero open questions
+
+**Scope.** Close the last three owner-facing gaps in the dictated ruleset.
+
+**Rulings recorded.**
+
+- **R-22, new:** in 1v1v1 a player who reaches 151 is *out of the set*, not the
+  set's loser. The two survivors play on inside the same set as a 1v1, carrying
+  their existing points (151-86-98 leaves 86 and 98 playing on), and the first of
+  those two to reach 151 loses the set. Last man standing wins it. This was not
+  in the original dictation at all and changes what a 1v1v1 set is.
+- **R-21, table talk:** the owner ruled that this stays between the players and
+  the software does not model it. Status changed to a new `BY_HAND`: recorded
+  because it is part of the game, deliberately not enforced in code, and not
+  counted as a gap.
+- **R-17, the private look:** the owner declined a "privacy mechanism" and asked
+  simply to code it. The rule stands; the implementation obligation is now
+  unblocked.
+
+**Evidence (literal).** `python3 scripts/rules_audit.py`:
+`RESULT: PASS — every enforced rule names real code and a real assertion; 6 declared hole(s)`,
+22 rules: 15 enforced, 6 gaps, 0 open, 1 by hand. `python3 scripts/docs_audit.py`:
+`RESULT: PASS`.
+
+**Not done.** No behaviour changed in this entry; it is a rules-closure receipt.
+The six remaining gaps are implementation work: sets and games (R-07), the
+1v1v1 elimination (R-22, blocked behind sets), the locked pair (R-17), unlimited
+draws (R-15), the One Domino Rule (R-18), and the 101 option (R-06).
