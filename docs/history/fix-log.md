@@ -1422,3 +1422,41 @@ layout is confirmed in live play.
 530 (80 apart), corners at (1141, 391) and (478, 471), final double in line at
 y=530, no nudged tiles. Rendered and inspected. `swift test`: **82 tests, 0
 failures**. Bundle rebuilt and signed at 00:33, stamped `207c387-next`.
+
+## OPS-18 — Live layout probe, table-width runs, and the opener-draw rules bug (2026-11-14)
+
+**Trigger.** Owner live tests: the chain still read as a cramped block, and the
+computer drew a tile while it was the opener, which the rules forbid. Live
+observation is authority (AGENTS §0); three earlier attempts had guessed at
+geometry from screenshots and each was wrong.
+
+**Diagnosis, measured not inferred.** A DEBUG probe (`LayoutProbe`) writes the
+real layout inputs and exposes them in the top bar. First live reading:
+`available=1322x725 tiles=1 scale=1.000 content=38x76`. Next live reading from a
+played position: `1536x640 n18 s1.90 r4`. So the algorithm was not mistiling:
+it laid out correctly and refused to grow (`fitScale` was pinned at 1.0), then
+coiled at a hardcoded `maxRunWidth = 760` on a 1536pt-wide table.
+
+**Changes.**
+- `fitScale` grows into slack up to `maxScale = 1.9`; tighter axis still governs,
+  floor unchanged.
+- Run bound is the board's width, capped at `maxRunTiles = 20`, replacing the
+  760pt constant: 18 tiles now lay one line across the table instead of two rows.
+- **Opener may not draw.** `MatchController::canVoluntaryDraw()` (with an assert
+  in `voluntaryDraw`), `bridge_voluntary_draw`, both `SearchEngine` draw branches,
+  the self-play harness, and `GameViewModel.canVoluntaryDraw` now require a
+  non-empty chain. Previously the only gate was `boneyard.drawableCount() > 0`.
+- Tests: opener-cannot-draw at controller and search level; wide-window test
+  rewritten from "must coil at ~9 tiles" to "18 tiles is one run, 24 and 40 turn".
+
+**Evidence (literal).** `./scripts/ci/test_engine.sh`: `TOTAL CHECKS FAILED: 0`,
+19 executables. `./scripts/ci/test_bridge.sh`: `Runtime failures: none`.
+`swift test`: `Executed 82 tests, with 0 failures (0 unexpected)`.
+Commits `be81ef9`, `7b3b458`; bundle launched as `7b3b458` via `scripts/iso`.
+
+**Retraction.** The +44.3 Elo draw figure (E-026) was measured with opener draws
+permitted. That subset is now illegal, so the number no longer describes shipped
+behaviour exactly; it is un-retested, not withdrawn.
+
+**Not done.** The probe is still in the build (DEBUG only) until the owner
+confirms the rendering; no rendering claim is made here.
