@@ -50,7 +50,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `engineering/RELEASE_CHECKLIST.md` | Packaging, signing, privacy gates | Living checklist | 2026-08 |
 | `design/UI_CHARTER.md` | Current table, layout and visual system | Living design | 2026-11-12 |
 | `design/STRATEGY_NOTES.md` | Domino domain knowledge | Reference (mostly unimplemented) | 2026-11-13 |
-| `subsystems/LAB.md` | Self-play, calibration, data contracts | Living | 2026-11-13 |
+| `subsystems/LAB.md` | Self-play, calibration, app integration, data contracts | Living | 2026-11-14 |
 | `subsystems/ACCELERATOR.md` | Metal backend, parity, throughput | Living | 2026-11-13 |
 | `roadmaps/strategy-roadmap.md` | Seven-phase plan of record | Plan (partially executed) | 2026-11-13 |
 | `research/PROJECT_OVERDRIVE.md` | Strength programme charter, champion, next actions | Living journal | 2026-11-14 |
@@ -77,7 +77,7 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 
 | Claim | Home | Reproduce with |
 |---|---|---|
-| Engine checks (432, 19 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
+| Engine checks (451, 19 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
 | Bridge checks (73, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
 | Swift tests (75, 1 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
 | Sanitizer (502 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |

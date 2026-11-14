@@ -48,16 +48,18 @@ continuing. Do not skip a failing step and continue as if it passed.
 
 ```bash
 ./tools/selfplay/build.sh          # engine + harness compile
-./scripts/ci/test_engine.sh        # expect: 19 executables, 432 checks, 0 failed
-./scripts/ci/test_bridge.sh        # expect: 2 executables, 73 checks, 0 failed
+./scripts/ci/test_engine.sh        # expect: 19 executables, 451 checks, 0 failed
+./scripts/ci/test_bridge.sh        # expect: 2 executables, 74 checks, 0 failed
 swift build                        # expect: Build complete!
-swift test                         # expect: 75 tests, 1 skipped, 0 failures
+swift test                         # expect: 112 tests, 0 skipped, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
 python3 scripts/docs_audit.py      # expect: RESULT: PASS
 ```
 
-The expected counts above are the state at commit `1352063`. If your run differs,
+The expected counts above are the state at commit `1352063`, updated at OPS-34
+(2026-11-14) for the rulebook rewrite and the Lab suites: engine 432 → 451,
+bridge 73 → 74, Swift 75 (1 skipped) → 112 (0 skipped). If your run differs,
 the difference is a finding: explain it, do not quietly update the numbers.
 
 Record the **exact** lines (e.g. `TOTAL CHECKS PASSED: 432`), not a summary like

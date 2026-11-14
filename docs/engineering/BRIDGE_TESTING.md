@@ -17,13 +17,18 @@ copy them as current numbers.
 
 | Check | Command | Result |
 |---|---|---|
-| Engine suite | `./scripts/ci/test_engine.sh` | 19 executables, **429 checks passed**, 0 failed |
-| Bridge suite | `./scripts/ci/test_bridge.sh` | 2 executables, **73 checks passed**, 0 failed |
-| Swift package | `swift test` | **75 tests, 1 skipped, 0 failures** |
+| Engine suite | `./scripts/ci/test_engine.sh` | 19 executables, **451 checks passed**, 0 failed (2026-11-14) |
+| Bridge suite | `./scripts/ci/test_bridge.sh` | 2 executables, **74 checks passed**, 0 failed (2026-11-14) |
+| Swift package | `swift test` | **112 tests, 0 skipped, 0 failures** (2026-11-14) |
 | AddressSanitizer + UBSan | `./scripts/ci/sanitize.sh address` | 21 executables, **502 checks passed**, 0 findings |
 | ThreadSanitizer | `./scripts/ci/sanitize.sh thread` | 2 executables, **82 checks passed**, 0 findings |
 | Standalone fuzz fallback | `./scripts/ci/fuzz_bridge.sh 30` | 75,000 executions, zero crashes/hangs/sanitizer findings |
 | Accelerator harness | `./Accelerator/build.sh` | **100 checks passed**; compact GPU parity plus 1K-65K throughput sweep |
+
+The engine, bridge and Swift rows were re-run on 2026-11-14 (OPS-34) after the
+rulebook rewrite and the Lab test suites; their counts grew accordingly. The
+sanitizer, fuzz and Accelerator rows below are the last recorded figures and were
+not re-run in that sweep — re-measure before quoting them.
 
 The fuzz runner reports that libFuzzer is unavailable on this toolchain and uses
 the repository's standalone driver. That is a real fallback, not full

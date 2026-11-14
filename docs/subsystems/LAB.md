@@ -1,11 +1,14 @@
 # Offline Lab & Trainer
 
-**Status:** the C++ self-play generator is real, supports side-alternated
-head-to-head configurations, and the Python lab has a working calibration
-report plus a measured internal 1v1 ladder. `./scripts/lab run` drives
-resumable sharded runs, so a multi-million-game dataset is one restartable
-command. There is still no trainer or exported weight set, and no Elo claim
-against external engines.
+**Status:** current on 2026-11-14. The C++ self-play generator is real, supports
+side-alternated head-to-head configurations, and the Python lab has a working
+calibration report. `./scripts/lab run` drives resumable sharded runs, so a
+multi-million-game dataset is one restartable command; the app's Lab screen
+drives the same runner through a staged copy outside the checkout. Measured on
+the owner's Mac at symmetric depth 8 / 64 samples with eight batches: about
+22.7 games/s, so 5,000,000 games is roughly 61 hours. There is still no trainer
+or exported weight set, and no Elo claim against external engines. Strength
+claims, if any, live only in `docs/research/STRENGTH_BASELINE.md`.
 
 ## Purpose
 
@@ -34,7 +37,9 @@ tools/selfplay/  ── CSV/JSONL ──▶  lab/ (Python)
 - C++ is the only source of game truth.
 - Python reads engine output and produces data/weights/reports.
 - Python never reimplements move legality, scoring, or round rules.
-- The shipped `.app` never contains a Python runtime.
+- The `.app` ships no Python runtime; the Lab screen runs a staged copy of
+  `lab/` from `~/Library/Application Support/IsolynV2.0/Lab`, never the
+  checkout.
 - A model may influence evaluation only through C++ inference.
 
 ## Components
@@ -54,8 +59,30 @@ tools/selfplay/  ── CSV/JSONL ──▶  lab/ (Python)
 - `configs/` — experiment shape (TOML).
 - `src/isolyn_lab/` — CSV loading, calibration reports, the resumable sharded
   runner (`runner.py`), and training/evaluation scaffolding.
-- `data/` — generated datasets/weights (gitignored).
+- `data/` — CLI-generated datasets/weights (gitignored). Runs started from the
+  app live in `~/Library/Application Support/IsolynV2.0/runs` instead, so the
+  app never reads the Desktop checkout.
 - `pyproject.toml` — no runtime dependencies; optional `train` extras.
+
+## App integration (2026-11-14)
+
+The Lab screen removes the terminal from the loop without changing what a run is.
+
+- `run.sh` stages `scripts/lab`, `lab/src/isolyn_lab`, `lab/configs` and the
+  built `selfplay` binary into `~/Library/Application Support/IsolynV2.0/Lab`.
+  The app resolves that copy first, so it never reads the checkout (a
+  TCC-protected Desktop folder) and a rebuild cannot invalidate a permission.
+- App runs are written to `~/Library/Application Support/IsolynV2.0/runs`; the
+  runner accepts `--runs-dir` (and honours `ISOLYN_RUNS_DIR`) so a single
+  invocation can target that store. The CLI default remains `lab/data/runs`.
+- One run at a time is enforced three ways: a service guard, a short repeat
+  window, and the runner's `run.lock`. The app attaches to a run that is already
+  active instead of starting a second process.
+- The run library is read from a cached, once-a-second directory scan rather
+  than on every redraw, and shows Started / Games / Mode / Depth / Worlds /
+  Seed / Progress / Status as columns. Analyses read finished CSVs only.
+- A minimized window is restored by the app delegate on Dock reopen or
+  activation; `Window ▸ Show Isolyn Window` (⌘0) is the manual fallback.
 
 ## Data contracts
 
@@ -97,6 +124,9 @@ by C++ inference. No pickle files cross the boundary.
 
 ## Workflow
 
+From the app, `./scripts/iso` builds, stages and launches; the Lab tab runs the
+same commands below. From a terminal:
+
 1. Build the C++ harness: `./tools/selfplay/build.sh`.
 2. Run a small smoke batch (seeds fixed), verify legal games and row counts.
 3. Run a side-alternated 1v1 or 2v2 head-to-head batch, then `isolyn-lab evaluate
@@ -108,6 +138,10 @@ by C++ inference. No pickle files cross the boundary.
    measure the ladder again.
 
 ## Measured baseline (2026-11-11)
+
+> **VOID (2026-11-14).** The ladder below predates the rulebook and measures a
+> different game. Do not cite it. Current strength claims, if any, live only in
+> `docs/research/STRENGTH_BASELINE.md`.
 
 These are 1v1 self-play results with side alternation, no wall-clock cap, and
 the full requested depth reached in every sampled move. They are a calibration
