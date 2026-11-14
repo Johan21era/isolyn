@@ -50,6 +50,9 @@ final class GameViewModel {
     let mode: MatchFormat
     let opponent: OpponentMode
     let aiLevel: AILevel
+    /// The pre-game format choice: first to 3 sets (best-of-5) or first to 4
+    /// (best-of-7), frozen for the life of this game.
+    let setsToWin: Int
 
     /// Most recent boneyard draw. Kept as the latest-event convenience that
     /// tests and simple callers already use.
@@ -104,12 +107,13 @@ final class GameViewModel {
 
     // MARK: - Init / teardown
 
-    init(mode: MatchFormat, opponent: OpponentMode = .human, aiLevel: AILevel = .club) {
+    init(mode: MatchFormat, opponent: OpponentMode = .human, aiLevel: AILevel = .club, setsToWin: Int = 3) {
         self.mode = mode
         self.opponent = opponent
         self.aiLevel = aiLevel
+        self.setsToWin = setsToWin
         do {
-            let coordinator = try MatchCoordinator(mode: mode)
+            let coordinator = try MatchCoordinator(mode: mode, setsToWin: setsToWin)
             guard let firstRound = EngineSession.createFirstRound(mode: mode) else {
                 throw BridgeError.engineFailure(diagnostic: "initial deal failed")
             }
@@ -296,6 +300,12 @@ final class GameViewModel {
     // MARK: Overlay passthroughs (read-only views of coordinator state)
 
     var participantScores: [Int] { match?.scores ?? [] }
+    var setWins: [Int] { match?.setWins ?? [] }
+    var setNumber: Int { match?.setNumber ?? 1 }
+    var matchSetsToWin: Int { match?.setsToWin ?? setsToWin }
+    var lastSetEnded: Bool { match?.lastSetEnded ?? false }
+    var setWinnerForOverlay: Int? { match?.setWinner }
+    var nextRoundStartsSet: Bool { match?.nextRoundStartsSet ?? false }
     var matchWinnerParticipant: Int? { match?.matchWinner }
     var nextStarterForOverlay: Int? { match?.lastNextStarter }
 
@@ -388,8 +398,9 @@ final class GameViewModel {
         }
     }
 
-    /// Deals the NEXT round from the recorded starter (empty chain, free
-    /// choice opening). Returns false when the match is over instead.
+    /// Deals the NEXT round -- or, after a set ended, the next set's ritual
+    /// opening (MatchCoordinator chooses which). Returns false when the match
+    /// is over instead.
     @discardableResult
     func dealNextRound() async -> Bool {
         guard let match else { return false }

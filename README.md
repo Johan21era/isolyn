@@ -40,15 +40,18 @@ The full index of every project document is [`docs/README.md`](docs/README.md). 
 
 ## Status
 
-Prototype, 52.6% complete by the independent 2026-11-14 audit (the earlier
-57.5% self-assessment is superseded). Rules, bridge, search, self-play and AI
-match play are green and tested (453 engine, 87 bridge checks, 112 Swift tests
-with 0 skipped). **No current strength claim exists:** the 2026-11-14 rulebook
+Prototype, 52.6% complete by the independent 2026-11-14 audit, measured before
+that day's Phase 1–2 corrections (the earlier 57.5% self-assessment is
+superseded). Rules, bridge, search, self-play and AI match play are green and
+tested (471 engine, 110 bridge checks, 112 Swift tests with 0 skipped). **No current strength claim exists:** the 2026-11-14 rulebook
 change voided the old ladder, and the five difficulty bands have not been
 re-measured under the current rules (see `docs/research/STRENGTH_BASELINE.md`).
 The Metal accelerator is not wired into search, and its compact parity suite
-currently fails 6 checks. Sandbox, Training, sets/games, the One Domino Rule,
-1v1v1 elimination, match persistence and packaging are not implemented. No
-external-engine Elo or "strongest engine" claim is made.
+currently fails 6 checks. Sets are now best-of-5 or best-of-7, with scores reset
+and the double-six ritual restarted each set; the 1v1 One Domino Rule is enforced
+in live play and in search. Sandbox, Training, 1v1v1 elimination, match
+persistence and packaging are not implemented. The 101 option and the private
+locked-pair look remain rule gaps. No external-engine Elo or "strongest engine"
+claim is made.
 
 Current defects, evidence and priorities: [`docs/audits/2026-11-14-audit.md`](docs/audits/2026-11-14-audit.md).

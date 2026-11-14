@@ -1,6 +1,7 @@
 #pragma once
 #include <cassert>
 #include <cstdint>
+#include <optional>
 #include <vector>
 #include "Boneyard.hpp"
 #include "Chain.hpp"
@@ -107,6 +108,16 @@ public:
     // Draws the next drawable boneyard tile into playerIndex's hand.
     // Precondition: boneyard().drawableCount() > 0.
     DominoTile drawTile(int playerIndex);
+
+    // The 1v1 One Domino Rule (RULEBOOK R-18), applied at the start of a
+    // turn: when BOTH hands hold exactly one tile and a drawable tile
+    // exists, the current player must take one before acting. Drawing here
+    // is mandatory, not strategic -- MatchController calls this on every
+    // turn transition. Returns the drawn tile, or nullopt when the rule
+    // does not apply (not 1v1, a hand is not exactly one, or the boneyard
+    // has no drawable tile). Once either hand holds more than one tile,
+    // the condition is false and the other player is released.
+    std::optional<DominoTile> enforceOneDominoRule();
 
     // Exact inverse of a drawTile call, on the BONEYARD side: must be
     // called in exact reverse order of drawTile calls, same as every

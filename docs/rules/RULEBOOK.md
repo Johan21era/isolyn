@@ -62,7 +62,7 @@ code. A change that edits only the code is a bug.
 | R-04 | In 1v1v1 every player is for himself. The lowest hand adds nothing and every other hand adds its own total: closing with 6 against 12 and 41 scores 0-12-41. The closer pays too when his hand is above the lowest — 41 against 6 and 12 scores 0-6-41 — and closing exempts nobody. | ENFORCED | `Sources/IsolynEngine/RulesEngine.cpp` | `Tests/IsolynEngineTests/RulesEngineTests.cpp :: the closer is not exempt` |
 | R-05 | In 2v2 the two partners' remaining values are combined into one team total, and the losing team's total is credited to the winners. A 0-6 with a partner's 6-4 is 16; losing to 21 pays the opponents 21. | ENFORCED | `Sources/IsolynEngine/RulesEngine.cpp` | `Tests/IsolynEngineTests/RulesEngineTests.cpp :: 2v2: lower combined (26) takes the opponent team's 27` |
 | R-06 | A set is won at 151 points, which means reaching 151 loses the set. In 1v1 the two players may agree, before the game, to play the whole game to 101 instead; that choice covers every set. In 1v1v1 and 2v2, 151 is locked. | GAP | `Sources/IsolynEngine/include/RulesEngine.hpp` now locks all three modes at 151; the 101 option has no way to be chosen. | Needs the pre-game option. |
-| R-07 | A game is won by taking three sets (3-0, 3-1, 3-2) or four sets (4-0 through 4-3). The two players agree the format before the game; scores reset to zero at the start of each set, and every set opens with the double-six ritual exactly as the game's first hand does. | GAP | Not implemented: the app plays a single race to the target and stops. | Set/series structure. |
+| R-07 | A game is won by taking three sets (3-0, 3-1, 3-2) or four sets (4-0 through 4-3). The two players agree the format before the game; scores reset to zero at the start of each set, and every set opens with the double-six ritual exactly as the game's first hand does. | ENFORCED | `Sources/IsolynEngineBridge/IsolynBridge.cpp` (`MatchStateImpl` set wins and reset), `Sources/IsolynApp/Engine/MatchCoordinator.swift` (format and next-set deal) | `Tests/IsolynEngineBridgeTests/SmokeTest.cpp :: set wins accumulate exactly one per completed set` |
 
 ### B. Dealing and opening
 
@@ -72,7 +72,7 @@ code. A change that edits only the code is a bug.
 | R-09 | 1v1v1 deals 9 tiles to each player, and the double blank is thrown out of the game for the entire duration of the mode. There is no boneyard. | ENFORCED | `Sources/IsolynEngine/Dealer.cpp` | `Tests/IsolynEngineTests/DealerTests.cpp :: 1v1v1 hand size, 0-0 removal, empty boneyard` |
 | R-10 | 2v2 deals 7 tiles to each player, with no boneyard. | ENFORCED | `Sources/IsolynEngine/Dealer.cpp` | `Tests/IsolynEngineTests/DealerTests.cpp :: 2v2 hand and boneyard sizes` |
 | R-11 | The first hand of a game is opened by the double six; failing that the double five, and so on down through the doubles. Doubles outrank every plain tile, so a double two opens before a 6-4. If nobody holds a double, the biggest plain tile opens. | ENFORCED | `Sources/IsolynEngine/RulesEngine.cpp` | `Tests/IsolynEngineTests/RulesEngineTests.cpp :: any double outranks every non-double` |
-| R-12 | Only the first hand of a set has a mandated opening tile; that ritual restarts at the top of every set. Every later hand begins with an empty board. | ENFORCED | `Sources/IsolynEngine/MatchController.cpp` | `Tests/IsolynEngineTests/MatchControllerTests.cpp :: dealSubsequentRound leaves the chain empty` |
+| R-12 | Only the first hand of a set has a mandated opening tile; that ritual restarts at the top of every set. Every later hand begins with an empty board. | ENFORCED | `Sources/IsolynApp/Engine/MatchCoordinator.swift` (nextRoundStartsSet -> createFirstRound), `Sources/IsolynEngine/MatchController.cpp` (dealFirstRound) | `Tests/IsolynEngineBridgeTests/SmokeTest.cpp :: every set opens with the double-six ritual, exactly like the game's first hand (R-12)` |
 | R-13 | The player who wins or closes a hand starts the next one, and opens it with a tile of his choosing. Closing earns the start even when closing lost him the hand: in 1v1v1 the closer starts the next hand even when he held the highest total, and in every mode the closer starts regardless of the score. | ENFORCED | `Sources/IsolynEngine/MatchController.cpp` | `Tests/IsolynEngineTests/MatchControllerTests.cpp :: dealSubsequentRound leaves the chain empty` |
 
 ### C. Drawing
@@ -83,7 +83,7 @@ code. A change that edits only the code is a bug.
 | R-15 | Once the first draw has happened, a player may draw as many times as he likes in a turn, and on every turn after. | GAP | The analysis path caps a turn at one voluntary draw (`maxVoluntaryDraws = 1`). | Remove the cap. |
 | R-16 | A player with no playable tile on either end must draw until he holds a playable tile or the boneyard is empty, then his turn ends without a play. | ENFORCED | `Sources/IsolynEngine/MatchController.cpp` | `Tests/IsolynEngineTests/MatchControllerTests.cpp :: resolveForcedDraw draws until a playable tile is found` |
 | R-17 | Two boneyard tiles are locked. They are never drawn and never shown, except that a player who reaches exactly one tile while no other boneyard tiles remain may look at both privately — for his own recalibration, or not at all. The look is available every time those conditions are met, not once per hand. Looking changes nothing; they stay locked and the opponent never sees them. If only those two remain and nobody can play, the hand is an ordinary close. | GAP | The reveal is gone: the snapshot never carries the pair and the belief model keeps it uncertain. The private-look path is still unimplemented. | Model the private look (see IsolynBridge; do not reintroduce the public reveal). |
-| R-18 | When both players hold exactly one tile and the boneyard still has pieces, each must take one piece when his turn starts, even if he could win right there. As soon as one player holds more than one piece, the other is released from that obligation: he may play his single tile instantly and does not have to draw. | GAP | Not implemented. | The 1v1 One Domino Rule. |
+| R-18 | When both players hold exactly one tile and the boneyard still has pieces, each must take one piece when his turn starts, even if he could win right there. As soon as one player holds more than one piece, the other is released from that obligation: he may play his single tile instantly and does not have to draw. | ENFORCED | `Sources/IsolynEngine/GameState.cpp` (`enforceOneDominoRule`), `Sources/IsolynEngine/MatchController.cpp` (turn transition), `Sources/IsolynEngine/SearchEngine.cpp` (search nodes) | `Tests/IsolynEngineTests/GameStateTests.cpp :: One Domino Rule: both hands on one tile force a draw at turn start (1v1 only)` |
 
 ### D. Scoring a hand
 
@@ -110,12 +110,6 @@ The engine now locks all three modes at 151, which is correct for 1v1v1 and 2v2
 and the default for 1v1. Offering 101 needs a decision at the start of a game
 and a way to carry it into the score check; no UI or bridge field exists for it.
 
-### R-07 — Sets and games
-
-The app plays one race to the target score. Sets, the 3-set or 4-set choice, and
-accumulating a game across sets are not modelled at all. This is the largest
-remaining structural gap, and it is a bridge and app job, not just a scoring one.
-
 ### R-15 — Unlimited draws in a turn
 
 `Config::maxVoluntaryDraws` is 1, so the search and the app's own draw action
@@ -124,21 +118,17 @@ first draw of the hand has happened.
 
 ### R-17 — The locked pair
 
-The rulebook is explicit: they are never drawn and never shown, and the look is
-private and changes nothing. The engine currently makes them drawable and exposes
-them at round end, which is both a rules error and an information leak.
-
-### R-18 — The One Domino Rule
-
-Not implemented. Both source documents were ambiguous about how a win could occur
-inside the repeating draw; the dictation settles the loop, so this can now be
-built rather than guessed.
+The public reveal is removed: the snapshot no longer carries the pair and the
+belief model keeps it uncertain. What remains is the seat-scoped private look,
+which does not exist yet; until it does, no player may inspect the pair.
 
 ### R-22 — The 1v1v1 elimination
 
 A 1v1v1 set does not end when the first player reaches 151; that player is out
 and the other two play on as a 1v1 inside the same set, carrying their existing
-points. This depends on the set structure in R-07, so it is blocked behind it.
+points. Sets now exist, so this is no longer blocked: a 1v1v1 set currently ends
+at 151 with the lowest score taking it, instead of eliminating the threshold-
+crosser and continuing 1v1.
 
 R-21 is no longer a gap: the owner ruled that table talk stays between the
 players, and software does not police or mediate it.

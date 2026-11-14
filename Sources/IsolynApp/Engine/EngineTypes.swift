@@ -76,6 +76,15 @@ extension MatchFormat {
         case .twoVTwo: return .TwoVsTwo
         }
     }
+
+    /// Score slots, not players: 2v2 tracks one score per TEAM.
+    var participantCount: Int {
+        switch self {
+        case .oneVOne: return 2
+        case .oneVOneVOne: return 3
+        case .twoVTwo: return 2
+        }
+    }
 }
 
 // MARK: - Tile / Move
@@ -381,12 +390,24 @@ extension GameSnapshot {
 /// -- the same semantics ScoreSystem itself uses.
 struct MatchOutcome: Sendable, Equatable {
     let participantCount: Int
+    /// The set that the recorded round belonged to. Scores reset when the
+    /// next set begins; this value is the set the round was played in.
     let scoresPerParticipant: [Int]
-    /// True once any participant has reached the mode's loss threshold.
+    /// Completed sets per participant (teams for 2v2).
+    let setWinsPerParticipant: [Int]
+    let setNumber: Int
+    let setsToWin: Int
+    /// True once a participant has reached the chosen set count (3 or 4).
     let matchEnded: Bool
     /// Valid only when matchEnded; nil otherwise.
     let winnerParticipantIndex: Int?
-    /// Who opens the NEXT round -- always present on a successful record.
+    /// Valid only when setEnded; nil otherwise.
+    let setWinnerParticipantIndex: Int?
+    /// True when this round reached the 151 threshold and ended its set.
+    let setEnded: Bool
+    /// True when the next round must be a fresh set (double-six ritual).
+    let nextRoundStartsSet: Bool
+    /// Who opens the NEXT round; -1 when a new set's ritual decides instead.
     let nextRoundStarterIndex: Int
 
     static func fromDtoOrThrow(_ dto: isolyn.bridge.MatchResultDTO) throws -> MatchOutcome {
@@ -400,11 +421,24 @@ struct MatchOutcome: Sendable, Equatable {
             count: Int(dto.participantCount),
             as: Int32.self
         ).map { $0 }
+        var mutableWinsDto = dto
+        let setWins: [Int32] = withTupleAsArray(
+            &mutableWinsDto.setWinsPerParticipant,
+            capacity: Int(isolyn.bridge.kMaxPlayers),
+            count: Int(dto.participantCount),
+            as: Int32.self
+        ).map { $0 }
         return MatchOutcome(
             participantCount: Int(dto.participantCount),
             scoresPerParticipant: scores.map { Int($0) },
+            setWinsPerParticipant: setWins.map { Int($0) },
+            setNumber: Int(dto.setNumber),
+            setsToWin: Int(dto.setsToWin),
             matchEnded: dto.matchEnded,
             winnerParticipantIndex: dto.matchEnded ? Int(dto.winnerParticipantIndex) : nil,
+            setWinnerParticipantIndex: dto.setEnded ? Int(dto.setWinnerParticipantIndex) : nil,
+            setEnded: dto.setEnded,
+            nextRoundStartsSet: dto.nextRoundStartsSet,
             nextRoundStarterIndex: Int(dto.nextRoundStarterIndex)
         )
     }

@@ -193,6 +193,61 @@ int main() {
         check(outcome.kind == RoundOutcomeKind::InProgress, "a legal move remains available -- correctly still in progress");
     }
 
+    section("MatchController: One Domino Rule draws for the incoming player when both 1v1 hands reach one");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(6, 6), DominoTile(6, 5) },
+            { DominoTile(5, 5) },
+        };
+        std::vector<DominoTile> boneyard = {
+            DominoTile(4, 4), DominoTile(3, 3), DominoTile(2, 2), DominoTile(1, 1),
+        };
+        GameState state(GameMode::OneVsOne, hands, boneyard);
+        MatchController controller(state);
+
+        RoundOutcome outcome = controller.playTurn(Move{DominoTile(6, 6), GameState::ChainSide::Left});
+        check(outcome.kind == RoundOutcomeKind::InProgress, "the play itself does not end the round");
+        check(controller.currentPlayerIndex() == 1, "turn advanced to player 1");
+        check(controller.state().hand(0).size() == 1, "player 0 is down to one tile but has already taken their turn");
+        check(controller.state().hand(1).size() == 2,
+              "player 1's turn began with both hands on one, so the mandatory 4-4 draw was applied");
+        check(controller.state().boneyard().drawableCount() == 1, "exactly one tile was drawn");
+    }
+
+    section("MatchController: One Domino Rule does not fire when only one hand is on one tile");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(6, 6), DominoTile(6, 5) },
+            { DominoTile(5, 5), DominoTile(5, 4) },
+        };
+        std::vector<DominoTile> boneyard = {
+            DominoTile(4, 4), DominoTile(3, 3), DominoTile(2, 2), DominoTile(1, 1),
+        };
+        GameState state(GameMode::OneVsOne, hands, boneyard);
+        MatchController controller(state);
+
+        controller.playTurn(Move{DominoTile(6, 6), GameState::ChainSide::Left});
+        check(controller.state().hand(0).size() == 1, "player 0 played down to one tile");
+        check(controller.state().hand(1).size() == 2,
+              "player 1 already held two tiles, so no mandatory draw is added");
+        check(controller.state().boneyard().drawableCount() == 2, "the boneyard is untouched");
+    }
+
+    section("MatchController: One Domino Rule cannot draw from an empty boneyard");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(6, 6), DominoTile(6, 5) },
+            { DominoTile(5, 5) },
+        };
+        GameState state(GameMode::OneVsOne, hands, {});
+        MatchController controller(state);
+
+        controller.playTurn(Move{DominoTile(6, 6), GameState::ChainSide::Left});
+        check(controller.state().hand(0).size() == 1 && controller.state().hand(1).size() == 1,
+              "with no drawable tile both hands stay on one -- the rule has nothing to take");
+        check(controller.state().boneyard().drawableCount() == 0, "the boneyard is genuinely empty");
+    }
+
     section("MatchController: 2v2 team-index mapping now lives on RulesEngine (see RulesEngine.hpp comment)");
     {
         check(RulesEngine::teamIndexForPlayer(0) == 0 && RulesEngine::teamIndexForPlayer(2) == 0,

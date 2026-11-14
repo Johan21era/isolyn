@@ -18,16 +18,35 @@ import IsolynEngineBridge
 /// synchronization concepts.
 @MainActor
 final class MatchCoordinator {
-    /// Participant scores (players for 1v1/1v1v1, teams for 2v2). Empty until
-    /// the first round has been recorded.
+    /// Scores for the CURRENT set (players for 1v1/1v1v1, teams for 2v2).
+    /// Empty until the first round has been recorded; reset to zero when a
+    /// new set is dealt.
     private(set) var scores: [Int] = []
 
-    /// Who opens the current/upcoming round. nil before the first record and
-    /// irrelevant for `begin`'s caller-created first-round session (which
-    /// applies the mandated opener itself).
+    /// Completed sets per participant.
+    private(set) var setWins: [Int] = []
+
+    /// The 1-based set the last recorded round belonged to.
+    private(set) var setNumber = 1
+
+    /// The pre-game format: 3 (best-of-5) or 4 (best-of-7).
+    private(set) var setsToWin: Int
+
+    /// True when the last recorded round ended its set at 151.
+    private(set) var lastSetEnded = false
+
+    /// True when the next round must be dealt as a fresh set, which restarts
+    /// the double-six ritual (RULEBOOK R-12).
+    private(set) var nextRoundStartsSet = false
+
+    /// The participant who took the last set, when it ended.
+    private(set) var setWinner: Int?
+
+    /// Who opens the current/upcoming round. nil before the first record, at
+    /// a set boundary (the ritual decides), or after the game ends.
     private(set) var lastNextStarter: Int?
 
-    /// Set once any participant crosses the mode's loss threshold.
+    /// Set once a participant reaches `setsToWin` sets.
     private(set) var matchWinner: Int?
 
     /// True after close() -- guards double-recording into a dead match handle.
@@ -41,13 +60,15 @@ final class MatchCoordinator {
     nonisolated(unsafe) private var matchHandle: isolyn.bridge.MatchHandle
     private let mode: MatchFormat
 
-    init(mode: MatchFormat) throws {
+    init(mode: MatchFormat, setsToWin: Int = 3) throws {
         self.mode = mode
-        let h = isolyn.bridge.bridge_match_begin(mode.bridgeMode)
+        self.setsToWin = setsToWin
+        let h = isolyn.bridge.bridge_match_begin_with_format(mode.bridgeMode, Int32(setsToWin))
         guard h != isolyn.bridge.kInvalidMatchHandle else {
-            throw BridgeError.invalidRequest // only reachable on invalid mode or CSPRNG-class failure at begin
+            throw BridgeError.invalidRequest // invalid mode/format, or CSPRNG-class failure at begin
         }
         self.matchHandle = h
+        self.setWins = Array(repeating: 0, count: mode.participantCount)
     }
 
     deinit {
@@ -70,19 +91,35 @@ final class MatchCoordinator {
         let outcome = try await session.recordRoundInto(matchHandle: matchHandle)
 
         scores = outcome.scoresPerParticipant
-        lastNextStarter = outcome.nextRoundStarterIndex
+        setWins = outcome.setWinsPerParticipant
+        setNumber = outcome.setNumber
+        lastSetEnded = outcome.setEnded
+        nextRoundStartsSet = outcome.nextRoundStartsSet
+        setWinner = outcome.setWinnerParticipantIndex
+        lastNextStarter = outcome.nextRoundStarterIndex >= 0
+            ? outcome.nextRoundStarterIndex
+            : nil
         matchWinner = outcome.winnerParticipantIndex
 
         return outcome
     }
 
-    /// Deals the next round from the most recently recorded starter. Chain
-    /// starts empty; there is no mandated opening tile past round one (the
-    /// engine enforces all of this via dealSubsequentRound).
-    /// Non-throwing by proof: the only underlying call returns an optional
-    /// rather than throwing, so callers get nil-on-failure with no try-tax.
+    /// Deals the next round. When the previous round ended a set, this deals
+    /// a fresh set-opening round (the double-six ritual restarts, R-12) and
+    /// resets the visible set scores; otherwise it uses the recorded starter
+    /// and leaves the chain empty (no mandated opener past the first hand).
+    /// Non-throwing by proof: the underlying calls return an optional rather
+    /// than throwing, so callers get nil-on-failure with no try-tax.
     func dealNextRound() -> EngineSession? {
         guard !isClosed else { return nil }
+        if nextRoundStartsSet {
+            scores = Array(repeating: 0, count: scores.count)
+            setNumber += 1
+            nextRoundStartsSet = false
+            lastSetEnded = false
+            setWinner = nil
+            return EngineSession.createFirstRound(mode: mode)
+        }
         guard let starter = lastNextStarter else { return nil }
         return EngineSession.createSubsequentRound(mode: mode, startingPlayerIndex: starter)
     }
@@ -98,8 +135,15 @@ final class MatchCoordinator {
         if !isClosed {
             isolyn.bridge.bridge_match_close(matchHandle)
         }
-        matchHandle = isolyn.bridge.bridge_match_begin(mode.bridgeMode)
+        matchHandle = isolyn.bridge.bridge_match_begin_with_format(
+            mode.bridgeMode, Int32(setsToWin)
+        )
         scores = []
+        setWins = Array(repeating: 0, count: mode.participantCount)
+        setNumber = 1
+        lastSetEnded = false
+        nextRoundStartsSet = false
+        setWinner = nil
         lastNextStarter = nil
         matchWinner = nil
         isClosed = false

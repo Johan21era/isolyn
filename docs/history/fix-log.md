@@ -2289,3 +2289,57 @@ passed 6/6; this receipt does not claim a green hosted check.
   implementation.
 - Rule gaps R-06, R-07, R-15, R-17, R-18 and R-22 remain open.
 - No trainer, exported weights, or strength claim.
+
+## OPS-35 — Phase 1–2: bounded search, secret locked pair, sets and One Domino (2026-11-14)
+
+### Phase 1 — correctness before features
+
+- 1v1 now plays to **151** (R-06's default); the 101 option remains a declared gap.
+- `bridge_analysis_run_with_budget` exposes `SearchEngine::Config::timeLimitMs`.
+  The app budgets **1.5 s** for coach analysis and **3 s** for the AI; a truncated
+  search reports `completed == false` and is covered by a bridge regression.
+- The locked pair is no longer revealed: the snapshot fields are always zero and
+  `ProbabilityEngine` / `SimulationEngine` keep the pair uncertain (R-17). The
+  private, seat-scoped look is still the remaining R-17 gap.
+
+### Phase 2 — sets, games and the 1v1 endgame
+
+- **R-07 now ENFORCED.** A game is best-of-5 (first to 3 sets) or best-of-7
+  (first to 4), chosen before play. At 151 the set winner is the lowest score;
+  set wins accumulate, set scores reset for the next set, and `matchEnded` now
+  means the *game* ended. The bridge exposes `setWins`, `setNumber`, `setsToWin`,
+  `setEnded`, `setWinner`, and `nextRoundStartsSet`.
+- **R-12 assertion corrected.** The app deals `createFirstRound` when a set ends,
+  so every set restarts the double-six ritual; later hands still start empty.
+- **R-18 now ENFORCED.** `GameState::enforceOneDominoRule` draws one tile at turn
+  start when both 1v1 hands hold exactly one and the boneyard is drawable.
+  `MatchController` applies it on every turn transition; `SearchEngine` applies
+  the same rule at non-root nodes and unwinds the draw on every exit path.
+- The UI shows set wins and offers the best-of-5 / best-of-7 choice; the
+  round-end overlay says "Deal next set" when a set ends.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `./scripts/ci/test_engine.sh` | 19 executables, **471 passed**, 0 failed |
+| `./scripts/ci/test_bridge.sh` | 2 executables, **110 passed**, 0 failed |
+| `./scripts/ci/sanitize.sh address` | **581 passed**, 0 findings |
+| `./scripts/ci/sanitize.sh thread` | **124 passed**, 0 findings |
+| `swift test` | **112 tests**, 0 failures, 0 skipped |
+| `rules_audit.py` / `docs_audit.py` | **PASS / PASS** (4 declared gaps) |
+
+The bridge's set test plays a full best-of-5 game through random legal play and
+asserts the 151 threshold, set-win accumulation, score reset, ritual restart,
+and the three-set finish. The One Domino Rule has direct `GameState` tests and
+turn-transition integration tests.
+
+### Remaining gaps and limits
+
+- R-06's 101 option, R-15 analysis draws, R-17's private look and R-22's 1v1v1
+  elimination remain declared gaps. 1v1v1 sets now end at 151 with the lowest
+  score taking the set; that is **not** R-22's elimination.
+- The Swift set flow is compile-checked and its bridge layer is tested; the UI
+  overlay/selector were not visually exercised in this entry.
+- Hosted CI remains blocked on account billing (OPS-12b); local checks are the
+  authority here.

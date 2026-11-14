@@ -81,6 +81,11 @@ RoundOutcome MatchController::endTurnWithNoPlay() {
 void MatchController::advanceToNextPlayer() {
     int next = (m_state.currentPlayerIndex() + 1) % m_state.playerCount();
     m_state.setCurrentPlayerIndex(next);
+    // R-18: a turn that begins with both 1v1 hands on exactly one tile is
+    // not a normal turn -- the incoming player must take one first. The
+    // draw is mandatory, so it is applied here rather than exposed as a
+    // strategic choice. It is a no-op in every other mode and hand shape.
+    m_state.enforceOneDominoRule();
 }
 
 RoundOutcome MatchController::checkForClose() const {

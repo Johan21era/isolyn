@@ -137,6 +137,14 @@ DominoTile GameState::drawTile(int playerIndex) {
     return tile;
 }
 
+std::optional<DominoTile> GameState::enforceOneDominoRule() {
+    if (m_mode != GameMode::OneVsOne) return std::nullopt;
+    if (m_boneyard.drawableCount() == 0) return std::nullopt;
+    if (m_hands.size() != 2) return std::nullopt;
+    if (m_hands[0].size() != 1 || m_hands[1].size() != 1) return std::nullopt;
+    return drawTile(m_currentPlayerIndex);
+}
+
 void GameState::undoDrawTile(int playerIndex, DominoTile tile) {
     assert(playerIndex >= 0 && playerIndex < playerCount());
     auto& hand = m_hands[static_cast<std::size_t>(playerIndex)];

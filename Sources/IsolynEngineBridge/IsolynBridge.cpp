@@ -216,12 +216,15 @@ int participantCountForMode(GameMode m) {
 
 struct MatchStateImpl {
     GameMode mode;
-    ScoreSystem scores;
+    ScoreSystem scores;                            // the CURRENT set only
+    int setWins[kMaxPlayers] = {};                 // completed sets per participant
+    int setsToWin = 3;                             // best-of-5; 4 selects best-of-7
+    int setNumber = 1;                             // 1-based, current set
     std::unordered_set<uint64_t> recordedSessions; // session handles already applied
-    bool matchEnded = false;
+    bool matchEnded = false;                       // the GAME is over
     int winnerParticipantIndex = -1;
     std::mutex mutex;
-    MatchStateImpl(GameMode m) : mode(m), scores(m, participantCountForMode(m)) {}
+    MatchStateImpl(GameMode m, int sets) : mode(m), scores(m, participantCountForMode(m)), setsToWin(sets) {}
 };
 HandleTable<MatchStateImpl>& matchTable() { static HandleTable<MatchStateImpl> t; return t; }
 
@@ -464,20 +467,33 @@ MatchResultDTO failedMatch(BridgeStatus status) noexcept {
     MatchResultDTO r{};
     r.status = status;
     r.participantCount = 0;
-    for (int p = 0; p < kMaxPlayers; ++p) r.scoresPerParticipant[p] = 0;
+    for (int p = 0; p < kMaxPlayers; ++p) {
+        r.scoresPerParticipant[p] = 0;
+        r.setWinsPerParticipant[p] = 0;
+    }
     r.matchEnded = false;
     r.winnerParticipantIndex = -1;
     r.nextRoundStarterIndex = -1;
+    r.setNumber = 0;
+    r.setsToWin = 0;
+    r.setWinnerParticipantIndex = -1;
+    r.setEnded = false;
+    r.nextRoundStartsSet = false;
     return r;
 }
 
 } // namespace
 
 MatchHandle bridge_match_begin(GameModeDTO mode) {
+    return bridge_match_begin_with_format(mode, 3);
+}
+
+MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin) {
     if (!isValidMode(mode)) return kInvalidMatchHandle;
+    if (setsToWin != 3 && setsToWin != 4) return kInvalidMatchHandle;
     try {
         const GameMode engineMode = toEngine(mode);
-        auto impl = std::make_unique<MatchStateImpl>(engineMode);
+        auto impl = std::make_unique<MatchStateImpl>(engineMode, setsToWin);
         return matchTable().insert(std::move(impl));
     } catch (...) { return kInvalidMatchHandle; }
 }
@@ -540,21 +556,49 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
             nextStarter = RulesEngine::determineNextRoundStarter(sess->cachedDecidingPlayer);
         }
 
-        m->recordedSessions.insert(finishedRound);
-        m->matchEnded = m->scores.hasMatchEnded();
-        if (m->matchEnded) {
-            m->winnerParticipantIndex = m->scores.winningParticipant();
+        const int setNumberForRound = m->setNumber;
+        int finalSetScores[kMaxPlayers] = {};
+        for (int i = 0; i < m->scores.participantCount() && i < kMaxPlayers; ++i) {
+            finalSetScores[i] = m->scores.score(i);
         }
+
+        // R-07: a set ends at the loss threshold; the lowest score takes it.
+        // Scores reset only when the game continues -- the NEXT set starts at
+        // zero, and the double-six ritual restarts because the caller is told
+        // to create a first-round session (nextRoundStartsSet).
+        const bool setEnded = m->scores.hasMatchEnded();
+        int setWinner = -1;
+        bool gameEnded = false;
+        if (setEnded) {
+            setWinner = m->scores.winningParticipant();
+            m->setWins[setWinner]++;
+            if (m->setWins[setWinner] >= m->setsToWin) {
+                gameEnded = true;
+                m->matchEnded = true;
+                m->winnerParticipantIndex = setWinner;
+            } else {
+                m->setNumber++;
+                m->scores = ScoreSystem(m->mode, participantCountForMode(m->mode));
+            }
+        }
+
+        m->recordedSessions.insert(finishedRound);
 
         MatchResultDTO r{};
         r.status = BridgeStatus::Ok;
         r.participantCount = static_cast<int32_t>(participantCountForMode(m->mode));
-        for (std::size_t i = 0; i < m->scores.participantCount(); ++i) {
-            if (static_cast<int>(i) < kMaxPlayers) r.scoresPerParticipant[i] = m->scores.score(static_cast<int>(i));
+        for (int i = 0; i < r.participantCount; ++i) {
+            r.scoresPerParticipant[i] = finalSetScores[i];
+            r.setWinsPerParticipant[i] = m->setWins[i];
         }
+        r.setNumber = setNumberForRound;
+        r.setsToWin = m->setsToWin;
+        r.setWinnerParticipantIndex = setWinner;
+        r.setEnded = setEnded;
         r.matchEnded = m->matchEnded;
         r.winnerParticipantIndex = m->matchEnded ? m->winnerParticipantIndex : -1;
-        r.nextRoundStarterIndex = nextStarter;
+        r.nextRoundStarterIndex = setEnded ? -1 : nextStarter;
+        r.nextRoundStartsSet = setEnded && !gameEnded;
         return r;
     } catch (...) { return failedMatch(BridgeStatus::EngineFailure); }
 }

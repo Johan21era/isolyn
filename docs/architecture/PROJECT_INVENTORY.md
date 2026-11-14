@@ -25,15 +25,15 @@ carried forward.
 
 | Surface | Tracked files | Physical LOC |
 |---|---:|---:|
-| `Sources/IsolynEngine` | 50 | 4,251 |
-| `Sources/IsolynEngineBridge` | 2 | 1,091 |
-| `Sources/IsolynApp` | 65 | 10,083 |
-| `Tests` | 40 | 5,750 |
+| `Sources/IsolynEngine` | 50 | 4,290 |
+| `Sources/IsolynEngineBridge` | 2 | 1,180 |
+| `Sources/IsolynApp` | 65 | 10,267 |
+| `Tests` | 40 | 6,029 |
 | `Accelerator` | 13 | 1,702 |
 | `tools` | 5 | 859 |
 | `lab` | 10 | 1,391 |
 | `scripts` | 14 | 3,512 |
-| **Total** | **199** | **28,639** |
+| **Total** | **199** | **29,230** |
 
 Re-measure before quoting these; they move with every commit. Do not add
 `graphify-out/` or `lab/data/` to this table — both are generated and would

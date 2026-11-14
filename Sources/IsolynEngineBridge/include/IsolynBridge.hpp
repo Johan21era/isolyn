@@ -295,8 +295,8 @@ struct AnalysisResultDTO {
 // Design split (see roadmap / BRIDGE_ARCHITECTURE.md): scoring MATH stays in
 // the tested engine (ScoreSystem / RulesEngine::computeRoundScores /
 // combineTeamValue / thresholds are the single source of truth); this surface
-// is data plumbing only. A MatchHandle wraps one running ScoreSystem for one
-// mode. The flow per round is:
+// is data plumbing only. A MatchHandle wraps one running ScoreSystem (one SET)
+// plus the set wins for the game. The flow per round is:
 //   play a SessionHandle to completion (roundOutcome != InProgress)
 //   -> bridge_match_record_round(match, finishedSession):
 //        combines partner hands for 2v2 (RulesEngine::combineTeamValue),
@@ -304,19 +304,29 @@ struct AnalysisResultDTO {
 //        applies them (ScoreSystem::applyRoundScores),
 //        derives the next starter (RulesEngine::determineNextRoundStarter on
 //        that round's deciding player),
-//        reports matchEnded/winner once any participant crosses the threshold.
+//        reports setEnded/setWinner once a participant crosses the set
+//        threshold, increments setWins, resets the set for the next one, and
+//        reports matchEnded/winner once a participant reaches setsToWin.
 //   -> start the NEXT round with bridge_session_create_subsequent_round using
-//      MatchResultDTO.nextRoundStarterIndex.
+//      MatchResultDTO.nextRoundStarterIndex, OR, when nextRoundStartsSet is
+//      true, deal a fresh set-opening round with bridge_session_create_first_round
+//      so the double-six ritual restarts (RULEBOOK R-12).
 // Each session may be recorded at most once (re-recording fails closed), so a
 // retried or duplicated call can never double-apply a round's points.
 
 struct MatchResultDTO {
     BridgeStatus status;
     int32_t participantCount;                     // players (1v1/1v1v1) or TEAMS (2v2)
-    int32_t scoresPerParticipant[kMaxPlayers];    // meaningful up to participantCount
-    bool matchEnded;                              // true iff any participant reached the mode's loss threshold
+    int32_t scoresPerParticipant[kMaxPlayers];    // the SET that just finished/accumulated; meaningful up to participantCount
+    bool matchEnded;                              // true iff a participant has won the required number of sets
     int32_t winnerParticipantIndex;               // valid only when matchEnded; -1 otherwise
-    int32_t nextRoundStarterIndex;                // valid only if the recorded round was finished; -1 on failure
+    int32_t nextRoundStarterIndex;                // valid only if the recorded round was finished and the set continues; -1 on failure or set end
+    int32_t setWinsPerParticipant[kMaxPlayers];   // completed sets, per participant
+    int32_t setNumber;                            // the 1-based set the recorded round belonged to
+    int32_t setsToWin;                            // 3 for best-of-5, 4 for best-of-7
+    int32_t setWinnerParticipantIndex;            // valid only when setEnded; -1 otherwise
+    bool setEnded;                                // true iff this record reached the set's 151 threshold
+    bool nextRoundStartsSet;                      // true iff the next round opens a NEW set (double-six ritual)
 };
 
 // Search configuration for one difficulty tier. This is deliberately a
@@ -333,8 +343,14 @@ struct DifficultyProfileDTO {
 DifficultyProfileDTO bridge_difficulty_profile(int32_t strength);
 
 // Creates an empty running-score tracker for the given mode. Returns
-// kInvalidMatchHandle on an invalid mode.
+// kInvalidMatchHandle on an invalid mode. Defaults to a best-of-5 game
+// (first to 3 sets), the rulebook's three-set format.
 MatchHandle bridge_match_begin(GameModeDTO mode);
+
+// Same, with the pre-game format choice RULEBOOK R-07 grants the players:
+// setsToWin must be 3 (best-of-5) or 4 (best-of-7). Any other value returns
+// kInvalidMatchHandle; the format is fixed for the life of the game.
+MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin);
 
 // Records ONE completed round into the running score. Fails closed (mutating
 // nothing) with InvalidRequest if the session's round is still InProgress,

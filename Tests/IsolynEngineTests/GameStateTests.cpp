@@ -26,6 +26,53 @@ int main() {
         check(state.playHistory().empty(), "play history starts empty");
     }
 
+    section("GameState: One Domino Rule: both hands on one tile force a draw at turn start (1v1 only)");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(3, 3) },
+            { DominoTile(5, 5) },
+        };
+        // Four tiles => two drawable; the last two are locked, as always.
+        std::vector<DominoTile> boneyard = {
+            DominoTile(0, 0), DominoTile(6, 6), DominoTile(4, 4), DominoTile(1, 1),
+        };
+        GameState state(GameMode::OneVsOne, hands, boneyard);
+
+        auto drawn = state.enforceOneDominoRule();
+        check(drawn.has_value() && *drawn == DominoTile(0, 0),
+              "both hands hold exactly one tile, so the current player must take the front boneyard tile");
+        check(state.hand(0).size() == 2, "the mandatory draw went to the current player");
+        check(state.boneyard().drawableCount() == 1, "exactly one tile was drawn -- the rule is one tile, not a loop");
+
+        auto again = state.enforceOneDominoRule();
+        check(!again.has_value(), "once a hand holds two tiles the condition is false and the other player is released");
+
+        GameState otherTurn(GameMode::OneVsOne, hands, boneyard);
+        otherTurn.setCurrentPlayerIndex(1);
+        auto drewForOne = otherTurn.enforceOneDominoRule();
+        check(drewForOne.has_value() && otherTurn.hand(1).size() == 2 && otherTurn.hand(0).size() == 1,
+              "the draw belongs to whoever's turn it is, not to player 0 by default");
+
+        std::vector<std::vector<DominoTile>> uneven = {
+            { DominoTile(3, 3), DominoTile(2, 2) },
+            { DominoTile(5, 5) },
+        };
+        GameState notBothOne(GameMode::OneVsOne, uneven, boneyard);
+        check(!notBothOne.enforceOneDominoRule().has_value(),
+              "one hand already holds two tiles, so the rule is not triggered");
+
+        std::vector<std::vector<DominoTile>> threeHands = {
+            { DominoTile(3, 3) }, { DominoTile(5, 5) }, { DominoTile(1, 2) },
+        };
+        GameState threeWay(GameMode::OneVsOneVsOne, threeHands, boneyard);
+        check(!threeWay.enforceOneDominoRule().has_value(),
+              "the One Domino Rule is 1v1-only; 1v1v1 keeps its ordinary turn flow");
+
+        GameState dryYard(GameMode::OneVsOne, hands, {});
+        check(!dryYard.enforceOneDominoRule().has_value(),
+              "with no drawable tile there is nothing to take, so the rule cannot fire");
+    }
+
     section("GameState: hash is order-independent for hands but sensitive to turn and draw order");
     {
         std::vector<DominoTile> boneyard = {

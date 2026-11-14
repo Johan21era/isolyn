@@ -336,6 +336,22 @@ void undoDraws(GameState& state, int playerIndex, const std::vector<DominoTile>&
     }
 }
 
+// R-18 for search nodes. The live match applies the mandatory draw when the
+// turn passes; the search reaches the same position by setting the next
+// player directly, so it must apply the identical rule at node entry and
+// unwind it on every exit path (including leaf/closed/abort returns). The
+// root itself is not touched: production roots have already passed through
+// MatchController's turn transition, and drawing there could make a
+// candidate tile that the caller does not actually hold.
+struct OneDominoDrawGuard {
+    GameState& state;
+    int player;
+    std::optional<DominoTile> tile;
+    ~OneDominoDrawGuard() {
+        if (tile) state.undoDrawTile(player, *tile);
+    }
+};
+
 SearchValue searchZeroSum(GameState& state,
                           int depthRemaining,
                           double alpha,
@@ -346,6 +362,9 @@ SearchValue searchZeroSum(GameState& state,
     if (tick(context)) return {};
 
     const int player = state.currentPlayerIndex();
+
+    OneDominoDrawGuard oneDomino{state, player, std::nullopt};
+    if (ply > 0) oneDomino.tile = state.enforceOneDominoRule();
 
     const bool exactEndgame = isExactEndgame(context, state);
     if (depthRemaining <= 0 && !exactEndgame) {

@@ -26,20 +26,13 @@ struct RoundOutcome {
 // engine via EvaluationEngine/SearchEngine), never to this class. Pure
 // turn-flow mechanism, same philosophy as MoveExecutor.
 //
-// NOT YET IMPLEMENTED: the 1v1-only "One Domino Rule" (Rules Spec Sec.
-// 9) -- when both players hold exactly one domino, each must draw one
-// before attempting to finish, continuing until someone wins, the
-// boneyard is exhausted, or a player must draw more than one domino.
-// The exact mechanics of that repeating cycle are genuinely
-// underspecified by both source documents -- specifically, how a Domino
-// victory can occur *within* it at all, given normal play is exactly one
-// placement per turn (draw-one-then-play-one always nets back to the
-// same hand size, never down to zero). Several readings were worked
-// through and none is clearly the intended one. Deliberately left out
-// rather than guessed at; flagged for discussion. Ordinary Mandatory
-// Play and Forced Drawing, both implemented below, already govern every
-// other 1v1 endgame correctly -- only this specific
-// both-down-to-one-tile scenario needs it.
+// The 1v1-only "One Domino Rule" (RULEBOOK R-18) is applied by
+// advanceToNextPlayer(): when both hands hold exactly one tile and a
+// drawable tile exists, the incoming player takes one before acting.
+// The draw is mandatory, not a strategic choice; once either hand holds
+// more than one tile the condition is false and the other player is
+// released. GameState::enforceOneDominoRule owns the shape test, so the
+// search and the live match share the same definition.
 class MatchController {
 public:
     // Deals the very first round of a brand new match: the mandated

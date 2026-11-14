@@ -392,6 +392,125 @@ int main() {
         CHECK(true, "match close is idempotent like every other handle surface");
     }
 
+    std::printf("== sets/games: 151 ends a set, scores reset, the next set restarts the ritual ==\n");
+    {
+        CHECK(bridge_match_begin_with_format(GameModeDTO::OneVsOne, 5) == kInvalidMatchHandle,
+              "a 5-set format is not one of the rulebook's two choices (3 or 4)");
+        MatchHandle bestOfSeven = bridge_match_begin_with_format(GameModeDTO::OneVsOne, 4);
+        CHECK(bestOfSeven != kInvalidMatchHandle, "best-of-7 (first to 4 sets) is accepted");
+        bridge_match_close(bestOfSeven);
+
+        MatchHandle m = bridge_match_begin_with_format(GameModeDTO::OneVsOne, 3);
+        CHECK(m != kInvalidMatchHandle, "best-of-5 match created");
+
+        auto drive = [&](SessionHandle s) -> SnapshotDTO {
+            for (int op = 0; op < 400; ++op) {
+                int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+                SnapshotDTO snap = bridge_get_snapshot(s, current);
+                if (snap.status != BridgeStatus::Ok || snap.roundOutcome != RoundOutcomeDTO::InProgress) {
+                    return bridge_get_snapshot(s, 0);
+                }
+                if (snap.legalMovesForRequestingPlayer.count > 0) {
+                    bridge_submit_move(s, snap.stateVersion, snap.legalMovesForRequestingPlayer.moves[0]);
+                } else if (snap.boneyardDrawableCount > 0) {
+                    CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+                    if (r.status != BridgeStatus::Ok) bridge_end_turn_with_no_play(s, snap.stateVersion);
+                } else {
+                    bridge_end_turn_with_no_play(s, snap.stateVersion);
+                }
+            }
+            return bridge_get_snapshot(s, 0);
+        };
+
+        SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        CHECK(s != kInvalidSessionHandle, "first set's opening round dealt");
+        bool sawSetEnd = false, gameReachedThree = false;
+        bool roundOk = true, formatOk = true, setNumberOk = true;
+        bool midWinnerOk = true, midFlagOk = true, midStarterOk = true, midChainOk = true;
+        bool setWinnerOk = true, thresholdOk = true, setWinsOk = true, setStarterOk = true;
+        bool nextSetFlagOk = true, ritualOk = true;
+        bool gameWinnerOk = true, threeWinsOk = true, noNextSetOk = true;
+        bool scoreResetOk = true, expectFreshSet = false;
+        int completedSets = 0;
+        int expectedSetNumber = 1;
+
+        for (int round = 0; round < 200; ++round) {
+            SnapshotDTO done = drive(s);
+            if (done.roundOutcome == RoundOutcomeDTO::InProgress) {
+                roundOk = false;
+                break;
+            }
+            MatchResultDTO rec = bridge_match_record_round(m, s);
+            if (rec.status != BridgeStatus::Ok) { roundOk = false; break; }
+            formatOk = formatOk && rec.setsToWin == 3;
+            setNumberOk = setNumberOk && rec.setNumber == expectedSetNumber;
+            if (expectFreshSet) {
+                // The previous set ended at >=151. A fresh set's first round
+                // cannot still be at that total: scores must have reset.
+                scoreResetOk = scoreResetOk &&
+                    rec.scoresPerParticipant[0] < 151 && rec.scoresPerParticipant[1] < 151;
+                expectFreshSet = false;
+            }
+
+            if (!rec.setEnded) {
+                midWinnerOk = midWinnerOk && rec.setWinnerParticipantIndex == -1;
+                midFlagOk = midFlagOk && !rec.nextRoundStartsSet;
+                midStarterOk = midStarterOk && rec.nextRoundStarterIndex == done.decidingPlayerIndex;
+                bridge_session_close(s);
+                s = bridge_session_create_subsequent_round(GameModeDTO::OneVsOne, rec.nextRoundStarterIndex);
+                if (s == kInvalidSessionHandle) { roundOk = false; break; }
+                midChainOk = midChainOk && bridge_get_snapshot(s, 0).chain.count == 0;
+                expectedSetNumber = rec.setNumber;
+                continue;
+            }
+
+            sawSetEnd = true;
+            completedSets++;
+            setWinnerOk = setWinnerOk && rec.setWinnerParticipantIndex >= 0 && rec.setWinnerParticipantIndex < 2;
+            thresholdOk = thresholdOk && (rec.scoresPerParticipant[0] >= 151 || rec.scoresPerParticipant[1] >= 151);
+            setWinsOk = setWinsOk && rec.setWinsPerParticipant[0] + rec.setWinsPerParticipant[1] == completedSets;
+            setStarterOk = setStarterOk && rec.nextRoundStarterIndex == -1;
+
+            if (rec.matchEnded) {
+                gameReachedThree = true;
+                gameWinnerOk = gameWinnerOk && rec.winnerParticipantIndex == rec.setWinnerParticipantIndex;
+                threeWinsOk = threeWinsOk && rec.setWinsPerParticipant[rec.winnerParticipantIndex] == 3;
+                noNextSetOk = noNextSetOk && !rec.nextRoundStartsSet;
+                break;
+            }
+
+            nextSetFlagOk = nextSetFlagOk && rec.nextRoundStartsSet;
+            bridge_session_close(s);
+            s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+            if (s == kInvalidSessionHandle) { ritualOk = false; break; }
+            ritualOk = ritualOk && bridge_get_snapshot(s, 0).chain.count == 1;
+            expectedSetNumber = rec.setNumber + 1;
+            expectFreshSet = true;
+        }
+
+        CHECK(roundOk, "every set-play round reached a real outcome and recorded");
+        CHECK(formatOk, "the game carries the chosen best-of-5 format");
+        CHECK(setNumberOk, "the reported set number is the set the round belonged to");
+        CHECK(midWinnerOk, "a mid-set round has no set winner");
+        CHECK(midFlagOk, "a mid-set round continues the set, not a new one");
+        CHECK(midStarterOk, "mid-set starter is the round's deciding player");
+        CHECK(midChainOk, "a mid-set round starts with an empty chain, no mandated opener");
+        CHECK(sawSetEnd, "at least one set ended during the best-of-5 game");
+        CHECK(setWinnerOk, "a set end names a valid set winner");
+        CHECK(thresholdOk, "the set ended because someone reached the 151 loss threshold");
+        CHECK(setWinsOk, "set wins accumulate exactly one per completed set");
+        CHECK(setStarterOk, "a set end has no ordinary next starter");
+        CHECK(scoreResetOk, "a new set's first round starts from zero, not the previous set's total");
+        CHECK(nextSetFlagOk, "the next round must open a new set, not continue the old one");
+        CHECK(ritualOk, "every set opens with the double-six ritual, exactly like the game's first hand (R-12)");
+        CHECK(gameReachedThree, "the game reached three set wins within the round cap");
+        CHECK(gameWinnerOk, "the game winner is the participant who took the deciding set");
+        CHECK(threeWinsOk, "best-of-5 ends at exactly three set wins");
+        CHECK(noNextSetOk, "a finished game does not deal another set");
+        if (s != kInvalidSessionHandle) bridge_session_close(s);
+        bridge_match_close(m);
+    }
+
     std::printf("== 2v2 match recording: two team score slots, not four player slots ==\n");
     {
         MatchHandle m = bridge_match_begin(GameModeDTO::TwoVsTwo);

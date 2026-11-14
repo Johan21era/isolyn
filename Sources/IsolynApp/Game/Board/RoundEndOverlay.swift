@@ -29,6 +29,7 @@ struct RoundEndOverlay: View {
                             if !viewModel.scoreDeltas.isEmpty {
                                 deltaRow
                             }
+                            setSummary
                             nextStarterBanner
                             actionButton
                         }
@@ -137,12 +138,35 @@ struct RoundEndOverlay: View {
         .animation(.easeOut(duration: 0.3).delay(0.3), value: revealed)
     }
 
+    @ViewBuilder
+    private var setSummary: some View {
+        if !viewModel.setWins.isEmpty {
+            VStack(spacing: 7) {
+                if viewModel.lastSetEnded, let setWinner = viewModel.setWinnerForOverlay {
+                    Text("Set \(viewModel.setNumber) to \(participantName(setWinner)).")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(IsolynTheme.brass)
+                }
+                Text(setWinsText + "  ·  first to \(viewModel.matchSetsToWin)")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            }
+            .multilineTextAlignment(.center)
+            .opacity(revealed ? 1 : 0)
+            .animation(.easeOut(duration: 0.3).delay(0.32), value: revealed)
+        }
+    }
+
     private var nextStarterBanner: some View {
         Group {
             if matchOver {
                 EmptyView()
+            } else if viewModel.nextRoundStartsSet {
+                Text("Set \(viewModel.setNumber + 1) opens with the double-six ritual.")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
             } else if let starter = viewModel.nextStarterForOverlay {
-                Text("Player \(starter + 1) opens the next round.")
+                Text("\(participantName(starter)) opens the next round.")
                     .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             } else {
@@ -150,6 +174,18 @@ struct RoundEndOverlay: View {
             }
         }
         .opacity(revealed ? 1 : 0)
+    }
+
+    private var setWinsText: String {
+        viewModel.setWins.enumerated()
+            .map { "\(participantName($0.offset)) \($0.element)" }
+            .joined(separator: "  ·  ")
+    }
+
+    private func participantName(_ participant: Int) -> String {
+        viewModel.snapshot?.mode == .twoVTwo
+            ? "Team \(participant + 1)"
+            : "Player \(participant + 1)"
     }
 
     private var matchOver: Bool { viewModel.phase == .matchOver }
@@ -171,7 +207,7 @@ struct RoundEndOverlay: View {
                 }
             }
         } else {
-            wideButton("Deal next round") {
+            wideButton(viewModel.lastSetEnded ? "Deal next set" : "Deal next round") {
                 Task { await viewModel.dealNextRound() }
             }
         }
@@ -198,9 +234,7 @@ struct RoundEndOverlay: View {
     }
 
     private func winnerName(_ participant: Int) -> String {
-        viewModel.snapshot?.mode == .twoVTwo
-            ? "Team \(participant + 1)"
-            : "Player \(participant + 1)"
+        participantName(participant)
     }
 }
 
