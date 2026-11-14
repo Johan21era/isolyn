@@ -11,12 +11,13 @@ namespace isolyn {
 
 namespace {
 
+// RULEBOOK.md R-19: a hand is worth its pips, except the double blank, which
+// is worth ten when it is the only tile left. Scoring uses handPoints; if the
+// evaluation used raw pips, the engine would believe a lone 0-0 is worthless
+// while the scoreboard charges it ten — the same defect that made the app
+// under-award a round.
 int handValueOf(const GameState& state, int playerIndex) {
-    int total = 0;
-    for (const auto& tile : state.hand(playerIndex)) {
-        total += tile.value();
-    }
-    return total;
+    return RulesEngine::handPoints(state.hand(playerIndex));
 }
 
 struct HandFacts {
@@ -30,18 +31,18 @@ HandFacts handFacts(const GameState& state, int playerIndex) {
     HandFacts facts;
     const auto& hand = state.hand(playerIndex);
     if (state.chain().isEmpty()) {
-        for (const auto& tile : hand) facts.value += tile.value();
+        facts.value = RulesEngine::handPoints(hand);
         facts.legalMoves = static_cast<int>(hand.size());
         return facts;
     }
 
     const int left = state.chain().leftEnd();
     const int right = state.chain().rightEnd();
-    for (const auto& tile : hand) {
-        facts.value += tile.value();
-        if (tile.hasFace(left)) ++facts.legalMoves;
-        if (tile.hasFace(right)) ++facts.legalMoves;
-    }
+            for (const auto& tile : hand) {
+            if (tile.hasFace(left)) ++facts.legalMoves;
+            if (tile.hasFace(right)) ++facts.legalMoves;
+        }
+        facts.value = RulesEngine::handPoints(hand);
     return facts;
 }
 

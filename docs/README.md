@@ -54,7 +54,8 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `subsystems/ACCELERATOR.md` | Metal backend, parity, throughput | Living | 2026-11-13 |
 | `roadmaps/strategy-roadmap.md` | Seven-phase plan of record | Plan (partially executed) | 2026-11-13 |
 | `research/PROJECT_OVERDRIVE.md` | Strength programme charter, champion, next actions | Living journal | 2026-11-14 |
-| `research/BENCHMARK_BASELINE.md` | Measured ladder, timings, environment | Living measurements | 2026-11-14 |
+| `research/STRENGTH_BASELINE.md` | **The only home for playing-strength claims**, stamped with the rules version they were measured under | Living measurements | 2026-11-14 |
+| `research/BENCHMARK_BASELINE.md` | Pre-rulebook ladder and timings — superseded, kept for audit | Superseded measurements | 2026-11-14 |
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | **Current factual baseline** | Authoritative | 2026-11-13 |
@@ -81,7 +82,8 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 | Sanitizer (502 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
 | Accelerator (100 checks, throughput) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |
-| 1v1 strength ladder | `subsystems/LAB.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |
+| 1v1 strength ladder | `research/STRENGTH_BASELINE.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |
+| Which rules a strength figure belongs to | `rules/RULES_VERSION` | `python3 scripts/rules_audit.py` |
 | Completion %, defects, priorities | `audits/2026-11-13-audit.md` | the commands in its §13.1 |
 | Design intent per mode | `architecture/FEATURE_SPECS.md` | — (no implementation yet) |
 | Rules and the assertion behind each | `rules/RULEBOOK.md` | `python3 scripts/rules_audit.py` |

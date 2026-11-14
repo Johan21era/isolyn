@@ -1604,3 +1604,51 @@ longer describes.
 The six remaining gaps are implementation work: sets and games (R-07), the
 1v1v1 elimination (R-22, blocked behind sets), the locked pair (R-17), unlimited
 draws (R-15), the One Domino Rule (R-18), and the 101 option (R-06).
+
+## OPS-22 — The seal: rules hash, strength stamps, and the evaluation wired to R-19
+
+**Scope.** Reset the strength baseline after the rulebook changed, audit the
+engine for rulebook wiring, and make drift structurally impossible.
+
+**Wiring audit found three faults, all the same defect in different places.**
+`EvaluationEngine::handValueOf`, `EvaluationEngine::handFacts` and
+`ExpectedValueHeuristic::score` each summed raw pips, so a hand holding only the
+double blank was worth 0 to the AI while R-19 scores it 10. The engine's own
+batch-parity tests caught it as a scalar-vs-batch delta of exactly 10.0. All
+three now call `RulesEngine::handPoints`.
+
+The 2v2 closing test encoded the old value: player 0's team holds a lone double
+blank (10) plus 1-1 (2) = 12 against 7, so it is the *higher* team and now loses
+the hand, keeping only the closer bonus. The assertion was updated to the
+rulebook, not weakened.
+
+**The seal.**
+
+- `docs/rules/RULES_VERSION` records the SHA-256 of `RULEBOOK.md`
+  (`9ce8aee81a8a…`). `scripts/rules_audit.py` recomputes it and fails on a
+  mismatch: editing the rules without bumping the version is now a build error.
+- Every document under `docs/research/` that mentions Elo must declare a
+  `Rules version:`; if it is not the current hash it must carry a SUPERSEDED
+  banner in its first 15 lines. A stale claim cannot sit in the living docs.
+- `docs/research/STRENGTH_BASELINE.md` is the only home for a strength claim and
+  is stamped with the current hash; it currently records **no claim**.
+- `AGENTS.md` §11 now says no current strength claim exists, rather than quoting
+  superseded figures.
+
+**Old results.** Not deleted. `PROJECT_OVERDRIVE.md`, `EXPERIMENT_REGISTRY.md`
+and `BENCHMARK_BASELINE.md` are each marked `SUPERSEDED 2026-11-14` with
+`Rules version: PRE-RULEBOOK`. Deleting measured evidence would make the reset
+unauditable; the banner makes it impossible to quote them as current.
+
+**Evidence (literal).** Two deliberate tamper tests were rejected with exit 1:
+`[version] rules changed: rulebook is 9ce8aee81a8a, RULES_VERSION records
+000000000000` and `[strength-stamp] docs/research/ZZ_TEMP_CLAIM.md: cites a stale
+rules version and is not marked SUPERSEDED`; restoring the files returned exit 0.
+`./scripts/ci/local.sh`: `LOCAL CI: PASS — 6 step(s), 0 failed`, engine
+`TOTAL CHECKS PASSED: 451 TOTAL CHECKS FAILED: 0`, bridge 74, Swift 82.
+
+**Volume reality for the planned 5–10M game run.** Recorded rates on this machine
+are ~53 s per 1,000 rounds at depth 4 and ~230 s per 1,000 at depth 8. Ten million
+rounds is therefore on the order of six days at depth 4 and four weeks at depth 8,
+not an overnight run. Tomorrow should start with a 1,000-round timing run, then
+choose N from the measured rate and run in seeded chunks.

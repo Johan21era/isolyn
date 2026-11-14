@@ -30,12 +30,15 @@ Exit status is 0 only when every check passes.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RULEBOOK = ROOT / "docs" / "rules" / "RULEBOOK.md"
+VERSION_FILE = ROOT / "docs" / "rules" / "RULES_VERSION"
+RESEARCH_DIR = ROOT / "docs" / "research"
 
 STATUSES = {"ENFORCED", "VARIANT", "GAP", "OPEN", "BY_HAND"}
 GAP_STATUSES = {"GAP", "OPEN"}
@@ -80,7 +83,15 @@ def main() -> int:
         "assertions": [],
         "known-gaps": [],
         "no-silent-holes": [],
+        "version": [],
+        "strength-stamp": [],
     }
+
+    # The seal: the rulebook's hash is recorded in RULES_VERSION, and every
+    # strength claim must cite it. Change a rule and every document that
+    # quoted a number fails this gate until it is re-measured or explicitly
+    # marked SUPERSEDED.
+    digest = hashlib.sha256(rulebook.read_bytes()).hexdigest()
 
     rules: dict[str, dict[str, str]] = {}
     order: list[str] = []
@@ -174,6 +185,34 @@ def main() -> int:
         if rid not in rules:
             failures["known-gaps"].append(f"Known gaps names {rid}, which is not a rule")
 
+    # 7. the rulebook hash is recorded and current
+    if not VERSION_FILE.exists():
+        failures["version"].append("docs/rules/RULES_VERSION is missing")
+    else:
+        recorded = re.search(r"sha256:\s*([0-9a-f]{64})", VERSION_FILE.read_text(encoding="utf-8"))
+        if recorded is None:
+            failures["version"].append("RULES_VERSION has no `sha256: <64 hex>` line")
+        elif recorded.group(1) != digest:
+            failures["version"].append(
+                f"rules changed: rulebook is {digest[:12]}, RULES_VERSION records "
+                f"{recorded.group(1)[:12]} — bump the version and re-measure"
+            )
+
+    # 8. no strength claim without the rules version it was measured under
+    if RESEARCH_DIR.exists():
+        for path in sorted(RESEARCH_DIR.rglob("*.md")):
+            raw = path.read_text(encoding="utf-8")
+            if not re.search(r"\bElo\b", raw):
+                continue
+            rel = path.relative_to(ROOT).as_posix()
+            head = "\n".join(raw.splitlines()[:15])
+            if "Rules version:" not in raw:
+                failures["strength-stamp"].append(f"{rel}: quotes Elo but declares no Rules version")
+            elif digest not in raw and "SUPERSEDED" not in head:
+                failures["strength-stamp"].append(
+                    f"{rel}: cites a stale rules version and is not marked SUPERSEDED"
+                )
+
     counts = {s: sum(1 for r in rules.values() if r["status"] == s) for s in sorted(STATUSES)}
     total_issues = sum(len(v) for v in failures.values())
 
@@ -189,6 +228,7 @@ def main() -> int:
     print(f"  gaps            : {counts['GAP']}")
     print(f"  open            : {counts['OPEN']}")
     print(f"  by hand         : {counts['BY_HAND']}")
+    print(f"  rules version   : {digest[:12]}")
     for name, hits in failures.items():
         state = "PASS" if not hits else f"FAIL ({len(hits)})"
         print(f"  {name:<15} : {state}")

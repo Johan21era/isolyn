@@ -36,6 +36,15 @@ int main() {
         check(BlockingHeuristic::score(state, 0) == -2.0, "player 1 has 2 legal moves; blocking score for player 0 is their negation");
     }
 
+    section("ExpectedValueHeuristic: values a hand by RULEBOOK R-19, not raw pips");
+    {
+        std::vector<std::vector<DominoTile>> hands = { { DominoTile(0, 0) }, { DominoTile(6, 6) } };
+        GameState state(GameMode::OneVsOne, hands, {});
+        // A lone double blank is worth ten, so the evaluation must say -10, not 0.
+        check(ExpectedValueHeuristic::score(state, 0) == -10.0,
+              "a lone double blank is worth ten to the evaluation, matching the scoreboard");
+    }
+
     section("ExpectedValueHeuristic: negative of the player's own remaining hand value");
     {
         std::vector<std::vector<DominoTile>> hands = { { DominoTile(6, 5), DominoTile(3, 2) }, {} };
@@ -131,11 +140,14 @@ int main() {
         check(MoveGenerator::isPositionClosed(state), "sanity check: nobody has a legal move, and 2v2 has no boneyard");
 
         auto breakdown = EvaluationEngine::evaluate(GameMode::TwoVsTwo, state, 0);
-        // Team 0 (players 0,2): hand values 0 + 2 = 2. Team 1 (players 1,3): hand values 2 + 5 = 7.
-        // RULEBOOK R-05: team 0 has the lower combined value, so it is credited
-        // with team 1's 7. Player 0's team also made the closing play -> bonus.
-        check(breakdown.closingOpportunity == 7.0 + ClosingOpportunityHeuristic::kNextRoundStartBonus,
-              "player 0's team wins the opponents' 7 and gets the closer bonus");
+        // Team 0 (players 0,2): player 0 is left holding only the double blank,
+        // which RULEBOOK R-19 values at 10, plus player 2's 1-1 = 12.
+        // Team 1 (players 1,3): 1-1 and 2-3 = 7.
+        // RULEBOOK R-05: team 0 is now the HIGHER total, so it loses the hand and
+        // wins nothing; team 1 is credited 12. Team 0 closed, so it keeps the
+        // next-round-start bonus only.
+        check(breakdown.closingOpportunity == 0.0 + ClosingOpportunityHeuristic::kNextRoundStartBonus,
+              "player 0's team holds the higher total (12 via a lone double blank) and gets only the closer bonus");
     }
 
     section("EvaluationEngine: batch totals match per-player evaluation across modes and edge states");

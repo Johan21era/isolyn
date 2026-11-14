@@ -1,5 +1,13 @@
 # Benchmark Baseline
 
+> **SUPERSEDED 2026-11-14.** Every strength figure in this file was measured
+> under the pre-rulebook rules. None of them is a claim about the current
+> engine. They are kept because a deleted measurement cannot be audited, not
+> because they still hold. See [`../rules/RULEBOOK.md`](../rules/RULEBOOK.md).
+
+**Rules version:** PRE-RULEBOOK
+
+
 **Status:** living measurement record (tier 2). All figures below were produced
 on the machine described, with the seed and game count stated. Re-measure before
 quoting; a number without its seed is not a number.

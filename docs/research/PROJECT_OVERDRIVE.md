@@ -1,5 +1,13 @@
 # Project Overdrive — Research Journal
 
+> **SUPERSEDED 2026-11-14.** Every strength figure in this file was measured
+> under the pre-rulebook rules. None of them is a claim about the current
+> engine. They are kept because a deleted measurement cannot be audited, not
+> because they still hold. See [`../rules/RULEBOOK.md`](../rules/RULEBOOK.md).
+
+**Rules version:** PRE-RULEBOOK
+
+
 **Status:** living research journal (tier 2). Started 2026-11-14. This is the
 entry point for the strength programme; it records what is true *now*, not what
 was hoped for. Measured figures live in `docs/research/BENCHMARK_BASELINE.md`,
