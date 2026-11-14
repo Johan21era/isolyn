@@ -37,6 +37,9 @@ does not pay.
 | Revision | parallel root search (`dc1f757`) + partnership weight (`teamSupport = 24`) |
 | 1v1 configuration | depth 4, 64 determinizations, `workerThreads = 8` |
 | 1v1 vs sequential 20-sample engine | **+17.6 Elo**, 95% CI [+6.8, +28.3], n=4,000 |
+| Depth 5 vs 4 (1v1, 64 samples) | **+16.9 Elo**, 95% CI [+4.5, +29.4], n=3,000, ~1.3x cost |
+| Depth 8 vs 5 (1v1, 64 samples) | **+20.9 Elo**, 95% CI [+5.6, +36.1], n=2,000, ~2.6x cost |
+| Depth 8 + draws vs depth 4 | **+22.3 Elo**, 95% CI [+9.8, +34.7], n=3,000 |
 | 2v2 vs the old 0.25 partnership weight | **+15.8 Elo**, 95% CI [+10.2, +21.3], pooled n=15,000 across 5 seeds |
 | 1v1 control for the 2v2 weight change | −1.0 Elo [−16.3, +14.2] — no effect, as constructed |
 | Correctness | 429 engine, 73 bridge, 75 Swift — all passing |

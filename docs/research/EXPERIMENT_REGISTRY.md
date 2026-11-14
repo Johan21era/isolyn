@@ -371,6 +371,29 @@ compute null (E-011, E-022) was a separate finding, and nothing here re-tests it
   invalid −38.4 measurement is superseded by this valid one, which is the point:
   the number only became meaningful after the action could be executed.
 
+## E-026 — Depth scaling in 1v1: the elite tier is not over-configured (ACCEPTED)
+
+Depth had never been measured against the shipped horizon in 1v1. It was assumed
+settled because *2v2* depth 8 vs 4 was null and an old 10-vs-8 test was negative.
+Both generalisations were wrong.
+
+- **5 vs 4** (64 samples, 3,000 rounds): **+16.9 Elo [+4.5, +29.4]**, ~1.3x cost.
+- **6 vs 5** (3,000 rounds): +3.9 [−8.5, +16.4] — not resolved.
+- **8 vs 5** (2,000 rounds): **+20.9 Elo [+5.6, +36.1]**, ~2.6x depth-5 cost.
+- **8 vs 4 with draws enabled** (3,000 rounds): **+22.3 [+9.8, +34.7]**.
+
+- **Reading.** Strength keeps climbing through depth 8 at this sample count. The
+  6-vs-5 null is what a ~±12 Elo interval does to a small step: it is not
+  evidence of a plateau, and treating it as one would have frozen the engine one
+  ply shallow. The shipped elite tier (8/64) is therefore earned, not over-
+  configured — the earlier "depth 10 vs 8 is worse" result stands as the plateau
+  evidence, not "depth 6".
+- **Draw action at the elite horizon.** Depth 8, draws on vs off, 835 rounds:
+  **+49.0 Elo [+25.2, +72.8]**. Provisional — one seed, and the run is expensive
+  because each draw triggers a full-width depth-8 search. Direction is
+  consistent with E-025 (neutral at 4, +9.4 at 5, large at 8): drawing is a
+  positional investment whose value needs horizon.
+
 ## Strategic conclusion after E-007 – E-019
 
 Three experiments now agree on one thing: **scaling compute is finished as a
