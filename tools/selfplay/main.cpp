@@ -30,6 +30,10 @@ struct Options {
     int timeMs = 0;
     int workers = 0;
     int opponentWorkers = 0;
+    RootAggregation aggregation = RootAggregation::Mean;
+    RootAggregation opponentAggregation = RootAggregation::Mean;
+    EvaluationWeights weights{};
+    EvaluationWeights opponentWeights{};
     std::uint64_t seed = 1;
     std::string output = "lab/data/selfplay.csv";
     std::string mode = "1v1";
@@ -75,6 +79,10 @@ void usage(std::ostream& out) {
         << "  --time-ms N             per-move search budget; 0 = unlimited (default 0)\n"
         << "  --workers N             search worker threads for A; 0 = auto (default 0)\n"
         << "  --opponent-workers N    worker threads for B; 0 = auto (default 0)\n"
+        << "  --aggregation P         root rule for A: mean|maximin|trimmed|wincount\n"
+        << "  --opponent-aggregation P  root rule for B (default: mean)\n"
+        << "  --weights LIST           evaluation overrides, e.g. tempo=0,blocking=2\n"
+        << "  --opponent-weights LIST   evaluation overrides for B\n"
         << "  --seed N                deterministic deal/search seed (default 1)\n"
         << "  --mode MODE             1v1 | 1v1v1 | 2v2 (default 1v1)\n"
         << "  --output PATH           CSV output path (default lab/data/selfplay.csv)\n"
@@ -105,6 +113,51 @@ bool parseSeed(std::string_view text, std::uint64_t& value) {
     } catch (...) {
         return false;
     }
+}
+
+// "name=value,name=value" overrides for EvaluationWeights. Names match the
+// EvaluationBreakdown fields, so an ablation and its record use one vocabulary.
+bool applyWeightList(std::string_view list, EvaluationWeights& weights) {
+    std::size_t start = 0;
+    while (start <= list.size()) {
+        const std::size_t comma = list.find(',', start);
+        const std::string_view item = list.substr(
+            start, comma == std::string_view::npos ? std::string_view::npos : comma - start);
+        if (!item.empty()) {
+            const std::size_t eq = item.find('=');
+            if (eq == std::string_view::npos) return false;
+            const std::string_view name = item.substr(0, eq);
+            double value = 0.0;
+            try {
+                std::size_t used = 0;
+                const std::string text(item.substr(eq + 1));
+                value = std::stod(text, &used);
+                if (used != text.size()) return false;
+            } catch (...) {
+                return false;
+            }
+            if (name == "mobility") weights.mobility = value;
+            else if (name == "blocking") weights.blocking = value;
+            else if (name == "expectedValue") weights.expectedValue = value;
+            else if (name == "closingOpportunity") weights.closingOpportunity = value;
+            else if (name == "winThreat") weights.winThreat = value;
+            else if (name == "pipControl") weights.pipControl = value;
+            else if (name == "tempo") weights.tempo = value;
+            else if (name == "teamSupport") weights.teamSupport = value;
+            else return false;
+        }
+        if (comma == std::string_view::npos) break;
+        start = comma + 1;
+    }
+    return true;
+}
+
+bool parseAggregation(std::string_view text, RootAggregation& policy) {
+    if (text == "mean") { policy = RootAggregation::Mean; return true; }
+    if (text == "maximin") { policy = RootAggregation::Maximin; return true; }
+    if (text == "trimmed") { policy = RootAggregation::TrimmedMean; return true; }
+    if (text == "wincount") { policy = RootAggregation::WinCount; return true; }
+    return false;
 }
 
 bool parseMode(std::string_view text, GameMode& mode) {
@@ -206,6 +259,8 @@ GameSummary playOneRound(const Options& options,
     configA.timeLimitMs = options.timeMs;
     configA.endgameTileLimit = 8;
     configA.workerThreads = options.workers;
+    configA.rootAggregation = options.aggregation;
+    configA.weights = options.weights;
 
     SearchEngine::Config configB;
     configB.maxDepthPlies = options.opponentDepth;
@@ -213,6 +268,8 @@ GameSummary playOneRound(const Options& options,
     configB.timeLimitMs = options.timeMs;
     configB.endgameTileLimit = 8;
     configB.workerThreads = options.opponentWorkers;
+    configB.rootAggregation = options.opponentAggregation;
+    configB.weights = options.opponentWeights;
 
     // Alternate which physical side gets the A configuration so a one-sided
     // first-player advantage does not masquerade as a strength difference.
@@ -392,6 +449,8 @@ int main(int argc, char** argv) {
         if (arg == "--games" || arg == "--depth" || arg == "--determinizations" ||
             arg == "--opponent-depth" || arg == "--opponent-determinizations" ||
             arg == "--time-ms" || arg == "--workers" || arg == "--opponent-workers" ||
+            arg == "--aggregation" || arg == "--opponent-aggregation" ||
+            arg == "--weights" || arg == "--opponent-weights" ||
             arg == "--seed" || arg == "--mode" || arg == "--output") {
             if (i + 1 >= argc) {
                 std::cerr << "missing value for " << arg << "\n";
@@ -408,6 +467,28 @@ int main(int argc, char** argv) {
                     return 2;
                 }
                 options.mode = std::string(value);
+                continue;
+            }
+            if (arg == "--weights" || arg == "--opponent-weights") {
+                EvaluationWeights target = EvaluationWeights{};
+                if (!applyWeightList(value, target)) {
+                    std::cerr << "invalid weights: " << value
+                              << " (expected name=value pairs, e.g. tempo=0,blocking=2)\n";
+                    return 2;
+                }
+                if (arg == "--weights") options.weights = target;
+                else options.opponentWeights = target;
+                continue;
+            }
+            if (arg == "--aggregation" || arg == "--opponent-aggregation") {
+                RootAggregation policy = RootAggregation::Mean;
+                if (!parseAggregation(value, policy)) {
+                    std::cerr << "invalid aggregation: " << value
+                              << " (expected mean, maximin, trimmed, or wincount)\n";
+                    return 2;
+                }
+                if (arg == "--aggregation") options.aggregation = policy;
+                else options.opponentAggregation = policy;
                 continue;
             }
             if (arg == "--seed") {

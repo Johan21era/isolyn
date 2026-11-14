@@ -4,6 +4,7 @@
 #include <random>
 #include <vector>
 #include "BeliefState.hpp"
+#include "EvaluationEngine.hpp"
 #include "GameMode.hpp"
 #include "GameState.hpp"
 #include "Move.hpp"
@@ -37,6 +38,23 @@ struct SearchDecision {
     std::uint64_t nodesVisited = 0;
     std::uint64_t transpositionHits = 0;
     bool exactEndgame = false;
+};
+
+// How per-candidate results from different sampled worlds are combined into one
+// decision.
+//
+// Determinization search is only expected-value-optimal when the belief state
+// and the evaluation are both exact. Neither is true here, so the aggregation
+// rule is itself a strategic choice: averaging can prefer a move that is
+// mediocre in every world in which it is actually played, which is the classic
+// strategy-fusion failure of perfect-information Monte-Carlo search. The
+// alternatives below are cheap -- every candidate is already evaluated in every
+// sampled world -- and are measured rather than assumed.
+enum class RootAggregation {
+    Mean,        // expected value under the sampled belief (the original rule)
+    Maximin,     // worst sampled world: robust to a single bad world
+    TrimmedMean, // drop the worst quartile of worlds, then average
+    WinCount,    // how many worlds this candidate wins outright
 };
 
 class SearchEngine {
@@ -74,6 +92,14 @@ public:
         // own transposition table, killers and history -- none of that state
         // is shared across threads, so there is no lock on the hot path.
         int workerThreads = 0;
+
+        // Root move selection across sampled worlds. See RootAggregation.
+        RootAggregation rootAggregation = RootAggregation::Mean;
+
+        // Evaluation weights used at every leaf. Defaults are the hand-tuned
+        // ones; exposing them here is what makes component ablation and
+        // calibration measurable instead of theoretical.
+        EvaluationWeights weights{};
     };
 
     // Precondition: it is currently a player's turn to choose a move

@@ -60,10 +60,11 @@ struct RawEvaluation {
 
 RawEvaluation evaluateAll(GameMode mode,
                           const GameState& state,
+                          const EvaluationWeights& weights,
                           std::optional<bool> positionClosed = std::nullopt) {
     const EvaluationTotals totals = positionClosed.has_value()
-        ? EvaluationEngine::evaluateAllWithClosed(mode, state, *positionClosed)
-        : EvaluationEngine::evaluateAll(mode, state);
+        ? EvaluationEngine::evaluateAllWithClosed(mode, state, *positionClosed, weights)
+        : EvaluationEngine::evaluateAll(mode, state, weights);
     RawEvaluation raw;
     raw.values = totals.totals;
     raw.count = static_cast<std::uint8_t>(totals.playerCount);
@@ -135,6 +136,7 @@ struct SearchContext {
     bool aborted = false;
     bool exactEndgameUsed = false;
 
+    EvaluationWeights weights{};
     std::unordered_map<std::uint64_t, TTEntry> tt;
     std::array<std::array<int, 2>, kKillerSlots> killers{};
     std::array<std::array<int, kMoveCodeCount>, kMaxHistoryPlayers> history{};
@@ -347,13 +349,13 @@ SearchValue searchZeroSum(GameState& state,
     if (depthRemaining <= 0 && !exactEndgame) {
         // evaluateAll derives Closed from the mobility it already computes,
         // so a horizon leaf needs no separate all-player legality scan.
-        RawEvaluation raw = evaluateAll(context.mode, state);
+        RawEvaluation raw = evaluateAll(context.mode, state, context.weights);
         return SearchValue{relativeScore(raw, player, context.mode), raw};
     }
 
     const bool closed = MoveGenerator::isPositionClosed(state);
     if (closed) {
-        RawEvaluation raw = evaluateAll(context.mode, state, true);
+        RawEvaluation raw = evaluateAll(context.mode, state, context.weights, true);
         return SearchValue{relativeScore(raw, player, context.mode), raw};
     }
 
@@ -413,7 +415,7 @@ SearchValue searchZeroSum(GameState& state,
 
         SearchValue child;
         if (emptied) {
-            child.raw = evaluateAll(context.mode, state);
+            child.raw = evaluateAll(context.mode, state, context.weights);
             child.score = kTerminalWinScore + relativeScore(child.raw, player, context.mode);
         } else {
             const int next = (player + 1) % state.playerCount();
@@ -463,12 +465,12 @@ RawEvaluation searchMulti(GameState& state,
     const int player = state.currentPlayerIndex();
     if (depthRemaining <= 0) {
         // evaluateAll derives Closed from mobility without a second scan.
-        return evaluateAll(context.mode, state);
+        return evaluateAll(context.mode, state, context.weights);
     }
 
     const bool closed = MoveGenerator::isPositionClosed(state);
     if (closed) {
-        return evaluateAll(context.mode, state, true);
+        return evaluateAll(context.mode, state, context.weights, true);
     }
 
     std::vector<DominoTile> drawn = resolveForcedDraws(state, player);
@@ -510,9 +512,9 @@ RawEvaluation searchMulti(GameState& state,
         auto applied = MoveExecutor::apply(state, player, move);
         const bool emptied = state.hand(player).empty();
 
-        RawEvaluation child;
-        if (emptied) {
-            child = evaluateAll(context.mode, state);
+                        RawEvaluation child;
+                if (emptied) {
+                    child = evaluateAll(context.mode, state, context.weights);
             child[static_cast<std::size_t>(player)] += kTerminalWinScore;
         } else {
             const int next = (player + 1) % state.playerCount();
@@ -574,6 +576,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         ctx.useAlphaBeta = config.useAlphaBeta;
         ctx.cancelRequested = cancelRequested;
         ctx.sharedAbort = &stopFlag;
+        ctx.weights = config.weights;
         ctx.tt.reserve(1 << 12);
     }
 
@@ -641,7 +644,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 RawEvaluation raw;
                 double candidateScore = 0.0;
                 if (emptied) {
-                    raw = evaluateAll(mode, trial);
+                    raw = evaluateAll(mode, trial, config.weights);
                     if (mode == GameMode::OneVsOneVsOne) {
                         raw[static_cast<std::size_t>(player)] += kTerminalWinScore;
                         candidateScore = raw[static_cast<std::size_t>(player)];
@@ -697,16 +700,19 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         std::vector<std::vector<double>> accumulated(
             candidates.size(),
             std::vector<double>(static_cast<std::size_t>(playerCount), 0.0));
-        // Zero-sum modes must choose from the search score, not from a raw
-        // vector that a transposition-table bound may have inherited from a
-        // different line. The score is the value of the candidate in this
-        // sampled world; averaging those values is the root expectation.
-        std::vector<double> accumulatedScores(candidates.size(), 0.0);
+        // Per-candidate score in every sampled world. Keeping them separate --
+        // rather than only accumulating a running mean -- is what makes any
+        // aggregation rule other than the mean possible at the root.
+        std::vector<std::vector<double>> scoresByCandidate(candidates.size());
+        for (std::vector<double>& perCandidate : scoresByCandidate) {
+            perCandidate.reserve(static_cast<std::size_t>(config.determinizationCount));
+        }
         int samples = 0;
         bool abortedDepth = stopFlag.load(std::memory_order_relaxed);
 
-        // Reduced in sample order, so the floating-point sums -- and the chosen
-        // move -- are identical to the single-threaded path.
+        // Reduced in sample order, so the floating-point sums -- and, for the
+        // mean rule, the chosen move -- are identical to the single-threaded
+        // path.
         for (int sample = 0; sample < config.determinizationCount && !abortedDepth; ++sample) {
             const SampleResult& result = sampleResults[static_cast<std::size_t>(sample)];
             if (result.aborted) {
@@ -714,7 +720,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 break;
             }
             for (std::size_t c = 0; c < candidates.size(); ++c) {
-                accumulatedScores[c] += result.scores[c];
+                scoresByCandidate[c].push_back(result.scores[c]);
                 for (int p = 0; p < playerCount; ++p) {
                     accumulated[c][static_cast<std::size_t>(p)] +=
                         result.values[c][static_cast<std::size_t>(p)];
@@ -731,14 +737,56 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
             for (auto& values : accumulated) {
                 for (double& value : values) value /= static_cast<double>(samples);
             }
-            for (double& value : accumulatedScores) value /= static_cast<double>(samples);
+
+            auto aggregate = [&](std::size_t candidateIndex) -> double {
+                const std::vector<double>& scores = scoresByCandidate[candidateIndex];
+                if (scores.empty()) return -kInfinity;
+                switch (config.rootAggregation) {
+                case RootAggregation::Maximin: {
+                    double worst = kInfinity;
+                    for (double score : scores) worst = std::min(worst, score);
+                    return worst;
+                }
+                case RootAggregation::TrimmedMean: {
+                    std::vector<double> sorted = scores;
+                    std::sort(sorted.begin(), sorted.end());
+                    const std::size_t drop = sorted.size() / 4;
+                    double total = 0.0;
+                    for (std::size_t i = drop; i < sorted.size(); ++i) total += sorted[i];
+                    return total / static_cast<double>(sorted.size() - drop);
+                }
+                case RootAggregation::WinCount: {
+                    double wins = 0.0;
+                    for (std::size_t i = 0; i < scores.size(); ++i) {
+                        double best = -kInfinity;
+                        for (const std::vector<double>& other : scoresByCandidate) {
+                            if (i < other.size()) best = std::max(best, other[i]);
+                        }
+                        if (scores[i] >= best) wins += 1.0;
+                    }
+                    return wins;
+                }
+                case RootAggregation::Mean:
+                default: {
+                    double total = 0.0;
+                    for (double score : scores) total += score;
+                    return total / static_cast<double>(scores.size());
+                }
+                }
+            };
 
             std::size_t bestIndex = 0;
             double bestCriterion = -kInfinity;
             for (std::size_t c = 0; c < accumulated.size(); ++c) {
-                const double criterion = mode == GameMode::OneVsOneVsOne
-                    ? rootCriterion(accumulated[c], player, mode)
-                    : accumulatedScores[c];
+                // The mean rule keeps the original per-mode criterion (raw value
+                // in 1v1v1, team-relative otherwise). The robust rules compare
+                // like-for-like per-candidate distributions, so their mode
+                // handling is already encoded in what was scored.
+                const double criterion =
+                    (config.rootAggregation == RootAggregation::Mean &&
+                     mode == GameMode::OneVsOneVsOne)
+                        ? rootCriterion(accumulated[c], player, mode)
+                        : aggregate(c);
                 if (criterion > bestCriterion) {
                     bestCriterion = criterion;
                     bestIndex = c;

@@ -124,6 +124,66 @@ already at the sampling operating point, so there is nothing to bank.
   constraint is strategic representation (partner awareness, signalling, shared
   utility), not search effort.
 
+## E-012 — Maximin root selection (rejected)
+
+- **Hypothesis.** Determinization search with averaging is exposed to strategy
+  fusion: it can pick a move that is mediocre in every world actually played.
+  Choosing the move with the best *worst* sampled world should be more robust.
+- **Measured.** 2,000 games, depth 4, 64 samples, 8 workers: maximin 44.1%
+  against mean → **−40.8 Elo, CI [−56.2, −25.5]**.
+- **Verdict.** REJECTED, decisively. Maximin is dominated by the single worst
+  sampled world, which in dominoes is usually an unlucky deal that no move fixes.
+
+## E-013 — Win-count root selection (rejected)
+
+- **Hypothesis.** Pick the move that wins outright in the most sampled worlds.
+- **Measured.** 2,000 games: 46.3% → **−25.8 Elo, CI [−41.0, −10.5]**.
+- **Verdict.** REJECTED. Discards how much a move wins by, so it prefers a
+  narrow win in many worlds to a dominant win in slightly fewer.
+
+## E-014 — Trimmed-mean root selection (rejected)
+
+- **Hypothesis.** Drop the worst quartile of worlds, then average — keep the
+  robustness of maximin without its single-outlier fragility.
+- **Measured.** 2,000 games: 47.3% → **−18.4 Elo, CI [−33.7, −3.2]**.
+- **Verdict.** REJECTED. The least bad alternative, still clearly worse.
+
+### What E-012 – E-014 establish
+
+The expected-value (mean) rule is **not** a weak default that a simple robust
+rule improves on. All three alternatives lose, two of them heavily. If strategy
+fusion costs this engine strength, the fix is not a different scalar aggregation
+of the same samples — it would require information-set search that reasons about
+what the *opponent* believes, which is a different order of both cost and risk.
+
+The four aggregation rules remain in the engine as measured, off-by-default
+options so the result is reproducible; the default path is byte-identical to the
+previous engine (verified: 40-game same-seed output unchanged).
+
+## E-015 – E-017 — Single-component ablations
+
+Search now accepts evaluation overrides, so individual components can be
+removed and measured. All runs: 2,000 games, depth 4, 64 samples, 8 workers,
+seed 42, against the default weights.
+
+| Ablation | Elo (A vs default) | 95% CI | Verdict |
+|---|---:|---|---|
+| `tempo=0` (default 0.1) | −6.6 | [−21.8, +8.6] | no effect |
+| `expectedValue=0` (default 1.0) | −3.5 | [−18.7, +11.7] | no effect |
+| `pipControl=0` (default 0.5) | −8.3 | [−23.6, +6.9] | no effect |
+
+**What this establishes.** No single component is harmful: every removal trends
+slightly *worse*, so the eight terms are contributing in the right direction and
+the hand-set weights are not obviously broken. It also establishes a hard limit
+on the method — at 2,000 games the resolution is roughly ±15 Elo, and the
+individual contribution of each component sits below that. **Ablation cannot
+tune this evaluation; only joint optimisation with far more games can.**
+
+That matters for planning: "audit the weights" sounds like a cheap win and is
+not. The next evaluation step has to be a budgeted search over the weight vector
+(coordinate descent or CMA-ES against tournament results), with the acceptance
+gate fixed in advance.
+
 ## Strategic conclusion after E-007 – E-011
 
 Three experiments now agree on one thing: **scaling compute is finished as a
