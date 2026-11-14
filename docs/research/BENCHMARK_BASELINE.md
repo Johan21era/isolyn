@@ -60,6 +60,29 @@ Per-move cost at the elite tier is ~7.9 ms single-threaded. The parallel path
 uses 3.3 effective cores of 8, and performs ~47% more total CPU work than the
 sequential path (per-lane tables hold fewer entries, so fewer hits).
 
+## Other modes (seed 42, 500 games each, 2/8 vs 5/40)
+
+Until 2026-11-14 every strength claim in this repository was 1v1-only. These are
+the first measured multiplayer baselines.
+
+| Mode | A seats | A wins | A seat win% | B seats | B wins | B seat win% | Wall |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1v1v1 | 500 | 160 | 32.0% | 1,000 | 340 | 34.0% | 9.63 s |
+| 2v2 (teams) | 500 | 248 | 49.6% | 500 | 252 | 50.4% | 5.69 s |
+
+Read these with care:
+
+- In 1v1v1 the B configuration occupies **two** seats per round, so seat
+  percentages — not raw win counts — are the comparable number. 32.0% against
+  34.0% is a small edge to the deeper side and is not a resolved result.
+- In **2v2 the 5× compute advantage buys nothing at all** (49.6% vs 50.4%). That
+  is the same message as E-007–E-009 from a different angle: more search does not
+  produce better partnership play, so the deficiency is strategic, not
+  computational.
+- Closed-round frequency differs sharply by mode: 32% in 1v1v1 and 24% in 2v2,
+  against ~21% in 1v1. Endgame and blocking skills matter more in multiplayer
+  than the 1v1 tuning assumes.
+
 ## Game shape
 
 At depth 4 over 1,000 games: ~17 decisions per round, 79% of rounds decided by a

@@ -105,7 +105,26 @@ already at the sampling operating point, so there is nothing to bank.
   the classic search pathology: with an uncalibrated static evaluation, extra
   plies amplify evaluation error instead of reducing it.
 
-## Strategic conclusion after E-007 – E-009
+## E-010 — First 1v1v1 baseline
+
+- **Hypothesis.** The 1v1 ladder ordering should hold in three-player play.
+- **Measured.** 500 rounds, seed 42, 2/8 vs 5/40. Seat win rates 32.0% (A) and
+  34.0% (B, two seats per round). 32% of rounds closed rather than went out.
+- **Verdict.** INCONCLUSIVE but directionally consistent. 2 points of seat win
+  rate is inside noise at this sample; the mode is unproven, which is itself the
+  finding worth recording.
+
+## E-011 — First 2v2 baseline (and a null result)
+
+- **Hypothesis.** More search should help partnership play at least as much as
+  it helps 1v1.
+- **Measured.** 500 rounds, seed 42, 2/8 vs 5/40: A 49.6%, B 50.4%.
+- **Verdict.** REJECTED as an assumption. **A 5× compute advantage buys nothing
+  in 2v2.** Combined with E-007–E-009 this is the strongest evidence yet that the
+  constraint is strategic representation (partner awareness, signalling, shared
+  utility), not search effort.
+
+## Strategic conclusion after E-007 – E-011
 
 Three experiments now agree on one thing: **scaling compute is finished as a
 strength lever for this engine.**
@@ -116,6 +135,7 @@ strength lever for this engine.**
 | 64 → 192 worlds | +2.1 Elo, not resolved (E-007) |
 | 192 → 384 worlds | +6.3 Elo, not resolved (E-008) |
 | depth 8 → 10 | −10.4 Elo at 4.3× cost (E-009) |
+| 2v2: 2/8 → 5/40 | 0 (49.6% vs 50.4%, E-011) |
 
 The binding constraint is **evaluation quality and search selectivity**, not
 nodes per second. That is where the next tranche of work belongs: calibrate the
