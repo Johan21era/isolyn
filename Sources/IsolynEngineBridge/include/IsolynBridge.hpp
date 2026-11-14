@@ -265,6 +265,18 @@ struct SnapshotDTO {
     LegalMovesDTO legalMovesForRequestingPlayer;
 };
 
+// R-17 private look. This is deliberately NOT part of SnapshotDTO: the
+// public snapshot never carries the locked pair. Ok + both tiles only when
+// requestingPlayerIndex holds exactly one tile and no other boneyard tile
+// is drawable; otherwise InvalidRequest with count == 0. Read-only -- it
+// changes no state, so the pair may be looked at every time the conditions
+// are met, not once per hand.
+struct LockedPairDTO {
+    BridgeStatus status;
+    TileDTO tiles[2];
+    int32_t count;
+};
+
 struct CommandResultDTO {
     BridgeStatus status;
     uint64_t newStateVersion;      // meaningful only if status == Ok; unchanged session version otherwise
@@ -396,6 +408,12 @@ void bridge_session_close(SessionHandle session);
 // ---------------------------------------------------------------------------
 
 SnapshotDTO bridge_get_snapshot(SessionHandle session, int32_t requestingPlayerIndex);
+
+// R-17 private, seat-scoped look at the locked pair. Read-only: never mutates
+// state and never advances stateVersion. `requestingPlayerIndex` is the seat
+// whose hand must hold exactly one tile while boneyard().drawableCount() is
+// zero; the caller is responsible for only asking on that seat's behalf.
+LockedPairDTO bridge_session_private_locked_pair(SessionHandle session, int32_t requestingPlayerIndex);
 
 // ---------------------------------------------------------------------------
 // Commands (mutating; caller MUST serialize ALL calls -- commands and

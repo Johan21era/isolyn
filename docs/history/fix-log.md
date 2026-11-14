@@ -2343,3 +2343,41 @@ turn-transition integration tests.
   overlay/selector were not visually exercised in this entry.
 - Hosted CI remains blocked on account billing (OPS-12b); local checks are the
   authority here.
+
+## OPS-36 — R-17 private locked-pair look (2026-11-14)
+
+### What changed
+
+- **R-17 is now ENFORCED.** `GameState::privateLockedPair(seat)` returns the two
+  locked tiles only when that seat holds exactly one tile and
+  `boneyard().drawableCount() == 0`; it is read-only and repeatable. The test
+  asserts the exact pair, repeatability, and an unchanged state hash.
+- `bridge_session_private_locked_pair(session, seat)` is the seat-scoped,
+  read-only bridge query. It returns explicit `{-1,-1}` sentinels on refusal and
+  never advances `stateVersion`. The public `SnapshotDTO` still carries no pair.
+- The app exposes an eye control only when the visible seat is eligible and shows
+  the pair in a private overlay. The overlay is UI-local; it is cleared when the
+  conditions stop holding.
+- The rulebook's R-17 gap entry is removed. Three declared gaps remain: R-06's
+  101 option, R-15 analysis draws, and R-22 1v1v1 elimination.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `./scripts/ci/test_engine.sh` | 19 executables, **480 passed**, 0 failed |
+| `./scripts/ci/test_bridge.sh` | 2 executables, **116 passed**, 0 failed |
+| `./scripts/ci/sanitize.sh address` | **596 passed**, 0 findings |
+| `./scripts/ci/sanitize.sh thread` | **130 passed**, 0 findings |
+| `swift test` | **112 tests**, 0 failures, 0 skipped |
+| `swift build` | **Build complete!**, no warnings |
+| `rules_audit.py` / `docs_audit.py` | **PASS / PASS** (3 declared gaps) |
+
+### Limits
+
+- The private-pair overlay and eye control were compile-checked, not visually
+  exercised.
+- The bridge success path is a thin wrapper over the engine-tested eligibility;
+  the bridge test covers the refusal path, sentinels, and read-only version.
+- R-15 still caps analysis at one voluntary draw per turn; R-22 still ends a
+  1v1v1 set at 151 with the lowest score instead of eliminating the crosser.

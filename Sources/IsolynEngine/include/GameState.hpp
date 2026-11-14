@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <optional>
@@ -118,6 +119,15 @@ public:
     // has no drawable tile). Once either hand holds more than one tile,
     // the condition is false and the other player is released.
     std::optional<DominoTile> enforceOneDominoRule();
+
+    // R-17's private look: returns the two locked tiles ONLY when this
+    // player holds exactly one tile, no other boneyard tile is drawable,
+    // and a locked pair actually remains. Read-only -- looking changes no
+    // state, and the pair may be looked at every time the conditions are
+    // met, not once per hand. Seat-scoped by construction: the hand tested
+    // is the requester's, not the current player's. The public snapshot
+    // must never carry these tiles.
+    std::optional<std::array<DominoTile, 2>> privateLockedPair(int playerIndex) const;
 
     // Exact inverse of a drawTile call, on the BONEYARD side: must be
     // called in exact reverse order of drawTile calls, same as every

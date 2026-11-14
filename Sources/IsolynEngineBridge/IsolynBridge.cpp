@@ -365,6 +365,30 @@ SnapshotDTO bridge_get_snapshot(SessionHandle session, int32_t requestingPlayerI
     } catch (...) { return failedSnapshot(BridgeStatus::BridgeFailure); }
 }
 
+LockedPairDTO bridge_session_private_locked_pair(SessionHandle session, int32_t requestingPlayerIndex) {
+    LockedPairDTO out{};
+    out.status = BridgeStatus::InvalidRequest;
+    out.tiles[0] = kNoTileDTO;
+    out.tiles[1] = kNoTileDTO;
+    out.count = 0;
+    try {
+        auto impl = sessionTable().find(session);
+        if (!impl) { out.status = BridgeStatus::SessionClosed; return out; }
+        std::lock_guard<std::mutex> lock(impl->mutex);
+        const auto pair = impl->controller.state().privateLockedPair(requestingPlayerIndex);
+        if (!pair) return out;
+        out.status = BridgeStatus::Ok;
+        out.tiles[0] = fromEngine((*pair)[0]);
+        out.tiles[1] = fromEngine((*pair)[1]);
+        out.count = 2;
+        return out;
+    } catch (...) {
+        out.status = BridgeStatus::BridgeFailure;
+        out.count = 0;
+        return out;
+    }
+}
+
 // ============================================================================
 // Commands
 // ============================================================================

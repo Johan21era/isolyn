@@ -54,7 +54,7 @@ private let bridgeDTOLogger = Logger(subsystem: "com.isolyn.app", category: "bri
 /// a contiguous buffer of `count` elements, without depending on tuple
 /// accessor syntax or naming the tuple's type. `capacity` must match the
 /// tuple's actual arity.
-private func withTupleAsArray<Tuple, Element>(
+func withTupleAsArray<Tuple, Element>(
     _ tuple: inout Tuple, capacity: Int, count: Int, as: Element.Type
 ) -> [Element] {
     guard count > 0 else { return [] }
@@ -124,6 +124,13 @@ struct Tile: Sendable, Equatable, Hashable {
     fileprivate init(dto: isolyn.bridge.TileDTO) {
         low = Int(dto.low)
         high = Int(dto.high)
+    }
+
+    /// Internal bridge-facing initializer for the R-17 private-pair DTO.
+    /// The DTO is already validated by the bridge; this does not add a
+    /// second, conflicting validation layer.
+    init(bridgeDto: isolyn.bridge.TileDTO) {
+        self.init(dto: bridgeDto)
     }
 
     fileprivate var dto: isolyn.bridge.TileDTO {
@@ -458,7 +465,7 @@ enum BridgeError: Error, Sendable, Equatable {
     case engineFailure(diagnostic: String)
     case bridgeFailure(diagnostic: String)
 
-    fileprivate init(status: isolyn.bridge.BridgeStatus, diagnostic: String) {
+    init(status: isolyn.bridge.BridgeStatus, diagnostic: String) {
         switch status {
         case .InvalidRequest: self = .invalidRequest
         case .InvalidMove: self = .invalidMove

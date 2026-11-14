@@ -645,6 +645,30 @@ int main() {
         bridge_session_close(s);
     }
 
+    std::printf("== R-17 private look: the public snapshot stays blind and the look is read-only ==\n");
+    {
+        SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        CHECK(s != kInvalidSessionHandle, "1v1 session dealt for the private-look gate");
+        SnapshotDTO before = bridge_get_snapshot(s, 0);
+        CHECK(before.boneyardLockedCount == 0,
+              "the public snapshot never carries the locked pair, even at the table");
+
+        LockedPairDTO look = bridge_session_private_locked_pair(s, 0);
+        CHECK(look.status == BridgeStatus::InvalidRequest && look.count == 0,
+              "a 7-tile hand is not eligible: the pair stays private");
+        CHECK(look.tiles[0].low == -1 && look.tiles[1].low == -1,
+              "a refused look returns explicit sentinels, not a zero tile");
+
+        LockedPairDTO badSeat = bridge_session_private_locked_pair(s, 9);
+        CHECK(badSeat.status == BridgeStatus::InvalidRequest && badSeat.count == 0,
+              "an out-of-range seat is refused");
+
+        SnapshotDTO after = bridge_get_snapshot(s, 0);
+        CHECK(after.stateVersion == before.stateVersion,
+              "looking is read-only: the state version is unchanged");
+        bridge_session_close(s);
+    }
+
     std::printf("== difficulty profiles: C++ owns the strength-to-search mapping ==\n");
     {
         DifficultyProfileDTO casual = bridge_difficulty_profile(100);

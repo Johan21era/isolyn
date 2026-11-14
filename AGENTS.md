@@ -48,8 +48,8 @@ continuing. Do not skip a failing step and continue as if it passed.
 
 ```bash
 ./tools/selfplay/build.sh          # engine + harness compile
-./scripts/ci/test_engine.sh        # expect: 19 executables, 471 checks, 0 failed
-./scripts/ci/test_bridge.sh        # expect: 2 executables, 110 checks, 0 failed
+./scripts/ci/test_engine.sh        # expect: 19 executables, 480 checks, 0 failed
+./scripts/ci/test_bridge.sh        # expect: 2 executables, 116 checks, 0 failed
 swift build                        # expect: Build complete!
 swift test                         # expect: 112 tests, 0 skipped, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
@@ -61,7 +61,8 @@ The expected counts above are the state at commit `1352063`, updated at OPS-34
 (2026-11-14) for the rulebook rewrite and the Lab suites: engine 432 → 451,
 bridge 73 → 74, Swift 75 (1 skipped) → 112 (0 skipped); later that day Phase 1
 took bridge 74 → 87, and Phase 2 took engine 451 → 471 and bridge 87 → 110;
-Swift stayed at 112.
+R-17's private look then took engine 471 → 480 and bridge 110 → 116; Swift
+stayed at 112.
 If your run differs, the difference is a finding: explain it, do not quietly
 update the numbers.
 
@@ -307,9 +308,9 @@ documented number to match a broken run.
 - Known dead ends, do not re-litigate: Metal/GPU end-to-end acceleration (slower at
   every batch size), maximin/win-count/trimmed root aggregation, extra determinization
   samples beyond 64 at depth 8.
-- Known backlog: the four declared rule gaps (R-06's 101 option, R-15 analysis
-  draws, R-17's private look, R-22 elimination); transposition-table key and
-  depth-preferred replacement; 1v1v1 pruning; production packaging.
+- Known backlog: the three declared rule gaps (R-06's 101 option, R-15 analysis
+  draws, R-22 elimination); transposition-table key and depth-preferred
+  replacement; 1v1v1 pruning; production packaging.
 - The 1v1 default is now 151 (R-06), and the locked pair is no longer revealed
   (R-17). Those rules remain GAP only for the optional 101 pre-game choice and
   the private look, respectively.

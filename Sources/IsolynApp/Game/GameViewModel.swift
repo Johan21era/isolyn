@@ -82,6 +82,11 @@ final class GameViewModel {
     private(set) var analysisWasCancelled = false
     private var analysisTask: AnalysisTask?
 
+    /// R-17 private pair, when the current seat is entitled to look. This is
+    /// deliberately UI-local: it is never written into a snapshot or sent to
+    /// the other seat.
+    private(set) var privatePair: [Tile] = []
+
     // MARK: - Computer opponent state
 
     /// True while the opponent's turn is being searched or played. The board
@@ -166,6 +171,7 @@ final class GameViewModel {
             let previousSnapshot = snapshot
             snapshot = snap
             knownCurrentPlayerIndex = snap.currentPlayerIndex
+            if !canLookAtLockedPair { privatePair = [] }
             publishDrawIfNeeded(from: previousSnapshot, to: snap)
             discardStaleAnalysis()
 
@@ -295,6 +301,14 @@ final class GameViewModel {
         return s.boneyardDrawableCount > 0 && !s.chain.isEmpty
     }
 
+    /// R-17: a 1v1 player holding exactly one tile may inspect the locked
+    /// pair once no other boneyard tile is drawable. The bridge re-checks
+    /// both conditions and returns explicit refusal otherwise.
+    var canLookAtLockedPair: Bool {
+        guard let s = snapshot, s.roundOutcome == .inProgress else { return false }
+        return s.playerCount == 2 && s.boneyardDrawableCount == 0 && s.ownHand.count == 1
+    }
+
     var legalMoveSet: Set<Move> { Set(snapshot?.legalMoves ?? []) }
 
     // MARK: Overlay passthroughs (read-only views of coordinator state)
@@ -341,6 +355,20 @@ final class GameViewModel {
 
     /// Voluntary draw -- a real rules action (STRATEGY_NOTES treats proactive
     /// drawing as core strategy); the UI offers it, never auto-decides it.
+    /// R-17 private look. Read-only: no state version, no turn consumed.
+    func lookAtLockedPair() async {
+        guard let session, let s = snapshot, canLookAtLockedPair else { return }
+        do {
+            privatePair = try await session.lookAtLockedPair(for: s.requestingPlayerIndex)
+        } catch let error as BridgeError {
+            alertError = error
+        } catch {
+            alertError = .bridgeFailure(diagnostic: String(describing: error))
+        }
+    }
+
+    func dismissPrivatePair() { privatePair = [] }
+
     func voluntaryDraw() async {
         guard let session, let s = snapshot, canVoluntaryDraw else { return }
         do {

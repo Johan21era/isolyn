@@ -145,6 +145,18 @@ std::optional<DominoTile> GameState::enforceOneDominoRule() {
     return drawTile(m_currentPlayerIndex);
 }
 
+std::optional<std::array<DominoTile, 2>> GameState::privateLockedPair(int playerIndex) const {
+    // R-17 is a 1v1 rule; 1v1v1 and 2v2 deal the whole set and have no
+    // boneyard, so there is no pair to inspect there.
+    if (m_mode != GameMode::OneVsOne) return std::nullopt;
+    if (playerIndex < 0 || playerIndex >= playerCount()) return std::nullopt;
+    if (m_hands[static_cast<std::size_t>(playerIndex)].size() != 1) return std::nullopt;
+    if (m_boneyard.drawableCount() != 0) return std::nullopt;
+    const std::vector<DominoTile> locked = m_boneyard.lockedTiles();
+    if (locked.size() != 2) return std::nullopt;
+    return std::array<DominoTile, 2>{locked[0], locked[1]};
+}
+
 void GameState::undoDrawTile(int playerIndex, DominoTile tile) {
     assert(playerIndex >= 0 && playerIndex < playerCount());
     auto& hand = m_hands[static_cast<std::size_t>(playerIndex)];

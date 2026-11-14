@@ -73,6 +73,56 @@ int main() {
               "with no drawable tile there is nothing to take, so the rule cannot fire");
     }
 
+    section("GameState: R-17 private look returns the locked pair only to a one-tile hand with no drawable tiles");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(3, 3) },
+            { DominoTile(5, 5) },
+        };
+        // Exactly two remain: both are permanently locked, none drawable.
+        std::vector<DominoTile> pairOnly = { DominoTile(0, 0), DominoTile(6, 6) };
+        GameState state(GameMode::OneVsOne, hands, pairOnly);
+        const std::uint64_t before = state.hash();
+
+        auto pair = state.privateLockedPair(0);
+        check(pair.has_value(), "a one-tile hand with no drawable tiles may look at the pair");
+        if (pair.has_value()) {
+            check((*pair)[0] == DominoTile(0, 0) && (*pair)[1] == DominoTile(6, 6),
+                  "the look returns both locked tiles in boneyard order");
+        }
+        auto again = state.privateLockedPair(0);
+        check(again.has_value() && again == pair, "the look is repeatable -- it is not once per hand");
+        check(state.hash() == before, "looking changes nothing: the state hash is identical");
+
+        std::vector<std::vector<DominoTile>> uneven = {
+            { DominoTile(3, 3), DominoTile(2, 2) },
+            { DominoTile(5, 5) },
+        };
+        GameState twoTiles(GameMode::OneVsOne, uneven, pairOnly);
+        check(!twoTiles.privateLockedPair(0).has_value(),
+              "a player still holding two tiles may not look, even at the locked pair");
+        check(twoTiles.privateLockedPair(1).has_value(),
+              "the look is scoped to the requester's hand, not the current player's");
+
+        std::vector<DominoTile> drawableRemains = {
+            DominoTile(0, 0), DominoTile(6, 6), DominoTile(4, 4), DominoTile(1, 1),
+        };
+        GameState early(GameMode::OneVsOne, hands, drawableRemains);
+        check(!early.privateLockedPair(0).has_value(),
+              "while any other boneyard tile is still drawable, the pair stays private");
+
+        std::vector<std::vector<DominoTile>> threeHands = {
+            { DominoTile(3, 3) }, { DominoTile(5, 5) }, { DominoTile(1, 2) },
+        };
+        GameState threeWay(GameMode::OneVsOneVsOne, threeHands, pairOnly);
+        check(!threeWay.privateLockedPair(0).has_value(),
+              "1v1v1 has no locked pair to look at, even with a constructed boneyard");
+
+        GameState noPair(GameMode::OneVsOne, hands, {});
+        check(!noPair.privateLockedPair(0).has_value(),
+              "an empty boneyard has no pair; the look is not a peek at nothing");
+    }
+
     section("GameState: hash is order-independent for hands but sensitive to turn and draw order");
     {
         std::vector<DominoTile> boneyard = {

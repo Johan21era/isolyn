@@ -10,7 +10,7 @@ What the Swift/C++ bridge is, why it's shaped the way it is, and what it deliber
 
 A narrow layer between the SwiftUI app (`Sources/IsolynApp`) and the authoritative C++ engine (`Sources/IsolynEngine`). It exists because nothing wired the two together before this — `Package.swift` said so explicitly ("no Swift/C++ interop is wired up here... future work"), and a repo-wide search turned up zero prior bridge/adapter/interop artifacts of any kind. This is not a refactor of something that existed; it's new.
 
-It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`scripts/ci/test_engine.sh`, 471 checks across 19 executables, re-measured 2026-11-14), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
+It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`scripts/ci/test_engine.sh`, 480 checks across 19 executables, re-measured 2026-11-14), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
 
 ## Two facts about the engine that shaped every other decision here
 
@@ -137,6 +137,11 @@ source of truth), and this surface is data plumbing only:
   ordering when touching both surfaces is SESSION->MATCH everywhere (single
   global order).
 - `bridge_match_close(handle)` -- idempotent like every other close.
+- `bridge_session_private_locked_pair(session, seat)` -- R-17's seat-scoped
+  private look. Read-only (no stateVersion change), returns the two locked tiles
+  only when that seat holds exactly one tile and no other boneyard tile is
+  drawable. The public `SnapshotDTO` still carries no pair; the app shows the
+  result only to that seat.
 
 Policy lives Swift-side in `MatchCoordinator` (@MainActor @Observable): owns
 the handle, publishes scores/winner/next-starter, drives
@@ -145,7 +150,7 @@ serializes with the session's own command stream.
 
 Verified: SmokeTest match section (record/duplicate-reject/starter/
 accumulation/idempotent close) plus the reveal-on-end assertions -- current
-bridge suite 110/110; ASan+UBSan clean over the new paths; Swift package
+bridge suite 116/116; ASan+UBSan clean over the new paths; Swift package
 currently 112 tests, 0 skipped, 0 failures (re-measured 2026-11-14).
 
 **Closed: AUD-01.** `bridge_match_record_round` now checks that the finished

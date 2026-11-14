@@ -101,6 +101,21 @@ actor EngineSession {
         return try GameSnapshot.fromDtoOrThrow(dto)
     }
 
+    /// R-17 private look. Read-only and genuinely seat-scoped: the bridge
+    /// only returns the pair when THIS seat holds one tile and no other
+    /// boneyard tile is drawable. The caller must show it only to that seat.
+    func lookAtLockedPair(for playerIndex: Int) throws -> [Tile] {
+        guard let h = handle else { throw BridgeError.sessionClosed }
+        var dto = isolyn.bridge.bridge_session_private_locked_pair(h, Int32(playerIndex))
+        guard dto.status == .Ok else {
+            throw BridgeError(status: dto.status, diagnostic: "locked pair unavailable")
+        }
+        let tiles: [isolyn.bridge.TileDTO] = withTupleAsArray(
+            &dto.tiles, capacity: 2, count: Int(dto.count), as: isolyn.bridge.TileDTO.self
+        )
+        return tiles.map(Tile.init(bridgeDto:))
+    }
+
     // MARK: - Commands
     //
     // Every command below takes the state version the CALLER last

@@ -82,7 +82,7 @@ code. A change that edits only the code is a bug.
 | R-14 | The player who starts a hand may never make the first draw of that hand — zero exceptions. Thereafter anyone may draw freely, including while holding a playable tile; that is the only restriction on drawing. | ENFORCED | `Sources/IsolynEngine/MatchController.cpp` | `Tests/IsolynEngineTests/MatchControllerTests.cpp :: the opener may not draw into an empty chain` |
 | R-15 | Once the first draw has happened, a player may draw as many times as he likes in a turn, and on every turn after. | GAP | The analysis path caps a turn at one voluntary draw (`maxVoluntaryDraws = 1`). | Remove the cap. |
 | R-16 | A player with no playable tile on either end must draw until he holds a playable tile or the boneyard is empty, then his turn ends without a play. | ENFORCED | `Sources/IsolynEngine/MatchController.cpp` | `Tests/IsolynEngineTests/MatchControllerTests.cpp :: resolveForcedDraw draws until a playable tile is found` |
-| R-17 | Two boneyard tiles are locked. They are never drawn and never shown, except that a player who reaches exactly one tile while no other boneyard tiles remain may look at both privately — for his own recalibration, or not at all. The look is available every time those conditions are met, not once per hand. Looking changes nothing; they stay locked and the opponent never sees them. If only those two remain and nobody can play, the hand is an ordinary close. | GAP | The reveal is gone: the snapshot never carries the pair and the belief model keeps it uncertain. The private-look path is still unimplemented. | Model the private look (see IsolynBridge; do not reintroduce the public reveal). |
+| R-17 | Two boneyard tiles are locked. They are never drawn and never shown, except that a player who reaches exactly one tile while no other boneyard tiles remain may look at both privately — for his own recalibration, or not at all. The look is available every time those conditions are met, not once per hand. Looking changes nothing; they stay locked and the opponent never sees them. If only those two remain and nobody can play, the hand is an ordinary close. | ENFORCED | `Sources/IsolynEngine/GameState.cpp` (`privateLockedPair`), `Sources/IsolynEngineBridge/IsolynBridge.cpp` (seat-scoped read-only query), `Sources/IsolynApp/Game/Board/InteractiveGameBoardView.swift` (private overlay) | `Tests/IsolynEngineTests/GameStateTests.cpp :: R-17 private look returns the locked pair only to a one-tile hand with no drawable tiles` |
 | R-18 | When both players hold exactly one tile and the boneyard still has pieces, each must take one piece when his turn starts, even if he could win right there. As soon as one player holds more than one piece, the other is released from that obligation: he may play his single tile instantly and does not have to draw. | ENFORCED | `Sources/IsolynEngine/GameState.cpp` (`enforceOneDominoRule`), `Sources/IsolynEngine/MatchController.cpp` (turn transition), `Sources/IsolynEngine/SearchEngine.cpp` (search nodes) | `Tests/IsolynEngineTests/GameStateTests.cpp :: One Domino Rule: both hands on one tile force a draw at turn start (1v1 only)` |
 
 ### D. Scoring a hand
@@ -115,12 +115,6 @@ and a way to carry it into the score check; no UI or bridge field exists for it.
 `Config::maxVoluntaryDraws` is 1, so the search and the app's own draw action
 allow a single voluntary draw per turn. The rulebook allows any number once the
 first draw of the hand has happened.
-
-### R-17 — The locked pair
-
-The public reveal is removed: the snapshot no longer carries the pair and the
-belief model keeps it uncertain. What remains is the seat-scoped private look,
-which does not exist yet; until it does, no player may inspect the pair.
 
 ### R-22 — The 1v1v1 elimination
 

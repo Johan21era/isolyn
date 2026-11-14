@@ -68,6 +68,12 @@ struct InteractiveGameBoardView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.985)))
             }
 
+            if !viewModel.privatePair.isEmpty {
+                privatePairOverlay
+                    .transition(.opacity)
+                    .zIndex(95)
+            }
+
             settingsDrawerOverlay
         }
         .coordinateSpace(name: GameSurfaceCoordinateSpace.name)
@@ -451,6 +457,24 @@ struct InteractiveGameBoardView: View {
                 .buttonStyle(.plain)
                 .disabled(!primaryActionEnabled)
 
+                if viewModel.canLookAtLockedPair {
+                    Button {
+                        Task { await viewModel.lookAtLockedPair() }
+                    } label: {
+                        Image(systemName: "eye")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(IsolynTheme.ivory)
+                            .frame(width: 46, height: 46)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white.opacity(0.07))
+                            )
+                            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Look at the locked pair privately")
+                }
+
                 Button {
                     Task { await toggleAnalysis() }
                 } label: {
@@ -608,6 +632,58 @@ struct InteractiveGameBoardView: View {
         withAnimation(.easeInOut(duration: 0.25)) {
             appState.screen = .modeSelect
         }
+    }
+
+    @ViewBuilder
+    private var privatePairOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.88).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Text("Locked pair")
+                    .font(IsolynTheme.display(24))
+                    .foregroundStyle(IsolynTheme.ivory)
+                Text("Private to this seat. Looking changes nothing.")
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                    .multilineTextAlignment(.center)
+                HStack(spacing: 10) {
+                    ForEach(viewModel.privatePair, id: \.self) { tile in
+                        IsolynDominoTile(
+                            low: tile.low,
+                            high: tile.high,
+                            height: 52,
+                            appearance: appearanceManager.appearance
+                        )
+                    }
+                }
+                .padding(.vertical, 4)
+                Button {
+                    viewModel.dismissPrivatePair()
+                } label: {
+                    Text("Close")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(IsolynTheme.ivory)
+                        .frame(width: 150, height: 42)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.white.opacity(0.12))
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(28)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.black.opacity(0.94))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                    )
+            )
+            .padding(24)
+        }
+        .accessibilityAddTraits(.isModal)
     }
 
     @ViewBuilder
