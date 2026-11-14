@@ -471,7 +471,10 @@ enum SnakeChainLayout {
         let tableWidth = min(max(idealRun, tilePitch * 6), tilePitch * 14, W - margin * 2)
         let maxX = minX + tableWidth
 
-        var rowY = margin + short / 2
+        // Start a full long-axis below the top margin: a crosswise double in
+        // the opening run extends short/2 above its line, so centring the
+        // first row on short/2 alone would clip 9pt off the top of a 6-6.
+        var rowY = margin + long / 2
         var east = true
         var cursorX = minX
         var placed: [Placed] = []

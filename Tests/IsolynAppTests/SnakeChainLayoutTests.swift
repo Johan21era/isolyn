@@ -16,6 +16,55 @@ final class SnakeChainLayoutTests: XCTestCase {
         }
     }
 
+    /// Sweep: any chain, any window, with a double forced into every position
+    /// relative to a run start. Nothing may overlap, every tile must stay on
+    /// the table, and every run must sit exactly one row pitch from the next.
+    func test_chainNeverOverlapsOrDriftsOffItsRowLine() {
+        let cases: [(CGSize, ClosedRange<Int>)] = [
+            (CGSize(width: 1536, height: 900), 1...40),
+            (CGSize(width: 900, height: 620), 1...30),
+            (CGSize(width: 800, height: 320), 1...12),
+        ]
+        for (size, counts) in cases {
+            for count in counts {
+                for phase in 0..<4 {
+                    let tiles: [SnakeChainLayout.Oriented] = (0..<count).map { i in
+                        (i + phase) % 3 == 0
+                            ? SnakeChainLayout.Oriented(left: 4, right: 4, isDouble: true)
+                            : SnakeChainLayout.Oriented(left: i % 7, right: (i + 2) % 7, isDouble: false)
+                    }
+                    let m = SnakeChainLayout.compute(orientedTiles: tiles, availableSize: size)
+                    let rects = m.placed.map(footprint)
+                    let label = "n=\(count) phase=\(phase) size=\(Int(size.width))x\(Int(size.height))"
+
+                    for i in rects.indices {
+                        XCTAssertGreaterThanOrEqual(rects[i].minX, -0.51, "\(label): tile \(i) off the left edge")
+                        XCTAssertLessThanOrEqual(rects[i].maxX, size.width + 0.51, "\(label): tile \(i) off the right edge")
+                        XCTAssertGreaterThanOrEqual(rects[i].minY, -0.51, "\(label): tile \(i) off the top edge")
+                        XCTAssertLessThanOrEqual(rects[i].maxY, size.height + 0.51, "\(label): tile \(i) off the bottom edge")
+
+                        for j in rects.indices where j > i {
+                            let shared = rects[i].intersection(rects[j])
+                            if !shared.isNull {
+                                XCTAssertLessThanOrEqual(
+                                    min(shared.width, shared.height), 0.51,
+                                    "\(label): tiles \(i) and \(j) overlap by \(shared.width)x\(shared.height)")
+                            }
+                        }
+                    }
+
+                    let ys = Set(m.placed.map { ($0.y * 10).rounded() / 10 }).sorted()
+                    if ys.count > 1 {
+                        for k in 1..<ys.count {
+                            XCTAssertEqual(ys[k] - ys[k - 1], SnakeChainLayout.rowPitch, accuracy: 0.11,
+                                           "\(label): rows must be exactly one pitch apart, got \(ys)")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private func footprint(_ placed: SnakeChainLayout.Placed) -> CGRect {
         let short = SnakeChainLayout.tileShortAxis
         let width = placed.vertical ? short : short * 2
