@@ -533,8 +533,13 @@ enum SnakeChainLayout {
 
             rowY += rowPitch
             east.toggle()
-            // The new run leaves from under the corner, not from beside it.
-            cursorX = corner.x
+            // The return run starts from the corner's far EDGE, not its centre.
+            // Using the centre put the first tile half a tile to the side, so
+            // the corner and that tile overlapped diagonally and the turn read
+            // as a pile of verticals -- the right-hand mess a live test caught.
+            // Heading east, the next tile extends right from its left edge;
+            // heading west, from its right edge.
+            cursorX = corner.x + (east ? -short / 2 : short / 2)
         }
 
         // Safety net: no tile may ever be drawn on top of another. The row

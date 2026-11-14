@@ -173,7 +173,11 @@ final class SnakeChainLayoutTests: XCTestCase {
         // tile must keep its position RELATIVE to the first tile.
         let dx = after.placed[0].x - before.placed[0].x
         let dy = after.placed[0].y - before.placed[0].y
-        for i in 0..<existing.count {
+        // Every shared tile keeps its place EXCEPT the one that was last: when
+        // the chain grows, that tile becomes the corner for the next run, so it
+        // legitimately turns and moves by half a tile. That is the turn itself,
+        // not re-flow.
+        for i in 0..<(existing.count - 1) {
             XCTAssertEqual(before.placed[i].x + dx, after.placed[i].x, accuracy: 0.001,
                            "tile \(i) moved horizontally when the chain grew")
             XCTAssertEqual(before.placed[i].y + dy, after.placed[i].y, accuracy: 0.001,

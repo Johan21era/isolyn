@@ -78,7 +78,12 @@ final class BoardLayoutTests: XCTestCase {
         let rowPitch = SnakeChainLayout.tileShortAxis * 2 + SnakeChainLayout.hGap
         XCTAssertEqual(abs(next.y - corner.y), rowPitch, accuracy: 0.0001,
                        "the return run sits exactly one row pitch below the corner")
-        XCTAssertEqual(abs(next.x - corner.x), SnakeChainLayout.tileShortAxis, accuracy: 0.0001,
+        // The run leaves from the corner's far edge: a flat tile's centre sits
+        // half a corner-width further in than a double's would.
+        let nextWidth = next.vertical ? SnakeChainLayout.tileShortAxis
+                                      : SnakeChainLayout.tileShortAxis * 2
+        XCTAssertEqual(abs(next.x - corner.x),
+                       (nextWidth - SnakeChainLayout.tileShortAxis) / 2, accuracy: 0.0001,
                        "the return run starts from the corner's far edge")
     }
 
