@@ -192,8 +192,16 @@ gh run view <id> --json status,conclusion,jobs
 
 **Distinguishing a code failure from infrastructure failure is mandatory:**
 - If jobs fail in seconds with **0 steps executed** and/or **no runner assigned**
-  (`runner_name` empty, `started_at` == `completed_at`), that is infrastructure.
-  Say so explicitly, quote the evidence, and **do not report CI as green**.
+  (`runner_id: 0`, `runner_name` empty, `started_at` == `completed_at`), that is
+  infrastructure. Say so explicitly, quote the evidence, and **do not report CI as
+  green**. Fetch the annotation, which states the cause directly:
+  `gh api repos/:owner/:repo/check-runs/<job_id>/annotations`.
+- **Known cause in this repository (2026-11-14, OPS-12b):** the annotation reads
+  *"The job was not started because recent account payments have failed or your
+  spending limit needs to be increased."* The repository is private, so hosted
+  minutes are billed. This cannot be fixed from the tree — tell the owner to
+  resolve Billing & plans. Do not disable or weaken the workflow to manufacture a
+  green check; a billing-red run is honest evidence.
 - If steps ran and failed, that is a code failure: read the failing log, fix the
   cause, re-run, and only then report.
 

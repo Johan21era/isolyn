@@ -1199,3 +1199,29 @@ than edited in place (this log is append-only).
 **Lesson recorded:** "refresh the graphs" is two artifacts, not one. A single
 `graphify update` refreshes 2D only, and saying otherwise is a false claim even
 when the count quoted alongside it is true.
+
+## OPS-12b — CI root cause identified: account billing, not code (2026-11-14)
+
+Required by `AGENTS.md` §9 after three consecutive red runs. The earlier entries
+correctly refused to call CI green but only *suspected* infrastructure; this entry
+replaces the suspicion with the platform's own statement.
+
+- **Literal annotation from GitHub** on job `Documentation gate` (check-run
+  `132327917473`), reproduced verbatim:
+  > "The job was not started because recent account payments have failed or your
+  > spending limit needs to be increased. Please check the 'Billing & plans'
+  > section in your settings"
+- **Job evidence:** `runner_id: 0`, `runner_name: ""`, `started_at` and
+  `completed_at` 2 seconds apart, `steps: 0`. Nothing in the repository executed.
+- **Contributing fact:** `repos/Johan21era/isolyn` reports `private: true`, so
+  hosted runner minutes are billed to the account.
+- **Conclusion:** there is no defect in this tree. Every job is rejected before a
+  runner is assigned, which is why the logs are unavailable and why re-running
+  produced the identical result. The same suites pass locally (432 engine / 73
+  bridge / 75 Swift / docs PASS).
+- **Owner action required (cannot be fixed from the repository):** GitHub →
+  Settings → Billing & plans → resolve the failed payment and/or raise the
+  spending limit. Until then CI cannot execute for this repository at all.
+- **Not done, deliberately:** the workflow was not disabled, weakened or made
+  conditional to manufacture a green check. A red run caused by billing is honest
+  evidence; a disabled workflow would be a false one.
