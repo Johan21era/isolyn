@@ -1,8 +1,11 @@
 # Kaggle Bridge — Free Cloud Compute for the Offline Lab
 
-**Status:** proposed design (tier 2). Nothing here is implemented. Platform limits
-were read from Kaggle's own documentation on 2026-11-14; product limits change,
-so re-check before relying on the arithmetic.
+**Status:** implemented locally on 2026-11-14 (tier 3). The driver, worker,
+private-dataset packaging, receipt verifier and assembly path exist and pass the
+offline suite. **No live Kaggle session has been run** in this checkout; that
+needs a Kaggle account and CLI. Platform limits were read from Kaggle's own
+documentation on 2026-11-14; product limits change, so re-check before relying on
+the arithmetic.
 
 ## Why this workload suits Kaggle
 
@@ -52,48 +55,54 @@ trade-off should be explicit before the founders invest in it.
 ## The bridge, in five pieces
 
 1. **A private Kaggle dataset as the code drop.** The engine sources,
-   `tools/selfplay/`, `lab/`, and a `cloud/` worker, uploaded as one versioned
-   dataset. No GitHub clone and no internet toggle needed inside the notebook.
-2. **One notebook, fully environment-driven.** `ISOLYN_SHARD_START`,
-   `ISOLYN_SHARD_END`, `ISOLYN_MODE`, `ISOLYN_DEPTH`, `ISOLYN_SAMPLES`,
-   `ISOLYN_SEED`. It builds with `g++ -std=c++20 -O2 -pthread`, runs its shard
-   range, writes `out/shard-*.csv` plus `session.json` (game count, row count,
-   SHA-256 per file), and tars the result.
+   `tools/selfplay/`, `lab/`, and a `cloud/` worker are copied through an explicit
+   allowlist into one versioned dataset. No GitHub clone and no internet toggle
+   needed inside the notebook. The app, Accelerator, tests, build output and
+   `lab/data` are excluded.
+2. **One generated notebook per session.** The notebook is fully
+   environment-driven: an embedded session spec names the shard range, seeds,
+   configuration and output paths. It builds with `g++ -std=c++20 -O2 -pthread`,
+   runs `selfplay --check`, runs each shard, and writes `out/shard-*.csv` plus a
+   `session.json` receipt (source commit, config, per-file game/row/byte/SHA-256,
+   totals and status). It is private, CPU-only and has internet disabled.
 3. **A local driver: `scripts/lab cloud`.** `plan` turns a target game count into
-   sessions; `push` submits the next session; `status` polls; `fetch` downloads
-   the output; `verify` checks counts and checksums against `session.json`;
-   `assemble` folds verified sessions into the corpus. It keeps a ledger on disk
-   and treats a session as done only when the artefacts verify — the same rule
-   `lab run` already applies to shards.
-4. **Assembly.** Session CSVs need game ids rewritten per session before
-   concatenation, exactly as `lab merge` does per shard; extend it to take a
-   session list rather than one run directory.
-5. **A determinism policy.** Datasets are labelled by platform (see blocker 2).
+   contiguous sessions; `prepare` builds the private dataset and all session
+   specs; `push` submits the next session; `status` polls; `fetch` downloads;
+   `verify` recomputes counts and checksums; `assemble` folds only verified
+   sessions into the corpus. It keeps a ledger on disk and treats a session as
+   done only when the artefacts verify.
+4. **Assembly.** Session CSVs have their game ids rewritten per shard before
+   concatenation, exactly as `lab merge` does per run; the result is written
+   atomically and refuses gaps, overlaps or unverified sessions.
+5. **A determinism policy.** The engine and harness now use the in-tree
+   `StableRandom.hpp` (raw `std::mt19937_64`, rejection sampling, Fisher-Yates,
+   53-bit doubles) instead of implementation-defined `std::shuffle` and
+   `std::uniform_*` mappings. A pinned fixture records the expected sequence.
+   The dataset and receipt also record the source commit, platform and code
+   digest, so a cross-platform mismatch is still visible rather than silent.
 
 A generic `cloud/` contract — job spec in, artefact manifest out — keeps the
-worker reusable for the founders' other projects; Kaggle is one backend behind
-it, not the abstraction itself.
+worker reusable; Kaggle is one backend behind it, not the abstraction itself.
 
-## Three blockers, verified in this tree
+## Blockers addressed in code (2026-11-14)
 
-1. **The build is macOS-only.** `tools/selfplay/build.sh` passes
-   `-framework Security`, which Linux's linker rejects. `EntropySource.cpp`
-   already has a `getrandom()` path, so the fix is to make the flag conditional
-   on Darwin. Small, but nothing compiles on Kaggle until it is done.
-2. **The same seed will not reproduce the same deals across platforms.**
-   `dealSeeded` (selfplay), `Determinizer`, and `SimulationEngine` use
-   `std::shuffle` and `std::uniform_*_distribution`, whose mappings are
-   implementation-defined. libc++ on macOS and libstdc++ on Kaggle may produce
-   different permutations from the same `mt19937_64` seed. The statistics remain
-   valid; "same seed, same games" becomes false the moment a dataset crosses
-   platforms. Either accept and label datasets by platform, or implement a stable
-   Fisher-Yates with rejection sampling in-tree and add a fixture test that pins
-   the first N deals. **Recommend the latter before any dataset is used for
-   training**, because a corpus that cannot be reproduced is a trap for whoever
-   trains on it six months later.
+1. **The build is macOS-only.** `tools/selfplay/build.sh` now selects the
+   Security framework only on Darwin, uses `-pthread` on both platforms, honours
+   `ISOLYN_SELFPLAY_OUT`, and refuses an unsupported platform. `EntropySource.cpp`
+   already has a `getrandom()` path. A fake-toolchain test pins the Linux and
+   Darwin argument sets. **Actual Linux compilation has not been run on this Mac;
+   the first Kaggle session is its acceptance test.**
+2. **The same seed could not reproduce the same deals across platforms.**
+   `dealSeeded` (selfplay), `Determinizer`, and `SimulationEngine` now use
+   `StableRandom.hpp` instead of implementation-defined `std::shuffle` and
+   `std::uniform_*_distribution`. The helper uses raw `std::mt19937_64` output,
+   rejection sampling, Fisher-Yates and a 53-bit unit interval. `StableRandomTests`
+   pins the expected indices, shuffle and unit-interval value. The corpus and
+   receipt still record platform and code digest, because a deterministic test on
+   macOS is evidence about the algorithm, not proof about the Kaggle binary.
 3. **Metal is irrelevant and should be excluded.** `Accelerator/` is
    Objective-C++ against Metal; it does not build on Linux and would not help if
-   it did.
+   it did. It is excluded from the cloud allowlist.
 
 ## Risks worth stating plainly
 
@@ -124,3 +133,27 @@ and compare the outcome mix and average points against the same configuration
 locally. If the distributions agree within their intervals and the artefacts
 verify, the session count follows from the measured rate — and only then is a 5M
 run a schedule rather than a hope.
+
+## Session contract
+
+A session is accepted only when all of the following hold:
+
+- the receipt is a JSON object with the same run id, source commit, code digest,
+  dataset reference and exact config as the plan;
+- every planned shard appears exactly once, with no extra shard and no duplicate;
+- each CSV has the expected header and is a whole number of games with ids
+  `0..games-1`;
+- each shard's game count and row count match the receipt, and the file SHA-256
+  matches the receipt;
+- the receipt's totals equal the sum of the shards and the plan's shard total;
+- the session status is `complete`.
+
+`fetch` downloads into a temporary directory, validates, copies only the declared
+files, validates the copy, and only then renames it into place. `assemble`
+re-verifies every session immediately before writing, so a hand-edited ledger or
+a stale receipt cannot silently enter the corpus.
+
+Operational details and the exact commands live in
+[`cloud/README.md`](../../cloud/README.md). The local worker and verifier are
+covered by `lab/tests/test_cloud.py`, `lab/tests/test_cloud_worker.py` and
+`lab/tests/test_build_script.py`.

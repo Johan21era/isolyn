@@ -1,4 +1,5 @@
 #include "Determinizer.hpp"
+#include "StableRandom.hpp"
 #include <algorithm>
 #include <cassert>
 
@@ -15,7 +16,7 @@ std::vector<std::pair<DominoTile, int>> Determinizer::sample(const BeliefState& 
 
     std::vector<int> locations;
     for (const auto& [location, count] : locationCounts) locations.push_back(location);
-    std::shuffle(locations.begin(), locations.end(), rng);
+    stable_random::shuffle(locations, rng);
 
     std::vector<std::pair<DominoTile, int>> assignment;
 
@@ -32,11 +33,10 @@ std::vector<std::pair<DominoTile, int>> Determinizer::sample(const BeliefState& 
 
             std::size_t chosenIndex = 0;
             if (totalWeight <= 0.0) {
-                std::uniform_int_distribution<std::size_t> uniform(0, remaining.size() - 1);
-                chosenIndex = uniform(rng);
+                chosenIndex = static_cast<std::size_t>(
+                    stable_random::uniformIndexBelow(rng, remaining.size()));
             } else {
-                std::uniform_real_distribution<double> dist(0.0, totalWeight);
-                double r = dist(rng);
+                const double r = stable_random::unitInterval(rng) * totalWeight;
                 double cumulative = 0.0;
                 for (std::size_t i = 0; i < remaining.size(); ++i) {
                     cumulative += belief.probability(remaining[i], location);

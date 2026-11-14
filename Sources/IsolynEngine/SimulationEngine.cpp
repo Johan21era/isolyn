@@ -1,5 +1,6 @@
 #include "SimulationEngine.hpp"
 #include "Determinizer.hpp"
+#include "StableRandom.hpp"
 #include <algorithm>
 
 namespace isolyn {
@@ -30,7 +31,7 @@ GameState SimulationEngine::sampleDeterminizedState(const GameState& realState, 
             hands[static_cast<std::size_t>(location)].push_back(tile);
         }
     }
-    std::shuffle(sampledBoneyardTiles.begin(), sampledBoneyardTiles.end(), rng);
+    stable_random::shuffle(sampledBoneyardTiles, rng);
 
     // Do not append the real locked pair: that would reveal its identity to
     // the search. The sampled boneyard already has the full boneyard size;

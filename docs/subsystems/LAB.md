@@ -64,6 +64,27 @@ tools/selfplay/  ── CSV/JSONL ──▶  lab/ (Python)
   app never reads the Desktop checkout.
 - `pyproject.toml` — no runtime dependencies; optional `train` extras.
 
+## Cloud batch bridge (2026-11-14)
+
+Kaggle is wired as a **batch worker for the same harness**, never as a host for
+the app. `scripts/lab cloud` plans contiguous shards, packages a private code
+dataset through an explicit allowlist, generates one private CPU-only notebook
+per session, and accepts output only after a receipt/hash/game-count check. The
+C++ engine remains the only rules authority; the worker just builds
+`tools/selfplay` and runs its planned shards.
+
+The worker uses the portable build and the in-tree stable RNG. A clean Git commit
+and SHA-256 code digest are required before packaging, and every receipt carries
+the source commit, code digest, dataset reference and exact configuration.
+`fetch` validates in a temporary directory and refuses overwrite; `assemble`
+re-verifies every session and refuses gaps, overlaps or incomplete receipts.
+
+**No live Kaggle session has been run in this checkout.** The local driver and
+worker are covered by offline tests, but the first 10,000-game session is still
+the acceptance gate. Commands, account setup and limits are in
+[`cloud/README.md`](../../cloud/README.md); the design arithmetic is in
+[`docs/research/KAGGLE_BRIDGE.md`](../research/KAGGLE_BRIDGE.md).
+
 ## App integration (2026-11-14)
 
 The Lab screen removes the terminal from the loop without changing what a run is.
@@ -104,7 +125,10 @@ Every dataset must eventually carry:
 
 The current generator emits seeds and configuration but not an engine commit
 or timestamp yet; those remain lab packaging requirements, not claims already
-met by the CSV.
+met by the CSV. Cloud sessions add them at the session level: the plan, worker
+receipt and local assembly summary record the source commit, code digest,
+timestamp, seeds, configuration, platform and verified row counts without
+changing the CSV schema.
 
 Rows for one game are contiguous and game ids increase within a shard. The
 streaming reader relies on that shape and rejects a file whose ids go backwards

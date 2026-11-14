@@ -51,7 +51,10 @@ jobs:
       - name: Swift test suite (environment + headless game flow)
         run: swift test
 
-      - name: Engine suite (19 executables, 490 checks)
+      - name: Offline lab + cloud verifier tests
+        run: PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests
+
+      - name: Engine suite (20 executables, 497 checks)
         run: ./scripts/ci/test_engine.sh
 
       - name: Bridge suite (SmokeTest + SoakTest, 133 checks)

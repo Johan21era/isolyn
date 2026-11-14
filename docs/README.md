@@ -59,7 +59,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `research/BENCHMARK_BASELINE.md` | Pre-rulebook ladder and timings — **VOID**, kept for audit only | VOID measurements | 2026-11-14 |
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
-| `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, blockers, first session | Proposed design | 2026-11-14 |
+| `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, session contract, first session | Implemented locally; live run pending | 2026-11-14 |
 | `audits/2026-11-14-audit.md` | **Current factual baseline** | Authoritative | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | Prior factual baseline; superseded by the 2026-11-14 audit | Historical snapshot | 2026-11-13 |
 | `audits/2026-11-13-documentation-audit.md` | Why each document exists; contradiction register | Authoritative for doc status | 2026-11-13 |
@@ -71,7 +71,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `history/roadmaps/core-hardening-roadmap.md` | Completed hardening plan | Historical | 2026-08 |
 
 Component documentation lives next to its code, where its readers already are:
-[`../lab/README.md`](../lab/README.md), [`../tools/selfplay/README.md`](../tools/selfplay/README.md), [`../Accelerator/README.md`](../Accelerator/README.md).
+[`../lab/README.md`](../lab/README.md), [`../tools/selfplay/README.md`](../tools/selfplay/README.md), [`../cloud/README.md`](../cloud/README.md), [`../Accelerator/README.md`](../Accelerator/README.md).
 
 ## Claim → evidence
 
@@ -79,9 +79,10 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 
 | Claim | Home | Reproduce with |
 |---|---|---|
-| Engine checks (490, 19 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
+| Engine checks (497, 20 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
 | Bridge checks (133, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
 | Swift tests (120, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
+| Offline lab/cloud tests (40, 0 failures) | `engineering/BRIDGE_TESTING.md` | `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` |
 | Sanitizer (623 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
 | Accelerator (94 pass / 6 fail, parity red) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |

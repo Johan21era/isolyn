@@ -1,6 +1,6 @@
 # IsolynV2.0 Self-Play Generator
 
-**Status:** working engine-vs-engine generator, updated 2026-11-11. It links
+**Status:** working engine-vs-engine generator, updated 2026-11-14. It links
 the real `IsolynEngine` and emits one CSV row per move. It is not a strength
 claim and it is not a trainer.
 
@@ -25,6 +25,15 @@ claim and it is not a trainer.
 
 The binary is written to `tools/selfplay/build/`, which is gitignored. The
 default output path is `lab/data/selfplay.csv`.
+
+`build.sh` is portable: it links Apple's Security framework only on Darwin, uses
+`-pthread` on both macOS and Linux, and honours `ISOLYN_SELFPLAY_OUT` so a batch
+worker can write to a mounted output directory. It uses the in-tree
+`StableRandom.hpp` instead of implementation-defined distribution mappings, so
+the same seed and configuration should reproduce the same deals across
+platforms. `StableRandomTests` pins the expected sequence. Actual Linux
+compilation is exercised by the first Kaggle session; the build-script test only
+pins the platform flags.
 
 ## Modes
 

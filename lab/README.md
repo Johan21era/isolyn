@@ -141,6 +141,29 @@ before this was fixed were measured against the weaker default and were too fast
 - Shards keep their own CSV and log under `lab/data/runs/<run-id>/shards/`;
   `merge` rewrites game ids into one continuous sequence.
 
+## Cloud batch runs
+
+`./scripts/lab cloud` is the local control plane for private Kaggle sessions. It
+plans contiguous shards, packages only the allowlisted engine/harness/lab/worker
+files into a private dataset, generates a private CPU notebook per session, and
+accepts fetched output only after receipt, hash, row and game-count verification.
+It requires a clean Git commit and never reads the Kaggle token itself.
+
+```bash
+./scripts/lab cloud plan --games 10000 --games-per-shard 2500 \
+  --session-games 10000 --owner <your-kaggle-username>
+./scripts/lab cloud prepare cloud-1v1-d8x64-n10000-s1
+./scripts/lab cloud push cloud-1v1-d8x64-n10000-s1 --session 0000 --yes
+./scripts/lab cloud status cloud-1v1-d8x64-n10000-s1 --session 0000
+./scripts/lab cloud fetch cloud-1v1-d8x64-n10000-s1 --session 0000
+./scripts/lab cloud verify cloud-1v1-d8x64-n10000-s1
+./scripts/lab cloud assemble cloud-1v1-d8x64-n10000-s1
+```
+
+See [`../cloud/README.md`](../cloud/README.md) for the setup, the exact session
+contract and the limits. The first 10,000-game session is the live acceptance
+gate; no live session has been run from this checkout.
+
 ## Quality-of-life checks
 
 The app can stop an analysis, open its captured log, copy a report, and reload

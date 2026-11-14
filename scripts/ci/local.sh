@@ -53,6 +53,10 @@ step docs    "documentation gate: links, paths, status, register, figures" \
              "grep RESULT $LOG_DIR/docs.log" \
              python3 scripts/docs_audit.py
 
+step labtest "offline lab + cloud verifier tests" \
+             "grep -E 'Ran [0-9]+ tests|OK|FAILED' $LOG_DIR/labtest.log | tail -1" \
+             env PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests
+
 step build   "swift package build" \
              "grep -E 'Build complete|error:' $LOG_DIR/build.log" \
              swift build

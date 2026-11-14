@@ -10,6 +10,8 @@
 #   ./scripts/lab clean --probes --yes     reclaim probe data; --stale-locks too
 #   ./scripts/lab merge <run-id>           one CSV from the finished shards
 #   ./scripts/lab evaluate --input X.csv   calibration report on a CSV
+#   ./scripts/lab cloud plan               plan private Kaggle sessions
+#   ./scripts/lab cloud verify <run-id>    re-check downloaded cloud artifacts
 #   ./scripts/lab build                    build the C++ self-play harness
 set -euo pipefail
 
@@ -27,11 +29,14 @@ case "$command" in
   evaluate)
     exec python3 -m isolyn_lab.cli evaluate "$@"
     ;;
+  cloud)
+    exec python3 -m isolyn_lab.cloud "$@"
+    ;;
   build)
     exec "$ROOT/tools/selfplay/build.sh"
     ;;
   help|--help|-h)
-    sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     ;;
   *)
     echo "unknown lab command: $command" >&2

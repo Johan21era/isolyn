@@ -5,6 +5,7 @@
 #include "ProbabilityEngine.hpp"
 #include "RulesEngine.hpp"
 #include "SearchEngine.hpp"
+#include "StableRandom.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -217,7 +218,7 @@ DealResult dealSeeded(GameMode mode, std::mt19937_64& rng) {
         for (const DominoTile& excluded : Dealer::excludedTilesForMode(mode)) {
             pool.erase(std::remove(pool.begin(), pool.end(), excluded), pool.end());
         }
-        std::shuffle(pool.begin(), pool.end(), rng);
+        stable_random::shuffle(pool, rng);
 
         result.hands.assign(static_cast<std::size_t>(playerCount), {});
         auto cursor = pool.begin();
