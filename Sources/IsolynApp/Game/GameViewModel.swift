@@ -144,10 +144,6 @@ final class GameViewModel {
     /// exactly as MatchController would headlessly. Bounded: a boneyard can
     /// only feed ~12 forced draws per turn in the worst legal game.
     func refresh() async {
-        await refresh(forcedDrawAttempts: 0)
-    }
-
-    private func refresh(forcedDrawAttempts: Int) async {
         guard setupError == nil, let session, let match else { return }
         do {
             // In AI mode the board is always requested from the human seat.
@@ -184,23 +180,16 @@ final class GameViewModel {
                 assert(snap.currentPlayerIndex == snap.requestingPlayerIndex)
             }
 
-            if snap.currentPlayerIndex == snap.requestingPlayerIndex && snap.legalMoves.isEmpty {
-                if snap.boneyardDrawableCount > 0, forcedDrawAttempts < 32 {
-                    _ = try await session.resolveForcedDraw(expecting: snap.stateVersion)
-                    await pace(240_000_000)
-                    await refresh(forcedDrawAttempts: forcedDrawAttempts + 1)
-                    return
-                } else if snap.boneyardDrawableCount == 0 {
-                    phase = .playing   // blocked + dry yard: pass button appears
-                    return
-                }
-            }
-
+            // A blocked player is deliberately NOT drawn for automatically.
+            // Drawing is mandatory, not automatic: when the yard holds tiles
+            // the Draw control is already enabled, and the player spends the
+            // draws themselves, one tile at a time. Doing it for them removed
+            // agency and pre-empted the very button that exists for it.
             phase = .playing
             scheduleAITurnIfNeeded()
         } catch let error as BridgeError {
             if case .staleRequest = error {
-                await refresh(forcedDrawAttempts: forcedDrawAttempts)
+                await refresh()
                 return
             }
             alertError = error

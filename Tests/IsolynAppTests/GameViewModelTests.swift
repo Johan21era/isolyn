@@ -57,28 +57,39 @@ final class GameViewModelTests: XCTestCase {
         _ = handBefore
     }
 
-    func test_forcedDrawLoop_resolvesBlockedPlayerWithoutManualHelp() async throws {
-        // Hunt across fresh deals for one where the post-opener player is
-        // blocked (~1-in-8), then prove refresh() self-resolves: by the time
-        // phase settles, either moves exist or the yard went dry mid-loop.
-        var hunted = false
+    func test_blockedPlayer_isNotDrawnAutomatically() async throws {
+        // Drawing is mandatory, not automatic. A blocked player must still hold
+        // the same hand after a refresh: the app may not spend their draws for
+        // them. The Draw control is what resolves the block, one tile at a time.
+        // (This test previously asserted the opposite -- that refresh() silently
+        // self-resolved blocked turns -- which is the behaviour the owner's live
+        // testing rejected.)
         for _ in 0..<24 {
             let vm = GameViewModel(mode: .oneVOne)
             await vm.refresh()
             defer { vm.shutdown() }
             guard let snap = vm.snapshot, snap.roundOutcome == .inProgress else { continue }
-            if snap.legalMoves.isEmpty {
-                hunted = true
-                // refresh() already auto-ran forced draws before surfacing;
-                // whatever state we settled in must be LEGAL per rules:
-                XCTAssertTrue(
-                    !snap.legalMoves.isEmpty || snap.boneyardDrawableCount == 0,
-                    "blocked state only valid when nothing remains drawable"
-                )
-                break
-            }
+            guard vm.isMyTurn,
+                  snap.legalMoves.isEmpty,
+                  snap.boneyardDrawableCount > 0 else { continue }
+
+            let handBefore = snap.ownHand.count
+            await vm.refresh()
+            guard let after = vm.snapshot else { return XCTFail("snapshot missing after refresh") }
+            XCTAssertEqual(after.ownHand.count, handBefore,
+                           "refresh() must not draw tiles on the player's behalf")
+            XCTAssertTrue(vm.canVoluntaryDraw,
+                          "a blocked player must be offered the draw instead")
+            XCTAssertFalse(vm.mustPass,
+                           "passing is only legal once the yard is dry")
+
+            await vm.voluntaryDraw()
+            guard let drawn = vm.snapshot else { return XCTFail("post-draw snapshot missing") }
+            XCTAssertEqual(drawn.ownHand.count, handBefore + 1,
+                           "the player's own draw must add exactly one tile")
+            return
         }
-        if !hunted { throw XCTSkip("no blocked deal encountered in 24 hunts (p≈0.87 of at least one)") }
+        throw XCTSkip("no blocked-with-tiles deal encountered in 24 hunts")
     }
 
     func test_voluntaryDraw_publishesDrawEventForTheFlight() async throws {

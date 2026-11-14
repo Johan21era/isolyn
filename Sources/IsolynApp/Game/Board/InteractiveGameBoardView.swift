@@ -545,6 +545,12 @@ struct InteractiveGameBoardView: View {
         if viewModel.aiThinking { return "Thinking…" }
         if viewModel.isComputerTurn { return "Rival's turn" }
         if viewModel.mustPass { return "Pass to continue" }
+        if viewModel.isMyTurn,
+           let snap = viewModel.snapshot,
+           snap.legalMoves.isEmpty,
+           snap.boneyardDrawableCount > 0 {
+            return "No legal move — draw to continue"
+        }
         if !viewModel.isMyTurn { return "Waiting" }
         if let selected = selectedTile,
            openEndsMatch,
