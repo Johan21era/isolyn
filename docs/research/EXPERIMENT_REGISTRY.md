@@ -230,6 +230,57 @@ Together E-018 and E-019 say the evaluation is *crude but correctly shaped*.
 Its weakness is not the scale of its terms but the absence of any graded notion
 of winning chance between "threat exists" and "threat does not".
 
+## E-020 — Champion vs weakest tier, and where the wins come from
+
+- **Configuration.** 3,000 rounds, 1v1, seed 4242: A = champion (4/64, 8 workers),
+  B = weakest shipped tier (2/8).
+- **Result.** A wins 53.9%, **+27.4 Elo, 95% CI [+14.9, +39.9]** — resolved.
+- **Loss analysis (the point of the run).** Splitting the rounds A lost:
+
+| Slice | A win rate |
+|---|---|
+| A in seat 0 | 54.3% |
+| A in seat 1 | 53.5% |
+| Best hand-quality quartile | 54.9% |
+| Worst hand-quality quartile | 52.7% |
+| Rounds ending by Domino — closed share of A wins / B wins | 24.5% / 24.6% |
+
+**Finding.** There is no blunt weakness to exploit. The edge is uniform across
+seat, deal quality and ending type; the champion does not collapse when dealt
+badly, does not have a closed-round blind spot, and gains nothing structural from
+moving first. Against a weaker opponent the win rate is a flat ~54% everywhere.
+
+## E-021 — Stylistic opponents (no exploitation found)
+
+- **Hypothesis.** If the champion undervalues a concept, an opponent weighted
+  hard toward it should beat it.
+- **Measured.** 2,000 rounds each at seed 777, champion vs a style opponent:
+
+| Style opponent | A score | Elo | 95% CI |
+|---|---:|---:|---|
+| `blocking=4` | 48.7% | −9.0 | [−24.3, +6.2] |
+| `mobility=4` | 48.7% | −9.0 | [−24.3, +6.2] |
+| `winThreat=1500` | 50.5% | +3.1 | [−12.1, +18.3] |
+
+- **Verdict.** None resolved. No simple weighting beats the champion, so there is
+  no one-line exploit to patch. (The two 48.7% rows are byte-different games that
+  happened to land on the same win count; neither is a resolved result and no
+  conclusion rests on them.)
+
+## E-022 — 2v2: the champion's advantage disappears (confirmed twice)
+
+- **Configuration.** 2,000 rounds, 2v2, seed 909: champion (4/64) vs weakest
+  tier (2/8) — the same pairing that wins **+27.4 Elo** in 1v1.
+- **Result.** A 994 wins (49.7%), B 1,006 (50.3%). **No advantage whatsoever.**
+- **Verdict.** This replicates E-011, where a 5× compute advantage in 2v2 also
+  bought nothing (49.6% vs 50.4%). Two different config pairs, two different
+  seeds, same answer.
+
+**Conclusion.** Partnership play is the engine's clearest structural deficit. In
+1v1, more search converts into wins (+27 Elo per tier). In 2v2, the same
+advantage converts into **nothing**, which means the deficiency is in how the
+engine represents the partnership — not in how hard it searches.
+
 ## Strategic conclusion after E-007 – E-019
 
 Three experiments now agree on one thing: **scaling compute is finished as a
