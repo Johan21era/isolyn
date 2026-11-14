@@ -1,0 +1,67 @@
+# Benchmark Baseline
+
+**Status:** living measurement record (tier 2). All figures below were produced
+on the machine described, with the seed and game count stated. Re-measure before
+quoting; a number without its seed is not a number.
+
+## Environment
+
+| Field | Value |
+|---|---|
+| Hardware | Apple M3, 8 cores (4 performance + 4 efficiency) |
+| OS | macOS 27.2 |
+| Compiler | Apple clang, C++20, `-O2` (self-play harness) |
+| Build | `tools/selfplay/build.sh` |
+| Evaluation | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input <csv>` |
+
+## Reference configurations
+
+A configuration is `depth/determinizations`. These are the six
+`DifficultyModel` profiles plus the sequential control.
+
+| Name | Depth | Determinizations | Notes |
+|---|---:|---:|---|
+| 2/8 | 2 | 8 | weakest tier (strength 100–400) |
+| 3/16 | 3 | 16 | tier 900 |
+| 4/24 | 4 | 24 | tier 1600 |
+| 5/40 | 5 | 40 | tier 2300 |
+| 8/64 | 8 | 64 | elite tier (strength 3000) |
+| seq-20 | 4 | 20 | single-threaded control, app default shape |
+| par-64 | 4 | 64 | 8 workers — current champion |
+
+## Measured 1v1 ladder (seed 42, alternating seats, no time cap)
+
+Positive Elo favours side A. Intervals are 95%.
+
+| A vs B | Games | A wins | A score | Elo(A) | 95% CI | Resolved? |
+|---|---:|---:|---:|---:|---|---|
+| 2/8 vs 3/16 | 1,000 | 481 | 48.1% | −13.2 | [−34.7, +8.3] | no |
+| 3/16 vs 4/24 | 1,000 | 485 | 48.5% | −10.4 | [−32.0, +11.1] | no |
+| 4/24 vs 5/40 | 600 | 266 | 44.3% | −39.5 | [−67.5, −11.6] | **yes** |
+
+The direction of the ladder is correct — each tier beats the one below it — but
+only the 4/24 → 5/40 step is statistically resolved. **Correction to an earlier
+record:** `docs/subsystems/LAB.md` reports 4/24 *beating* 5/40 (205–195 over 400
+games). That does not reproduce at seed 42 over 600 games, where 5/40 wins at
+55.7% with an interval excluding zero. The earlier result is a 400-game sample
+of a small effect; treat the direction as settled and the magnitude as ±30 Elo.
+
+## Timing
+
+| Workload | Games | Wall | Notes |
+|---|---:|---:|---|
+| 2/8 vs 3/16 | 1,000 | 1.97 s | |
+| 3/16 vs 4/24 | 1,000 | 4.94 s | |
+| 4/24 vs 5/40 | 600 | 7.79 s | |
+| 8/64 vs 8/64, sequential | 60 | 7.55 s | 955 decisions, ~7.9 ms/move |
+| 8/64 vs 8/64, 8 workers | 60 | 3.18 s | 2.4× wall-clock |
+
+Per-move cost at the elite tier is ~7.9 ms single-threaded. The parallel path
+uses 3.3 effective cores of 8, and performs ~47% more total CPU work than the
+sequential path (per-lane tables hold fewer entries, so fewer hits).
+
+## Game shape
+
+At depth 4 over 1,000 games: ~17 decisions per round, 79% of rounds decided by a
+Domino (emptied hand) rather than a Close, and first-player advantage is small —
+player 1 wins 50.3–50.5%, so seat does not mask a strength difference.

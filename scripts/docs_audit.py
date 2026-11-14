@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 INDEX = DOCS / "README.md"
 
-LIVING_DIRS = ("architecture", "engineering", "design", "subsystems", "roadmaps")
+LIVING_DIRS = ("architecture", "engineering", "design", "subsystems", "roadmaps", "research")
 GENERATED_DIRS = ("graphify-out",)
 SKIP_DIRS = {".git", "build", ".build", ".swiftpm", "graphify-out", "node_modules", ".freebuff"}
 

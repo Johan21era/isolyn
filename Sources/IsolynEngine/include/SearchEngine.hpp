@@ -63,6 +63,17 @@ public:
         // Kept as an explicit switch so callers can compare the new
         // alpha-beta path against a full-width baseline.
         bool useAlphaBeta = true;
+
+        // Worker threads used to evaluate determinization samples in
+        // parallel. 0 = automatic (hardware concurrency, capped by
+        // determinizationCount), 1 = the original single-threaded path.
+        //
+        // Samples are assigned to workers by a fixed stride, and worlds are
+        // still sampled sequentially from the caller's RNG, so a given seed
+        // and worker count reproduce the same decision. Each worker owns its
+        // own transposition table, killers and history -- none of that state
+        // is shared across threads, so there is no lock on the hot path.
+        int workerThreads = 0;
     };
 
     // Precondition: it is currently a player's turn to choose a move

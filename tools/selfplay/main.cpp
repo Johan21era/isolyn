@@ -28,6 +28,8 @@ struct Options {
     int opponentDepth = 4;
     int opponentDeterminizations = 20;
     int timeMs = 0;
+    int workers = 0;
+    int opponentWorkers = 0;
     std::uint64_t seed = 1;
     std::string output = "lab/data/selfplay.csv";
     std::string mode = "1v1";
@@ -71,6 +73,8 @@ void usage(std::ostream& out) {
         << "  --opponent-determinizations N\n"
         << "                          samples for the B side (default: --determinizations)\n"
         << "  --time-ms N             per-move search budget; 0 = unlimited (default 0)\n"
+        << "  --workers N             search worker threads for A; 0 = auto (default 0)\n"
+        << "  --opponent-workers N    worker threads for B; 0 = auto (default 0)\n"
         << "  --seed N                deterministic deal/search seed (default 1)\n"
         << "  --mode MODE             1v1 | 1v1v1 | 2v2 (default 1v1)\n"
         << "  --output PATH           CSV output path (default lab/data/selfplay.csv)\n"
@@ -201,12 +205,14 @@ GameSummary playOneRound(const Options& options,
     configA.determinizationCount = options.determinizations;
     configA.timeLimitMs = options.timeMs;
     configA.endgameTileLimit = 8;
+    configA.workerThreads = options.workers;
 
     SearchEngine::Config configB;
     configB.maxDepthPlies = options.opponentDepth;
     configB.determinizationCount = options.opponentDeterminizations;
     configB.timeLimitMs = options.timeMs;
     configB.endgameTileLimit = 8;
+    configB.workerThreads = options.opponentWorkers;
 
     // Alternate which physical side gets the A configuration so a one-sided
     // first-player advantage does not masquerade as a strength difference.
@@ -385,7 +391,8 @@ int main(int argc, char** argv) {
         }
         if (arg == "--games" || arg == "--depth" || arg == "--determinizations" ||
             arg == "--opponent-depth" || arg == "--opponent-determinizations" ||
-            arg == "--time-ms" || arg == "--seed" || arg == "--mode" || arg == "--output") {
+            arg == "--time-ms" || arg == "--workers" || arg == "--opponent-workers" ||
+            arg == "--seed" || arg == "--mode" || arg == "--output") {
             if (i + 1 >= argc) {
                 std::cerr << "missing value for " << arg << "\n";
                 return 2;
@@ -411,7 +418,9 @@ int main(int argc, char** argv) {
                 continue;
             }
             int parsed = 0;
-            if (!parseInt(value, parsed, arg == "--time-ms")) {
+            const bool allowZero = arg == "--time-ms" || arg == "--workers" ||
+                                   arg == "--opponent-workers";
+            if (!parseInt(value, parsed, allowZero)) {
                 std::cerr << "invalid value for " << arg << ": " << value << "\n";
                 return 2;
             }
@@ -421,6 +430,8 @@ int main(int argc, char** argv) {
             else if (arg == "--opponent-depth") options.opponentDepth = parsed;
             else if (arg == "--opponent-determinizations") options.opponentDeterminizations = parsed;
             else if (arg == "--time-ms") options.timeMs = parsed;
+            else if (arg == "--workers") options.workers = parsed;
+            else if (arg == "--opponent-workers") options.opponentWorkers = parsed;
             continue;
         }
         std::cerr << "unknown argument: " << arg << "\n";

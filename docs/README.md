@@ -51,6 +51,10 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `subsystems/LAB.md` | Self-play, calibration, data contracts | Living | 2026-11-13 |
 | `subsystems/ACCELERATOR.md` | Metal backend, parity, throughput | Living | 2026-11-13 |
 | `roadmaps/strategy-roadmap.md` | Seven-phase plan of record | Plan (partially executed) | 2026-11-13 |
+| `research/PROJECT_OVERDRIVE.md` | Strength programme charter, champion, next actions | Living journal | 2026-11-14 |
+| `research/BENCHMARK_BASELINE.md` | Measured ladder, timings, environment | Living measurements | 2026-11-14 |
+| `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
+| `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | **Current factual baseline** | Authoritative | 2026-11-13 |
 | `audits/2026-11-13-documentation-audit.md` | Why each document exists; contradiction register | Authoritative for doc status | 2026-11-13 |
 | `audits/2026-08-24-audit.md` (+`.pdf`) | First audit; 12 findings and their fixes | Historical | 2026-08-24 |

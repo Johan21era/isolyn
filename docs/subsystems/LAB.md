@@ -125,18 +125,26 @@ All four rows were recomputed from the committed CSVs with
 `PYTHONPATH=src python3 -m isolyn_lab.cli evaluate --input <file>` on 2026-11-13;
 the report was byte-identical across three runs.
 
-**The ladder is NOT directionally monotonic.** Two of the three adjacent
-comparisons favour the *shallower* configuration: 3/16 beats 4/24 by 51.2%,
-and 4/24 beats 5/40 by 51.3%. Only the widest gap (2/8 vs 8/64, 42.4%) is
-statistically resolved; every adjacent interval crosses zero. An earlier version
-of this table reported 190/210 and 196/204 for those two rows, which does not
-reproduce from the committed data.
+**The ladder is directionally ordered, but the adjacent gaps are small.**
+A 2026-11-14 re-measurement (seed 42, alternating seats) reversed the earlier
+readings that two adjacent pairs favoured the *shallower* configuration:
+
+| A vs B | Games | A score | Elo(A) | 95% CI | Resolved? |
+|---|---:|---:|---:|---|---|
+| 2/8 vs 3/16 | 1,000 | 48.1% | −13.2 | [−34.7, +8.3] | no |
+| 3/16 vs 4/24 | 1,000 | 48.5% | −10.4 | [−32.0, +11.1] | no |
+| 4/24 vs 5/40 | 600 | 44.3% | −39.5 | [−67.5, −11.6] | **yes** |
+
+The deeper configuration wins every pair, but only the 4/24 → 5/40 step is
+statistically resolved; the two lower steps sit inside ±30 Elo of even. The
+400-game inversions recorded above (51.2% and 51.3%) do not survive a larger
+sample and are sampling noise around a small true effect.
 
 Consequence: the five `DifficultyModel` bands are labels, not measured
-strengths. The top band is genuinely stronger than the bottom band; the
-intermediate ordering is unproven. No adjacent comparison clears the 55%
-milestone. The honest summary of measured 1v1 strength is "two tiers:
-2/8 and 8/64, with three unvalidated points between them."
+strengths. The ordering is right; the **separation** is not — a player moving up
+one tier gains roughly 10–13 Elo, which is not a felt difference. Treating the
+five tiers as five distinct strengths overstates what the data supports. Full
+figures and method: `docs/research/BENCHMARK_BASELINE.md`.
 
 The depth increase was measured separately rather than assumed. In 1,000-game
 1v1 matches: 2/8 vs 6/8 was -18.8 Elo ([-40.3, +2.8]), 6/8 vs 6/64 was -8.3

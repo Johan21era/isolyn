@@ -10,9 +10,13 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -24,6 +28,7 @@ namespace {
 constexpr double kInfinity = std::numeric_limits<double>::infinity();
 constexpr std::size_t kMaxTTEntries = 250000;
 constexpr int kMaxHistoryPlayers = 4;
+constexpr int kMaxWorkers = 16;
 constexpr int kMoveCodeCount = DominoTile::kTileCount * 2;
 constexpr int kKillerSlots = 64;
 
@@ -121,6 +126,9 @@ struct SearchContext {
     bool hasDeadline = false;
     std::chrono::steady_clock::time_point deadline{};
     const std::atomic<bool>* cancelRequested = nullptr;
+    // Set by any worker when it stops, so the remaining workers wind down
+    // instead of finishing work whose result cannot be used.
+    std::atomic<bool>* sharedAbort = nullptr;
 
     std::uint64_t nodes = 0;
     std::uint64_t ttHits = 0;
@@ -146,6 +154,11 @@ struct DepthResult {
 
 bool shouldStop(SearchContext& context) {
     if (context.aborted) return true;
+    if (context.sharedAbort != nullptr &&
+        context.sharedAbort->load(std::memory_order_relaxed)) {
+        context.aborted = true;
+        return true;
+    }
     if (context.cancelRequested != nullptr &&
         context.cancelRequested->load(std::memory_order_relaxed)) {
         context.aborted = true;
@@ -156,6 +169,91 @@ bool shouldStop(SearchContext& context) {
         return true;
     }
     return false;
+}
+
+// A small persistent pool for root-sample parallelism.
+//
+// Spawning threads per depth made the parallel path only ~2x faster than the
+// sequential one: eight spawns per depth, eight depths per move, hundreds of
+// moves per game. This pool is created once per searching thread and reused
+// for every depth, which removes that cost entirely.
+class SamplePool {
+public:
+    explicit SamplePool(int size) : m_size(std::max(1, size)) {
+        m_threads.reserve(static_cast<std::size_t>(m_size));
+        for (int i = 0; i < m_size; ++i) {
+            m_threads.emplace_back([this, i]() { workerLoop(i); });
+        }
+    }
+
+    ~SamplePool() {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_stop = true;
+        }
+        m_start.notify_all();
+        for (std::thread& thread : m_threads) thread.join();
+    }
+
+    SamplePool(const SamplePool&) = delete;
+    SamplePool& operator=(const SamplePool&) = delete;
+
+    int size() const { return m_size; }
+
+    // Runs `task` on every worker and returns once all have finished.
+    void run(const std::function<void(int)>& task) {
+        if (m_size == 1) {
+            task(0);
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_task = &task;
+            m_remaining = m_size;
+            ++m_generation;
+        }
+        m_start.notify_all();
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_done.wait(lock, [this]() { return m_remaining == 0; });
+    }
+
+private:
+    void workerLoop(int index) {
+        int seen = 0;
+        for (;;) {
+            const std::function<void(int)>* task = nullptr;
+            {
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_start.wait(lock, [this, &seen]() { return m_stop || m_generation != seen; });
+                if (m_stop) return;
+                seen = m_generation;
+                task = m_task;
+            }
+            if (task != nullptr) (*task)(index);
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (--m_remaining == 0) m_done.notify_one();
+            }
+        }
+    }
+
+    int m_size = 1;
+    std::vector<std::thread> m_threads;
+    std::mutex m_mutex;
+    std::condition_variable m_start;
+    std::condition_variable m_done;
+    const std::function<void(int)>* m_task = nullptr;
+    int m_remaining = 0;
+    int m_generation = 0;
+    bool m_stop = false;
+};
+
+// One pool per searching thread. A process-wide pool would be a data race the
+// moment two searches overlap; a per-thread pool keeps every search
+// self-contained and needs no lock outside the barrier itself.
+SamplePool& searchPool() {
+    thread_local SamplePool pool(static_cast<int>(std::max(1u, std::thread::hardware_concurrency())));
+    return pool;
 }
 
 bool tick(SearchContext& context) {
@@ -457,17 +555,35 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
     assert(!candidates.empty() && "chooseBestMove requires the current player to already have a legal move");
 
     const int playerCount = state.playerCount();
-    SearchContext context;
-    context.mode = mode;
-    context.endgameTileLimit = config.endgameTileLimit;
-    context.useAlphaBeta = config.useAlphaBeta;
-    context.cancelRequested = cancelRequested;
-    context.tt.reserve(1 << 14);
+
+    SamplePool& pool = searchPool();
+    int workers = config.workerThreads;
+    if (workers <= 0) {
+        workers = pool.size();
+    }
+    workers = std::max(1, std::min({workers, config.determinizationCount, kMaxWorkers}));
+
+    const bool parallel = workers > 1 && pool.size() > 1;
+    const int laneCount = parallel ? std::min(workers, pool.size()) : 1;
+
+    std::atomic<bool> stopFlag{false};
+    std::vector<SearchContext> contexts(static_cast<std::size_t>(laneCount));
+    for (SearchContext& ctx : contexts) {
+        ctx.mode = mode;
+        ctx.endgameTileLimit = config.endgameTileLimit;
+        ctx.useAlphaBeta = config.useAlphaBeta;
+        ctx.cancelRequested = cancelRequested;
+        ctx.sharedAbort = &stopFlag;
+        ctx.tt.reserve(1 << 12);
+    }
 
     const auto start = std::chrono::steady_clock::now();
     if (config.timeLimitMs > 0) {
-        context.hasDeadline = true;
-        context.deadline = start + std::chrono::milliseconds(config.timeLimitMs);
+        const auto deadline = start + std::chrono::milliseconds(config.timeLimitMs);
+        for (SearchContext& ctx : contexts) {
+            ctx.hasDeadline = true;
+            ctx.deadline = deadline;
+        }
     }
 
     if (config.maxDepthPlies < 1 || config.determinizationCount < 1) {
@@ -484,31 +600,38 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
     std::optional<DepthResult> bestResult;
 
     for (int depth = 1; depth <= config.maxDepthPlies; ++depth) {
-        if (shouldStop(context)) break;
+        if (shouldStop(contexts.front()) || stopFlag.load(std::memory_order_relaxed)) break;
 
-        std::vector<std::vector<double>> accumulated(
-            candidates.size(),
-            std::vector<double>(static_cast<std::size_t>(playerCount), 0.0));
-        // Zero-sum modes must choose from the search score, not from a raw
-        // vector that a transposition-table bound may have inherited from a
-        // different line. The score is the value of the candidate in this
-        // sampled world; averaging those values is the root expectation.
-        std::vector<double> accumulatedScores(candidates.size(), 0.0);
-        int samples = 0;
-        bool abortedDepth = false;
-
+        // Worlds are sampled sequentially from the caller's RNG, so the set of
+        // sampled worlds -- and therefore the decision -- is identical to the
+        // single-threaded path for the same seed.
+        std::vector<GameState> worlds;
+        worlds.reserve(static_cast<std::size_t>(config.determinizationCount));
         for (int sample = 0; sample < config.determinizationCount; ++sample) {
-            if (shouldStop(context)) {
-                abortedDepth = true;
-                break;
-            }
+            worlds.push_back(SimulationEngine::sampleDeterminizedState(state, belief, player, rng));
+        }
 
-            GameState world = SimulationEngine::sampleDeterminizedState(state, belief, player, rng);
+        struct SampleResult {
+            std::vector<double> scores;
+            std::vector<std::vector<double>> values;
+            bool aborted = true;
+        };
+        std::vector<SampleResult> sampleResults(static_cast<std::size_t>(config.determinizationCount));
+
+        auto evaluateSample = [&](int sampleIndex, SearchContext& ctx) {
+            SampleResult& result = sampleResults[static_cast<std::size_t>(sampleIndex)];
+            result.scores.assign(candidates.size(), 0.0);
+            result.values.assign(candidates.size(),
+                                 std::vector<double>(static_cast<std::size_t>(playerCount), 0.0));
+            result.aborted = false;
+
+            const GameState& world = worlds[static_cast<std::size_t>(sampleIndex)];
 
             for (std::size_t c = 0; c < candidates.size(); ++c) {
-                if (shouldStop(context)) {
-                    abortedDepth = true;
-                    break;
+                if (shouldStop(ctx)) {
+                    result.aborted = true;
+                    stopFlag.store(true, std::memory_order_relaxed);
+                    return;
                 }
 
                 GameState trial = world;
@@ -529,12 +652,12 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                     const int next = (player + 1) % playerCount;
                     trial.setCurrentPlayerIndex(next);
                     if (mode == GameMode::OneVsOneVsOne) {
-                        raw = searchMulti(trial, depth - 1, context, 0);
+                        raw = searchMulti(trial, depth - 1, ctx, 0);
                         if (!raw.empty()) {
                             candidateScore = raw[static_cast<std::size_t>(player)];
                         }
                     } else {
-                        SearchValue child = searchZeroSum(trial, depth - 1, -kInfinity, kInfinity, context, 0);
+                        SearchValue child = searchZeroSum(trial, depth - 1, -kInfinity, kInfinity, ctx, 0);
                         raw = child.raw;
                         candidateScore = -child.score;
                     }
@@ -542,18 +665,61 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 }
                 MoveExecutor::undo(trial, applied);
 
-                if (context.aborted || raw.size() != static_cast<std::size_t>(playerCount)) {
-                    abortedDepth = true;
-                    break;
+                if (ctx.aborted || raw.size() != static_cast<std::size_t>(playerCount)) {
+                    result.aborted = true;
+                    stopFlag.store(true, std::memory_order_relaxed);
+                    return;
                 }
 
                 for (int p = 0; p < playerCount; ++p) {
-                    accumulated[c][static_cast<std::size_t>(p)] += raw[static_cast<std::size_t>(p)];
+                    result.values[c][static_cast<std::size_t>(p)] = raw[static_cast<std::size_t>(p)];
                 }
-                accumulatedScores[c] += candidateScore;
+                result.scores[c] = candidateScore;
             }
+        };
 
-            if (abortedDepth) break;
+        if (!parallel) {
+            for (int sample = 0; sample < config.determinizationCount; ++sample) {
+                if (stopFlag.load(std::memory_order_relaxed)) break;
+                evaluateSample(sample, contexts.front());
+            }
+        } else {
+            pool.run([&](int lane) {
+                if (lane >= laneCount) return;
+                SearchContext& ctx = contexts[static_cast<std::size_t>(lane)];
+                for (int sample = lane; sample < config.determinizationCount; sample += laneCount) {
+                    if (stopFlag.load(std::memory_order_relaxed)) return;
+                    evaluateSample(sample, ctx);
+                }
+            });
+        }
+
+        std::vector<std::vector<double>> accumulated(
+            candidates.size(),
+            std::vector<double>(static_cast<std::size_t>(playerCount), 0.0));
+        // Zero-sum modes must choose from the search score, not from a raw
+        // vector that a transposition-table bound may have inherited from a
+        // different line. The score is the value of the candidate in this
+        // sampled world; averaging those values is the root expectation.
+        std::vector<double> accumulatedScores(candidates.size(), 0.0);
+        int samples = 0;
+        bool abortedDepth = stopFlag.load(std::memory_order_relaxed);
+
+        // Reduced in sample order, so the floating-point sums -- and the chosen
+        // move -- are identical to the single-threaded path.
+        for (int sample = 0; sample < config.determinizationCount && !abortedDepth; ++sample) {
+            const SampleResult& result = sampleResults[static_cast<std::size_t>(sample)];
+            if (result.aborted) {
+                abortedDepth = true;
+                break;
+            }
+            for (std::size_t c = 0; c < candidates.size(); ++c) {
+                accumulatedScores[c] += result.scores[c];
+                for (int p = 0; p < playerCount; ++p) {
+                    accumulated[c][static_cast<std::size_t>(p)] +=
+                        result.values[c][static_cast<std::size_t>(p)];
+                }
+            }
             ++samples;
         }
 
@@ -585,15 +751,24 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         if (abortedDepth) break;
     }
 
+    std::uint64_t totalNodes = 0;
+    std::uint64_t totalTtHits = 0;
+    bool anyExactEndgame = false;
+    for (const SearchContext& ctx : contexts) {
+        totalNodes += ctx.nodes;
+        totalTtHits += ctx.ttHits;
+        anyExactEndgame = anyExactEndgame || ctx.exactEndgameUsed;
+    }
+
     if (bestResult.has_value()) {
         return SearchDecision{bestResult->move,
                               bestResult->values,
                               bestResult->samples == config.determinizationCount,
                               bestResult->samples,
                               bestResult->depth,
-                              context.nodes,
-                              context.ttHits,
-                              context.exactEndgameUsed};
+                              totalNodes,
+                              totalTtHits,
+                              anyExactEndgame};
     }
 
     return SearchDecision{candidates[0],
@@ -601,9 +776,9 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                           false,
                           0,
                           0,
-                          context.nodes,
-                          context.ttHits,
-                          context.exactEndgameUsed};
+                          totalNodes,
+                          totalTtHits,
+                          anyExactEndgame};
 }
 
 } // namespace isolyn
