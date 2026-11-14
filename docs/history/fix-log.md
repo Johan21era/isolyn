@@ -1353,3 +1353,39 @@ inspected it: two runs joined by a corner, doubles crosswise.
 **Lesson recorded.** A layout invariant tested only at a canvas size that forces
 the interesting branch has not been tested. Width-dependent behaviour needs at
 least one case at the size the product actually runs at.
+
+## OPS-16 — Corner geometry: runs now reserve room for their own turn (2026-11-14)
+
+**Trigger.** Owner live test after OPS-15: the chain coiled, but into a
+staggered block with tiles dangling below both rows. "genuinely the highest
+level of garbage ive ever seen".
+
+**Root causes, both measured from the placement dump rather than guessed.**
+1. Rows were `short + gap` (42pt) apart while a crosswise double stands half a
+   tile proud on each side, so parallel runs could collide. The safety net then
+   nudged individual tiles down 19pt, producing the stagger.
+2. A run filled all the way to the table edge, leaving no room for its own
+   corner. The corner was clamped back over the last tile, collided with it,
+   and was pushed down 38pt -- dragging the following double down with it. That
+   is the dangling tile in the screenshot.
+
+**Fix.**
+- `rowPitch = long + gap` (80pt): two runs each with doubles need a full tile
+  plus a gap, so with this pitch no row can ever collide and the safety net
+  never fires in normal play.
+- The corner sits low in its band (`rowY + (rowPitch - long)/2 + short/2`), so
+  its long face reaches the return run: the runs meet at the turn instead of
+  leaving a hole.
+- Each run reserves `short + gap` before the edge for that corner, so the
+  corner is never clamped back onto the run it ends.
+
+**Verification.** Placement dump of 20 tiles at 1600x900: row of nine at
+y=399.5, corner at (1141, 420.5), return run ten tiles at y=479.5, doubles
+in-line, no nudged tiles. `swift test`: **82 tests, 0 failures** (the turn test
+now asserts the real geometry: 59pt across, 38pt along). Bundle re-signed.
+
+**Tooling trap found.** My first two renders of this change were wrong images,
+not wrong layouts: `qlmanage` stretches a 16:9 SVG to fill a square thumbnail
+and crops the right-hand side, which faked an off-centre, clipped chain twice.
+The preview canvas is now square, and coordinates are printed alongside the
+image so a rendering artifact cannot be mistaken for a layout defect.

@@ -420,7 +420,11 @@ enum SnakeChainLayout {
         // double sticks out half a tile, so the row beneath it is nudged down
         // by the safety net below -- that ragged local bow is what a real
         // chain does around its doubles.
-        let rowPitch = short + gap
+        // Two parallel runs each need room for a crosswise double, which
+        // stands half a tile proud on both sides: short + 2 * (long - short)/2
+        // = long. Plus one gap. Rows this far apart can NEVER need nudging,
+        // so the chain stays regular instead of staggering tile by tile.
+        let rowPitch = long + gap
         let minX = margin
         // A run turns where the TABLE ends, not where the window ends. Letting
         // a run stretch to the window edge produced one long line across a
@@ -442,9 +446,16 @@ enum SnakeChainLayout {
             return CGRect(x: center.x - w / 2, y: center.y - h / 2, width: w, height: h)
         }
 
+        // A run must stop early enough that its own corner still fits inside
+        // the table. Filling to the edge forced the corner back over the last
+        // tile, which tripped the safety net and pushed the corner and the
+        // tile after it downwards -- the dangling tiles a live test caught.
+        let cornerReserve = min(short + gap, tableWidth / 2)
+
         for tile in orientedTiles {
             let width = tile.isDouble ? short : long
-            let room = east ? maxX - cursorX : cursorX - minX
+            let room = east ? (maxX - cornerReserve) - cursorX
+                            : cursorX - (minX + cornerReserve)
             if room >= width {
                 let center = CGPoint(x: east ? cursorX + width / 2 : cursorX - width / 2,
                                      y: rowY)
@@ -455,16 +466,21 @@ enum SnakeChainLayout {
                 continue
             }
 
-            // End of the run: this tile is the corner, lying across it.
+            // End of the run: this tile is the corner, lying across it. It
+            // sits low in the band so its far end reaches down toward the run
+            // that leaves beneath it -- the two runs meet on its long face, as
+            // they do on a table, instead of leaving a hole at every turn.
             let cornerX = east ? min(cursorX + short / 2, maxX - short / 2)
                                : max(cursorX - short / 2, minX + short / 2)
-            let corner = CGPoint(x: cornerX, y: rowY)
+            let cornerY = rowY + (rowPitch - long) / 2 + short / 2
+            let corner = CGPoint(x: cornerX, y: cornerY)
             placed.append(Placed(x: corner.x, y: corner.y, tile: tile, vertical: true))
             rects.append(rect(center: corner, vertical: true))
 
             rowY += rowPitch
             east.toggle()
-            cursorX = east ? corner.x + short / 2 + gap : corner.x - short / 2 - gap
+            // The new run leaves from under the corner, not from beside it.
+            cursorX = corner.x
         }
 
         // Safety net: no tile may ever be drawn on top of another. The row

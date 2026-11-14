@@ -69,13 +69,16 @@ final class BoardLayoutTests: XCTestCase {
 
         let corner = m.placed[turnIndex]
         let next = m.placed[turnIndex + 1]
-        let expectedGap = SnakeChainLayout.tileShortAxis + SnakeChainLayout.hGap
-        XCTAssertEqual(abs(next.y - corner.y), expectedGap, accuracy: 0.0001,
-                       "the new run starts one short axis and one gap below the corner")
-        let underCorner = SnakeChainLayout.tileShortAxis / 2 + SnakeChainLayout.hGap
-            + SnakeChainLayout.tileShortAxis
-        XCTAssertEqual(abs(next.x - corner.x), underCorner, accuracy: 0.0001,
-                       "the new run leaves from under the corner's long face")
+        // The corner lies across the run and sits low in its band, so the
+        // return run meets it along its long face: rows are one tile-and-a-gap
+        // apart, and the corner is raised by half of that difference.
+        let rowPitch = SnakeChainLayout.tileShortAxis * 2 + SnakeChainLayout.hGap
+        let cornerRise = (rowPitch - SnakeChainLayout.tileShortAxis * 2) / 2
+            + SnakeChainLayout.tileShortAxis / 2
+        XCTAssertEqual(abs(next.y - corner.y), rowPitch - cornerRise, accuracy: 0.0001,
+                       "the return run sits one row below the corner's low edge")
+        XCTAssertEqual(abs(next.x - corner.x), SnakeChainLayout.tileShortAxis, accuracy: 0.0001,
+                       "the return run starts from the corner's far edge")
     }
 
     func test_compute_shortChain_isCenteredInTheAvailablePlane() {
