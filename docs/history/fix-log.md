@@ -1389,3 +1389,36 @@ not wrong layouts: `qlmanage` stretches a 16:9 SVG to fill a square thumbnail
 and crops the right-hand side, which faked an off-centre, clipped chain twice.
 The preview canvas is now square, and coordinates are printed alongside the
 image so a rendering artifact cannot be mistaken for a layout defect.
+
+## OPS-17 — Stale suggestion showed an illegal move; last tile no longer turns (2026-11-14)
+
+**Trigger.** Owner live test after OPS-16, with a screenshot: "i thought the 1-3
+was playable but it wasnt", plus two tiles hanging below the right-hand run.
+
+**The game-breaking bug (not the layout).** `refresh()` never cleared
+`analysisOutcome`, and the status line renders it whenever analysis is not
+running. After the board moved, the window still read "Engine suggests 6-2" --
+a recommendation for a PREVIOUS position, naming a tile that was not legal. The
+owner read it as a playable move and lost the turn. A stale hint is not a weaker
+hint; it is a wrong one.
+- Fix: `discardStaleAnalysis()` runs on every refresh and drops the outcome when
+  `stateVersionAnalyzed` no longer matches the snapshot, or when the suggested
+  move is not in the current `legalMoves`. The status line also re-checks
+  legality before displaying a placement suggestion.
+
+**The dangling tiles.** The chain's LAST tile was being turned into a corner: a
+corner exists to start another run, so with nothing left to place it becomes a
+stub sticking out of the end.
+- Fix: the final tile always continues in line (`isLastTile`), so a chain ends
+  as a run, not as a disconnected-looking turn.
+
+**Build identity.** Three rounds were spent judging a window whose binary could
+not be verified. The top bar now shows the build hash from the bundle's
+`IsolynBuild` key, which `run.sh` writes from `git rev-parse --short HEAD` at
+launch. This is a temporary diagnostic, not decoration, and is removed once the
+layout is confirmed in live play.
+
+**Verification.** Placement dump, 24 tiles at 1600x900: rows at y=370 / 450 /
+530 (80 apart), corners at (1141, 391) and (478, 471), final double in line at
+y=530, no nudged tiles. Rendered and inspected. `swift test`: **82 tests, 0
+failures**. Bundle rebuilt and signed at 00:33, stamped `207c387-next`.

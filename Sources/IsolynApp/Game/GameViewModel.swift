@@ -163,6 +163,7 @@ final class GameViewModel {
             snapshot = snap
             knownCurrentPlayerIndex = snap.currentPlayerIndex
             publishDrawIfNeeded(from: previousSnapshot, to: snap)
+            discardStaleAnalysis()
 
             if snap.roundOutcome != .inProgress {
                 clearDrawEvents()
@@ -485,6 +486,17 @@ final class GameViewModel {
     /// AnalysisTask routes through here -- play(), dealNextRound(),
     /// newMatch(), shutdown() -- which is what guarantees no task is
     /// ever dropped without cancel().
+    /// A suggestion belongs to ONE position. Once the board has moved on it is
+    /// not a weaker hint, it is a wrong one -- it names a tile that may no
+    /// longer be legal (a live test read a stale "suggests 6-2" as a legal
+    /// move and lost the turn). Drop it whenever the analysed version is gone.
+    private func discardStaleAnalysis() {
+        guard let outcome = analysisOutcome, let snap = snapshot else { return }
+        let stillCurrent = outcome.stateVersionAnalyzed == snap.stateVersion
+        let stillLegal = outcome.isDraw || snap.legalMoves.contains(outcome.recommendedMove)
+        if !stillCurrent || !stillLegal { analysisOutcome = nil }
+    }
+
     private func invalidateAnalysis() {
         analysisTask?.cancel()
         analysisTask = nil

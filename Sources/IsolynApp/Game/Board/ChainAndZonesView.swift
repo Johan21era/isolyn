@@ -452,11 +452,15 @@ enum SnakeChainLayout {
         // tile after it downwards -- the dangling tiles a live test caught.
         let cornerReserve = min(short + gap, tableWidth / 2)
 
-        for tile in orientedTiles {
+        for (index, tile) in orientedTiles.enumerated() {
             let width = tile.isDouble ? short : long
             let room = east ? (maxX - cornerReserve) - cursorX
                             : cursorX - (minX + cornerReserve)
-            if room >= width {
+            // The last tile never turns: a corner exists to start another run,
+            // and with nothing left to place it is just a stub hanging off the
+            // end of the chain. Let the chain finish in line instead.
+            let isLastTile = index == orientedTiles.count - 1
+            if room >= width || isLastTile {
                 let center = CGPoint(x: east ? cursorX + width / 2 : cursorX - width / 2,
                                      y: rowY)
                 placed.append(Placed(x: center.x, y: center.y, tile: tile,

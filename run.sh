@@ -38,7 +38,12 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
 </dict></plist>
 PLIST
 
-echo "🚀 Launching IsolynV2.0…"
+# Stamp the build into the bundle so the running window can be identified.
+BUILD_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"
+/usr/libexec/PlistBuddy -c "Delete :IsolynBuild" "$APP/Contents/Info.plist" >/dev/null 2>&1 || true
+/usr/libexec/PlistBuddy -c "Add :IsolynBuild string $BUILD_HASH" "$APP/Contents/Info.plist" >/dev/null 2>&1 || true
+
+echo "🚀 Launching IsolynV2.0 ($BUILD_HASH)…"
 # A copied SwiftPM executable can carry a signature that macOS rejects once it
 # is wrapped in a fresh .app (the launch dies with "Code Signature Invalid").
 # Clear Finder/resource xattrs and ad-hoc sign the bundle we actually launch.

@@ -210,6 +210,15 @@ struct InteractiveGameBoardView: View {
 
             Spacer()
 
+            // TEMPORARY diagnostic: the build this window is actually running.
+            // Three rounds were spent judging a layout that may not have been
+            // in the process on screen; this settles it at a glance.
+            Text(Bundle.main.infoDictionary?["IsolynBuild"] as? String ?? "devbuild")
+                .font(.system(size: 9, weight: .regular, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivoryMuted.opacity(0.5))
+                .padding(.trailing, 6)
+                .accessibilityHidden(true)
+
             Button {
                 settingsOpen.toggle()
                 arbiter.cancel()
@@ -540,7 +549,13 @@ struct InteractiveGameBoardView: View {
     private var statusText: String {
         if let outcome = viewModel.analysisOutcome, !viewModel.analysisRunning {
             if outcome.isDraw { return "Engine suggests drawing a tile" }
-            return "Engine suggests \(outcome.recommendedMove.tile.high)–\(outcome.recommendedMove.tile.low)"
+            // Never advertise a move the current board cannot accept: a stale
+            // suggestion reads as a legal move and costs the turn.
+            let stillLegal = viewModel.snapshot?.legalMoves
+                .contains(outcome.recommendedMove) ?? false
+            if stillLegal {
+                return "Engine suggests \(outcome.recommendedMove.tile.high)–\(outcome.recommendedMove.tile.low)"
+            }
         }
         if viewModel.analysisWasCancelled { return "Analysis cancelled" }
         if viewModel.aiThinking { return "Thinking…" }
