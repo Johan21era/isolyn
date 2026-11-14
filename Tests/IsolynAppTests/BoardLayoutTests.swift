@@ -45,8 +45,8 @@ final class BoardLayoutTests: XCTestCase {
         XCTAssertEqual(m.placed.count, 1)
         XCTAssertNotNil(m.headPosition, "an open head end exists even for a one-tile chain")
         XCTAssertNotNil(m.tailPosition)
-        XCTAssertEqual(m.suggestedScale, SnakeChainLayout.maxScale, accuracy: 0.0001,
-                       "a lone tile grows to fill the table rather than sitting tiny")
+        XCTAssertEqual(m.suggestedScale, 1, accuracy: 0.0001,
+                       "a lone tile keeps its physical size; the board never zooms")
     }
 
     func test_compute_turn_isMadeByTheCurrentTile_acrossTheIncomingRun() {
@@ -162,44 +162,21 @@ final class BoardLayoutTests: XCTestCase {
 
     // MARK: - fitScale()
 
-    func test_fitScale_growsIntoSlackButNeverPastMaximum() {
-        // Content that fits is enlarged to use the table; the tighter axis governs:
-        // height 0.94 × 500 / 300 = 1.567 beats width 0.94 × 800 / 400 = 1.88.
-        let fits = SnakeChainLayout.fitScale(contentWidth: 400, contentHeight: 300,
-                                             availableSize: CGSize(width: 800, height: 500))
-        XCTAssertEqual(fits, 0.94 * 500 / 300, accuracy: 0.001)
-
-        // Growth is capped: a tiny element on a huge plane does not inflate forever.
-        let tiny = SnakeChainLayout.fitScale(contentWidth: 20, contentHeight: 10,
-                                             availableSize: CGSize(width: 4000, height: 3000))
-        XCTAssertEqual(tiny, SnakeChainLayout.maxScale, accuracy: 0.0001)
-    }
-
-    func test_fitScale_engagesPastThreshold_coversTighterAxis_floorsAtMinimum() {
-        // Mild vertical overflow: 0.94 × 500 / 600 ≈ 0.783.
-        let mild = SnakeChainLayout.fitScale(contentWidth: 10, contentHeight: 600,
-                                             availableSize: CGSize(width: 800, height: 500))
-        XCTAssertEqual(mild, 0.94 * 500 / 600, accuracy: 0.001)
-
-        // Width-bound case: the tighter axis governs (0.94 × 800 / 1100 ≈ 0.684).
-        let widthBound = SnakeChainLayout.fitScale(contentWidth: 1100, contentHeight: 10,
-                                                   availableSize: CGSize(width: 800, height: 900))
-        XCTAssertEqual(widthBound, 0.94 * 800 / 1100, accuracy: 0.001)
-
-        // Extreme overflow stops shrinking at the §17 floor -- panning takes over.
-        let floored = SnakeChainLayout.fitScale(contentWidth: 10, contentHeight: 1000,
-                                                availableSize: CGSize(width: 800, height: 500))
-        XCTAssertEqual(floored, SnakeChainLayout.minScale, accuracy: 0.0001)
-    }
-
-    func test_fitScale_monotonic_shrinkingPlaneNeverYieldsLargerScale() {
-        var last: CGFloat = 1
-        for side in stride(from: CGFloat(900), through: CGFloat(300), by: -100) {
-            let s = SnakeChainLayout.fitScale(contentWidth: 1200, contentHeight: 1200,
-                                              availableSize: CGSize(width: side, height: side))
-            XCTAssertLessThanOrEqual(s, last + 0.0001,
-                                     "a smaller plane must never yield a larger scale")
-            last = s
+    func test_fitScale_neverChangesTileSize() {
+        // Physical dominoes keep their size whatever the window does. Shrinking
+        // to fit turned a long chain into a thin stripe of unreadable tiles
+        // (live report); growing turned a short one into a giant block (also
+        // live). Panning, not scaling, covers a chain bigger than the table.
+        let cases: [(CGFloat, CGFloat, CGSize)] = [
+            (400, 300, CGSize(width: 800, height: 500)),   // fits with room
+            (1100, 10, CGSize(width: 800, height: 900)),   // wider than the plane
+            (10, 1000, CGSize(width: 800, height: 500)),   // taller than the plane
+            (20, 10, CGSize(width: 4000, height: 3000)),   // tiny on a huge plane
+        ]
+        for (w, h, plane) in cases {
+            XCTAssertEqual(SnakeChainLayout.fitScale(contentWidth: w, contentHeight: h, availableSize: plane),
+                           1, accuracy: 0.0001,
+                           "content \(w)×\(h) on \(plane) must not be rescaled")
         }
     }
 
@@ -229,22 +206,23 @@ final class BoardLayoutTests: XCTestCase {
             XCTAssertLessThanOrEqual(p.y + halfH, plane.height + 0.5, "tile \(index) past the bottom edge")
         }
 
-        // Auto-fit may engage simply because the chain is long; what matters
-        // here is that no tile left the table.
-        XCTAssertGreaterThan(m.suggestedScale, SnakeChainLayout.minScale)
+        // The chain keeps its physical size; a table large enough holds it
+        // without any rescaling at all.
+        XCTAssertEqual(m.suggestedScale, 1, accuracy: 0.0001)
     }
 
-    func test_compute_boxedInChain_engagesAutoFitInsteadOfCrushingTiles() {
-        // Deliberately too many tiles for the plane: the path will run out of
-        // room, and the answer is uniform auto-fit plus camera pan -- never
-        // shrinking past the readability floor.
+    func test_compute_boxedInChain_keepsTilesReadableAndReliesOnPan() {
+        // Deliberately too many tiles for the plane: tiles keep their size, the
+        // chain stacks past the visible area, and the camera bounds grow so the
+        // tail is reachable by panning rather than by shrinking everything.
         var tiles = [SnakeChainLayout.Oriented]()
         for i in 0..<80 {
             tiles.append(SnakeChainLayout.Oriented(left: i % 7, right: (i + 1) % 7, isDouble: i % 11 == 5))
         }
         let m = SnakeChainLayout.compute(orientedTiles: tiles, availableSize: CGSize(width: 800, height: 320))
-        XCTAssertLessThan(m.suggestedScale, 1, "auto-fit engages on a boxed-in chain")
-        XCTAssertGreaterThanOrEqual(m.suggestedScale, SnakeChainLayout.minScale,
-                                    "and never crushes tiles past the readability floor")
+        XCTAssertEqual(m.suggestedScale, 1, accuracy: 0.0001,
+                       "tiles stay their physical size even when the chain outgrows the table")
+        XCTAssertGreaterThan(Set(m.placed.map { $0.y }).count, 4,
+                             "an 80-tile chain stacks into many runs rather than shrinking")
     }
 }

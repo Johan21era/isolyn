@@ -213,7 +213,7 @@ struct InteractiveGameBoardView: View {
             // TEMPORARY diagnostic: the build this window is actually running.
             // Three rounds were spent judging a layout that may not have been
             // in the process on screen; this settles it at a glance.
-            Text("\(LayoutProbe.shared.lastSummary) · \(Bundle.main.infoDictionary?["IsolynBuild"] as? String ?? "dev")")
+            Text(Bundle.main.infoDictionary?["IsolynBuild"] as? String ?? "devbuild")
                 .font(.system(size: 9, weight: .regular, design: .monospaced))
                 .foregroundStyle(IsolynTheme.ivoryMuted.opacity(0.5))
                 .padding(.trailing, 6)

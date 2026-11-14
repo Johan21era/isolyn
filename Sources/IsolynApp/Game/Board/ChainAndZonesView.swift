@@ -64,6 +64,20 @@ struct ChainAndZonesView: View {
                 // dominoes and hover targets move together.
                 .offset(x: camera.offsetX, y: camera.offsetY)
             }
+            #if DEBUG
+            // Readout belongs to THIS board, not a shared global: a top-bar
+            // label was written by a different board instance than the one on
+            // screen, which reported numbers that did not match the drawing.
+            VStack {
+                Spacer()
+                Text("\(Int(availableSize.width))×\(Int(availableSize.height)) n\(metrics.placed.count) s\(String(format: "%.2f", metrics.suggestedScale)) r\(Set(metrics.placed.map { Int($0.y) }).count)")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.38))
+                    .padding(.bottom, 2)
+            }
+            .allowsHitTesting(false)
+            #endif
+
             // Hover-chain overlay floats above the board (unchanged system).
             if let chain = hoverController.builtChain, !camera.isDragging {
                 VStack {
@@ -278,9 +292,6 @@ private struct SnakeChainBoard: View {
                 onInspect: onInspectFace
             )
         )
-        // ONE uniform auto-fit scale (§17 "scale the board intelligently";
-        // completes the mandate's responsive clause).
-        .scaleEffect(metrics.suggestedScale)
         .animation(.spring(response: 0.42, dampingFraction: 0.82), value: snapshot.stateVersion)
         .onAppear { raiseCameraBounds(residualX, residualY) }
         .onChange(of: boundsSignature) { _, _ in raiseCameraBounds(residualX, residualY) }
@@ -383,7 +394,7 @@ enum SnakeChainLayout {
     /// Longest run the table allows, in points (~9 tiles). A real game turns
     /// well before the edge of the room it is played in; without this cap a
     /// desktop-width window lets a whole chain run in one straight line.
-    static let maxRunTiles = 20
+
     static let hGap: CGFloat = 4
     /// Row pitch leaves room for perpendicular doubles (long axis 76)
     /// to protrude into the inter-row band without touching neighbours.
@@ -450,13 +461,10 @@ enum SnakeChainLayout {
         // so the chain stays regular instead of staggering tile by tile.
         let rowPitch = long + gap
         let minX = margin
-        // A run turns where the TABLE ends -- which is the board the player is
-        // actually looking at, not a fixed guess. The old constant 760pt cap
-        // coiled an 18-tile chain into a block on a 1536pt board; the table is
-        // the window's board area, capped only so an ultrawide display does not
-        // produce a single absurd line.
-        let tableRunCap = CGFloat(maxRunTiles) * (long + gap)
-        let tableWidth = min(W - margin * 2, tableRunCap)
+        // A run turns where the TABLE ends, which is the board the player is
+        // looking at. No fixed cap and no fitting: the chain is a physical
+        // object laid across the surface, turning when it reaches the edge.
+        let tableWidth = W - margin * 2
         let maxX = minX + tableWidth
 
         var rowY = margin + short / 2
@@ -592,14 +600,14 @@ enum SnakeChainLayout {
     }
 
 
-    /// ONE uniform factor covering the tighter of the two axes; exactly 1
-    /// while things fit; floored at `minScale` so extreme chains stop
-    /// shrinking and rely on pan instead (§17's priority order, encoded).
+    /// Physical dominoes do not change size to match the window. Scaling the
+    /// board to fit made a long chain a thin stripe of unreadable tiles and a
+    /// short one an oversized block -- two live complaints from one policy.
+    /// The chain now keeps its true size and turns at the table edge; a chain
+    /// taller than the table is reached by panning, which already exists.
     static func fitScale(contentWidth: CGFloat, contentHeight: CGFloat, availableSize: CGSize) -> CGFloat {
-        guard contentWidth > 0, contentHeight > 0 else { return 1 }
-        let widthRatio = availableSize.width * fitThreshold / contentWidth
-        let heightRatio = availableSize.height * fitThreshold / contentHeight
-        return min(maxScale, max(minScale, widthRatio), max(minScale, heightRatio))
+        _ = contentWidth; _ = contentHeight; _ = availableSize
+        return 1
     }
 }
 
