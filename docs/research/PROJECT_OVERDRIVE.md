@@ -34,9 +34,11 @@ does not pay.
 
 | Field | Value |
 |---|---|
-| Revision | working tree on top of `2b07564` (parallel root search) |
+| Revision | parallel root search (`dc1f757`) + partnership weight (`teamSupport = 24`) |
 | 1v1 configuration | depth 4, 64 determinizations, `workerThreads = 8` |
-| Measured vs sequential 20-sample engine | **+17.6 Elo**, 95% CI [+6.8, +28.3], n=4,000 |
+| 1v1 vs sequential 20-sample engine | **+17.6 Elo**, 95% CI [+6.8, +28.3], n=4,000 |
+| 2v2 vs the old 0.25 partnership weight | **+15.8 Elo**, 95% CI [+10.2, +21.3], pooled n=15,000 across 5 seeds |
+| 1v1 control for the 2v2 weight change | −1.0 Elo [−16.3, +14.2] — no effect, as constructed |
 | Correctness | 429 engine, 73 bridge, 75 Swift — all passing |
 
 ## What is known to be weak
@@ -80,11 +82,13 @@ scheme, and the belief updates that observe a draw. It also needs a bound on
 consecutive draws to keep the tree finite. It is the top candidate for the next
 block of work.
 
-**2v2 converts compute into nothing (measured twice).** The configuration edge
-worth **+27.4 Elo in 1v1** scores **49.7% in 2v2** — a replication of an earlier
-49.6% null with a different config pair and seed. Partnership play is the
-engine's clearest structural deficit: the search gets better at 1v1 and does not
-get better at 2v2, so the missing piece is representation, not effort.
+**2v2 converts compute into nothing (measured twice), but partnership weight
+converts into wins.** The configuration edge worth **+27.4 Elo in 1v1** scores
+**49.7% in 2v2**, replicating an earlier 49.6% null. Yet raising the single
+partnership term from 0.25 to 24 (E-023) is worth **+15.8 Elo [+10.2, +21.3]**
+over 15,000 pooled rounds. So 2v2's deficit is representational: search effort
+is wasted there, but the partnership signal was simply mis-scaled. One term is
+still a thin model of a teammate — the compute null is untouched by the fix.
 
 1. **The difficulty ladder is ordered but the separation is modest.** At 4,000
    games the 2/8 → 3/16 and 3/16 → 4/24 steps resolve at −14.8 and −14.9 Elo,
@@ -114,7 +118,7 @@ get better at 2v2, so the missing piece is representation, not effort.
 | # | Action | Why it is next |
 |---|---|---|
 | 1 | **Model voluntary drawing in the search** | the action is absent from the game tree; the design notes call it the high-skill axis |
-| 2 | **Give 2v2 real partnership representation** | two independent nulls: the same compute edge worth +27 Elo in 1v1 is worth **zero** in 2v2 (E-011, E-022) |
+| 2 | **Deepen 2v2 partnership modelling beyond one mobility term** | re-weighting was worth +15.8 Elo (E-023); the representation is still one scalar |
 | 3 | Build a budgeted joint weight optimizer | single-weight effects sit below the ~15 Elo resolution of ablation (E-015 – E-017) |
 | 4 | Replace the TT key and add depth-preferred replacement | the stated blocker on deeper search: tables are diluted across lanes |
 | 5 | Add pruning to 1v1v1 | the weakest mode, and the fix is well understood |

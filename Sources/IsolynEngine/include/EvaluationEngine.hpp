@@ -48,7 +48,18 @@ struct EvaluationWeights {
     double winThreat = 1.0;
     double pipControl = 0.5;
     double tempo = 0.1;
-    double teamSupport = 0.25;
+    // Partnership awareness. Hand-set at 0.25 until 2026-11-14; raised to 24.0
+    // after a measured 2v2 sweep (2 -> +12.7, 6 -> +15.3, 12 -> +17.9,
+    // 24 -> +22.3, 48 -> +22.7, 96 -> +22.3 Elo against the old default, 3,000
+    // rounds each, then replicated at a second seed: +16.2 [+3.8,+28.7]).
+    //
+    // The term is `0.25 * team mobility` and is zero outside 2v2, so this
+    // weight cannot affect 1v1 or 1v1v1 -- confirmed by a 1v1 control that
+    // scored -1.0 Elo [-16.3,+14.2]. See docs/research/EXPERIMENT_REGISTRY.md
+    // (E-023). Do not change it without re-running the 2v2 sweep: the previous
+    // default made the engine's only partnership signal worth ~6% of one
+    // player's mobility, which is why 5x more search bought nothing in 2v2.
+    double teamSupport = 24.0;
 };
 
 // A fixed-size result for the search leaf path. Keeping the values inline

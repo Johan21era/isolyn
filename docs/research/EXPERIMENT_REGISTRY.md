@@ -281,6 +281,39 @@ moving first. Against a weaker opponent the win rate is a flat ~54% everywhere.
 advantage converts into **nothing**, which means the deficiency is in how the
 engine represents the partnership — not in how hard it searches.
 
+## E-023 — Partnership weight: the first 2v2 strength gain (ACCEPTED)
+
+- **Hypothesis.** `teamSupport` was the engine's only partnership signal, weighted
+  at 0.25 on a term that is itself `0.25 × team mobility` — an effective ~6% of
+  one player's mobility. If 2v2's null results came from that term being
+  negligible, scaling it should convert into wins where compute could not.
+- **Method.** 2v2, depth 4, 64 samples, 8 workers, 3,000 rounds per point, one
+  sweep of the weight against the 0.25 default.
+
+| `teamSupport` | Elo vs old default | 95% CI |
+|---|---:|---|
+| 2 | +12.7 | [+0.3, +25.2] |
+| 6 | +15.3 | [+2.9, +27.7] |
+| 12 | +17.9 | [+5.4, +30.3] |
+| 24 | +22.3 | [+9.8, +34.7] |
+| 48 | +22.7 | [+10.3, +35.2] |
+| 96 | +22.3 | [+9.8, +34.7] |
+
+- **Replication (the part that matters).** The first three readings suggested
+  ~+22, which was optimistic. At 24, across independent seeds: 31337 → +22.3,
+  2024 → +16.2, 5150 → **+3.5** (not resolved), 7777 → +27.4, 8888 → +19.0.
+  Pooled over 15,000 rounds: **52.27%, +15.8 Elo, 95% CI [+10.2, +21.3]**.
+- **Mode safety.** `teamSupport` is zero outside 2v2 by construction, and a 1v1
+  control at the new default scored **−1.0 Elo [−16.3, +14.2]** — no effect.
+- **Verdict.** ACCEPTED. Default raised from 0.25 to **24.0** (the sweep's
+  plateau). The first change in the programme to improve a mode other than 1v1,
+  and the first to come from evaluation rather than search.
+
+**What this does and does not say.** It says the partnership signal was
+under-weighted by an order of magnitude, and that fixing that is worth ~16 Elo
+in 2v2. It does **not** say 2v2 now converts search effort into wins: the
+compute null (E-011, E-022) was a separate finding, and nothing here re-tests it.
+
 ## Strategic conclusion after E-007 – E-019
 
 Three experiments now agree on one thing: **scaling compute is finished as a
