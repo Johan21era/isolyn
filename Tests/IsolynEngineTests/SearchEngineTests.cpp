@@ -163,6 +163,32 @@ int main() {
               "a draw decision still reports a genuinely legal placeholder move");
     }
 
+    section("SearchEngine: the opener is never offered a draw -- it must lead with a tile");
+    {
+        std::vector<std::vector<DominoTile>> hands = { { DominoTile(0, 1), DominoTile(2, 3) },
+                                                       { DominoTile(1, 2), DominoTile(4, 5) } };
+        std::vector<DominoTile> boneyard;
+        for (int i = 0; i < DominoTile::kTileCount; ++i) {
+            DominoTile t = DominoTile::fromIndex(i);
+            const bool dealt = t == DominoTile(0, 1) || t == DominoTile(2, 3) ||
+                               t == DominoTile(1, 2) || t == DominoTile(4, 5);
+            if (!dealt) boneyard.push_back(t); // all 24 remaining tiles stay unseen
+        }
+        GameState state(GameMode::OneVsOne, hands, boneyard);
+        check(state.chain().isEmpty(), "a round with no mandated opener starts on an empty chain");
+
+        BeliefState belief = ProbabilityEngine::constructFromGameState(state, 0);
+        std::mt19937_64 rng(99);
+        SearchEngine::Config config;
+        config.maxDepthPlies = 2;
+        config.determinizationCount = 1;
+        config.maxVoluntaryDraws = 1; // exactly how the bridge runs analysis
+        auto decision = SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, config, rng);
+        check(!decision.isDraw, "draws are enabled but the opener must lead, so no draw is chosen");
+        check(MoveValidator::isLegal(state, 0, decision.move),
+              "the opener's reported move is a legal lead");
+    }
+
     if (failureCount() == 0) {
         std::cout << "\nSearchEngine: all checks passed\n";
         return 0;

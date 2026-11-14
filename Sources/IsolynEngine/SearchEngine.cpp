@@ -387,7 +387,7 @@ SearchValue searchZeroSum(GameState& state,
     RawEvaluation drawRaw;
     bool hasDrawOption = false;
     if (context.maxVoluntaryDraws > 0 && drawsLeft > 0 &&
-        state.boneyard().drawableCount() > 0) {
+        state.boneyard().drawableCount() > 0 && !state.chain().isEmpty()) {
         // A draw costs one ply of horizon here. Keeping depth constant instead
         // is the true cost model, but it re-enables draws after every placement
         // and the tree grows as 2^depth -- measured, and rejected as
@@ -592,8 +592,11 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
 
     // A voluntary draw is a first-class candidate when enabled. It is appended
     // after the placements so candidate indices keep their existing meaning.
-    const bool drawAllowed =
-        config.maxVoluntaryDraws > 0 && state.boneyard().drawableCount() > 0;
+    // The opener of a round faces an empty chain, where every tile is a legal
+    // lead; the rules require a play there, so a draw must not be a candidate.
+    const bool drawAllowed = config.maxVoluntaryDraws > 0 &&
+                             state.boneyard().drawableCount() > 0 &&
+                             !state.chain().isEmpty();
     const std::size_t drawIndex = candidates.size();
     const std::size_t actionCount = candidates.size() + (drawAllowed ? 1u : 0u);
 

@@ -383,7 +383,7 @@ enum SnakeChainLayout {
     /// Longest run the table allows, in points (~9 tiles). A real game turns
     /// well before the edge of the room it is played in; without this cap a
     /// desktop-width window lets a whole chain run in one straight line.
-    static let maxRunWidth: CGFloat = 760
+    static let maxRunTiles = 20
     static let hGap: CGFloat = 4
     /// Row pitch leaves room for perpendicular doubles (long axis 76)
     /// to protrude into the inter-row band without touching neighbours.
@@ -450,12 +450,13 @@ enum SnakeChainLayout {
         // so the chain stays regular instead of staggering tile by tile.
         let rowPitch = long + gap
         let minX = margin
-        // A run turns where the TABLE ends, not where the window ends. Letting
-        // a run stretch to the window edge produced one long line across a
-        // desktop window -- the chain never coiled, which is exactly what a
-        // real game never does. Bounding the table keeps a game to a handful
-        // of tiles per run and makes it stack the way it does on a tabletop.
-        let tableWidth = min(W - margin * 2, maxRunWidth)
+        // A run turns where the TABLE ends -- which is the board the player is
+        // actually looking at, not a fixed guess. The old constant 760pt cap
+        // coiled an 18-tile chain into a block on a 1536pt board; the table is
+        // the window's board area, capped only so an ultrawide display does not
+        // produce a single absurd line.
+        let tableRunCap = CGFloat(maxRunTiles) * (long + gap)
+        let tableWidth = min(W - margin * 2, tableRunCap)
         let maxX = minX + tableWidth
 
         var rowY = margin + short / 2

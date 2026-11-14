@@ -286,7 +286,9 @@ final class GameViewModel {
 
     var canVoluntaryDraw: Bool {
         guard let s = snapshot, isMyTurn, s.roundOutcome == .inProgress else { return false }
-        return s.boneyardDrawableCount > 0
+        // The opener faces an empty chain and always holds a legal lead, so the
+        // rules require a play. Offering a draw there was a live rules bug.
+        return s.boneyardDrawableCount > 0 && !s.chain.isEmpty
     }
 
     var legalMoveSet: Set<Move> { Set(snapshot?.legalMoves ?? []) }

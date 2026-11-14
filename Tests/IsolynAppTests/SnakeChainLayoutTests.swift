@@ -70,17 +70,21 @@ final class SnakeChainLayoutTests: XCTestCase {
         }
     }
 
-    func test_wideDesktopWindow_stillCoilsTheChain() {
-        // Regression: a run used to continue to the window edge, so an
-        // 18-tile game on a 1600pt-wide window laid out as ONE straight line
-        // across the screen and never turned. A real table turns.
+    func test_wideDesktopWindow_laysTheChainAcrossTheTable() {
+        // The table is the window's board area, not a fixed 760pt block: an
+        // 18-tile chain on a 1600pt board is one line across it, the way it
+        // looks on a real table. A chain longer than the table still turns.
         let size = CGSize(width: 1600, height: 900)
-        let metrics = SnakeChainLayout.compute(orientedTiles: chain(18), availableSize: size)
-        let widths = Dictionary(grouping: metrics.placed, by: { $0.y }).values.map { $0.count }
-        XCTAssertGreaterThanOrEqual(widths.count, 2,
-                                    "an 18-tile chain on a desktop window must use more than one run")
-        XCTAssertLessThanOrEqual(widths.max() ?? 0, 10,
-                                 "a run holds about nine tiles; it turns at the table edge")
+        let short = SnakeChainLayout.compute(orientedTiles: chain(18), availableSize: size)
+        XCTAssertEqual(Set(short.placed.map { $0.y }).count, 1,
+                       "an 18-tile chain fits one run on a 1600pt table")
+
+        for count in [24, 40] {
+            let metrics = SnakeChainLayout.compute(
+                orientedTiles: chain(count), availableSize: size)
+            XCTAssertGreaterThanOrEqual(Set(metrics.placed.map { $0.y }).count, 2,
+                                        "a \(count)-tile chain must use more than one run")
+        }
     }
 
     func test_consecutiveTilesAreAdjacent() {

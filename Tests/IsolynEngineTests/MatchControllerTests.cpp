@@ -205,6 +205,28 @@ int main() {
         check(team1.first == 1 && team1.second == 3, "playersOnTeam(1) returns the (1, 3) pairing");
     }
 
+    section("MatchController: the opener may not draw into an empty chain");
+    {
+        std::vector<std::vector<DominoTile>> hands = { { DominoTile(3, 3) }, { DominoTile(1, 5) } };
+        // Four tiles, because the boneyard's final two are locked and never
+        // drawable -- with two, drawableCount is 0 for an unrelated reason.
+        std::vector<DominoTile> boneyard = { DominoTile(0, 0), DominoTile(6, 6),
+                                             DominoTile(5, 5), DominoTile(4, 4) };
+
+        GameState empty(GameMode::OneVsOne, hands, boneyard);
+        empty.setCurrentPlayerIndex(0);
+        MatchController opener(empty);
+        check(!opener.canVoluntaryDraw(),
+              "the opener faces an empty chain and holds a legal lead, so a draw is not a rules action");
+
+        GameState opened(GameMode::OneVsOne, hands, boneyard);
+        opened.playTile(0, DominoTile(3, 3), GameState::ChainSide::Left);
+        opened.setCurrentPlayerIndex(1);
+        MatchController afterOpen(opened);
+        check(afterOpen.canVoluntaryDraw(),
+              "once the chain is open, a voluntary draw is available again");
+    }
+
     if (failureCount() == 0) {
         std::cout << "\nMatchController: all checks passed\n";
         return 0;

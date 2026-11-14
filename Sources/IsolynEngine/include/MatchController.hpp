@@ -92,6 +92,11 @@ public:
     // WHETHER to voluntarily draw.
     DominoTile voluntaryDraw();
 
+    // Whether a voluntary draw is a rules action right now. False for the
+    // opener of a round: the chain is empty, every tile in hand is a legal
+    // lead, and the rules require the opener to play rather than draw.
+    bool canVoluntaryDraw() const;
+
     // The deterministic, rules-mandated forced-draw loop (Rules Spec
     // Sec. 5): draws for the current player until either a playable tile
     // is obtained or the boneyard is exhausted. Returns every tile

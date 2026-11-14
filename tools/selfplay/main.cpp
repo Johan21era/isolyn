@@ -345,7 +345,7 @@ GameSummary playOneRound(const Options& options,
         row.evaluation = evaluation;
         rows.push_back(row);
 
-        if (decision.isDraw) {
+        if (decision.isDraw && controller.canVoluntaryDraw()) {
             controller.voluntaryDraw();
             ++drawsThisTurn;
             continue; // the draw does not end the turn; the same player acts again

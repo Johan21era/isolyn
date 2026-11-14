@@ -36,7 +36,15 @@ bool MatchController::currentPlayerHasLegalMove() const {
     return MoveGenerator::hasAnyLegalMove(m_state, m_state.currentPlayerIndex());
 }
 
+bool MatchController::canVoluntaryDraw() const {
+    // The opener faces an empty chain, so they always hold a legal lead.
+    // Drawing there is not a rules action: the opener must play.
+    return !m_state.chain().isEmpty() && m_state.boneyard().drawableCount() > 0;
+}
+
 DominoTile MatchController::voluntaryDraw() {
+    assert(canVoluntaryDraw() &&
+           "the opener must play a tile; a draw requires a non-empty chain");
     return m_state.drawTile(m_state.currentPlayerIndex());
 }
 

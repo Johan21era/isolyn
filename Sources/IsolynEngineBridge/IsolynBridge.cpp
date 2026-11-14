@@ -413,6 +413,9 @@ CommandResultDTO bridge_voluntary_draw(SessionHandle session, uint64_t expectedS
 
         if (!canAdvanceStateVersion(impl->stateVersion)) return failedCommand(BridgeStatus::BridgeFailure, "version exhausted");
         if (impl->controller.state().boneyard().drawableCount() == 0) return failedCommand(BridgeStatus::BoneyardEmpty, "boneyard empty");
+        // The opener faces an empty chain, where every tile is a legal lead;
+        // the rules require a play, so no draw is available.
+        if (!impl->controller.canVoluntaryDraw()) return failedCommand(BridgeStatus::NoLegalMove, "the opener must play: drawing requires a non-empty chain");
 
         impl->controller.voluntaryDraw();
         commitSuccess(*impl, RoundOutcomeKind::InProgress, -1);
