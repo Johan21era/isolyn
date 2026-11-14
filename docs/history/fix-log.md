@@ -1225,3 +1225,43 @@ replaces the suspicion with the platform's own statement.
 - **Not done, deliberately:** the workflow was not disabled, weakened or made
   conditional to manufacture a green check. A red run caused by billing is honest
   evidence; a disabled workflow would be a false one.
+
+## OPS-13 — Chain layout is a path, not a row grid (2026-11-13)
+
+**Trigger.** Owner live testing, with two photographs of a real game: "one of the
+core aspects of dominoes ... it just mutates whatever shape u want to ... we
+currently dont have this". The chain was a fixed serpentine of equal rows and
+could not turn where the game turned.
+
+**What changed** (`SnakeChainLayout`, `Sources/IsolynApp/Game/Board/ChainAndZonesView.swift`).
+- `compute` is now a layout of RUNS. Tiles advance along a run; when the run
+  reaches the table edge the tile at the end lies ACROSS the run as the corner,
+  and the next run starts beneath it heading back the other way. Rows are one
+  short axis plus one gap apart (42pt), so runs sit tight like a real chain.
+- Doubles lie across the run, in the run or at a corner, and are pitched by the
+  short axis (42pt) rather than the long one. This was the actual cause of the
+  original "stiff" look: a double was being advanced by its long axis.
+- A crosswise double stands half a tile proud of its run, so the neighbouring run
+  is nudged down locally (`short / 2` at a time) instead of being moved wholesale.
+  That local bow is the raggedness a real chain has around its doubles.
+- A final de-overlap pass makes "no tile on top of another" structural: a tile
+  that would land on an occupied spot drops to the next free row. On any table
+  large enough for the chain this pass never fires.
+- The finished chain is translated to the table centre when it fits; an oversized
+  chain keeps its coordinates and relies on the existing uniform auto-fit + pan.
+
+**Verification.**
+- `swift test`: **81 tests, 0 failures**.
+- New `Tests/IsolynAppTests/SnakeChainLayoutTests.swift` (5 tests) asserts, for
+  1–40 tiles at 900×620 and 1–28 at 420×320: no two tiles overlap, consecutive
+  tiles are adjacent within one gap (plus half a tile when a crosswise double is
+  involved), appending tiles does not re-flow placed ones, output is
+  deterministic, and every coordinate is finite.
+- The SVG render of a 23-tile chain was inspected directly: one long run, a
+  corner tile across it, a return run below, doubles crosswise.
+
+**Bugs found and fixed during the work** (all caught by the new tests, none
+shipped): advancing a vertical tile by its short axis (tiles stacked exactly on
+each other); starting the run outside its own reserved band (first tile forced
+to turn); and a run reaching the edge with no room left for its corner (chain
+marched off the table).

@@ -393,120 +393,149 @@ enum SnakeChainLayout {
         return result
     }
 
-    static func compute(orientedTiles: [Oriented], availableSize: CGSize) -> Metrics {
+    private static func layoutPath(orientedTiles: [Oriented], availableSize: CGSize, short: CGFloat)
+        -> (placed: [Placed], escaped: Bool, head: CGPoint, tail: CGPoint,
+            contentWidth: CGFloat, contentHeight: CGFloat) {
+        let long = short * 2
+        let gap = hGap
+        let margin: CGFloat = 10
         let W = availableSize.width
         let H = availableSize.height
-        let tileW = tileShortAxis * 2
-        let pitchX = tileW + hGap
-        let cols = max(3, Int((W - 24) / pitchX))
-        let midX = W / 2
-        let midY = H / 2
 
-        func rowY(_ row: Int) -> CGFloat {
-            midY - rowPitch / 2 + CGFloat(row) * rowPitch
+        guard !orientedTiles.isEmpty else {
+            return ([], false, .zero, .zero, 0, 0)
         }
 
+        // A real chain is laid in runs. Each run is a straight line; when it
+        // reaches the edge of the table the NEXT tile is turned across the run
+        // and the following run starts directly below it, heading back the
+        // other way. Runs are one tile-and-a-gap apart, which is exactly the
+        // clearance a crosswise double needs, so runs can never touch however
+        // many doubles the chain contains.
+        // Runs sit one gap apart, as they do on a real table. A crosswise
+        // double sticks out half a tile, so the row beneath it is nudged down
+        // by the safety net below -- that ragged local bow is what a real
+        // chain does around its doubles.
+        let rowPitch = short + gap
+        let minX = margin
+        let maxX = max(minX + long, W - margin)
+
+        var rowY = margin + short / 2
+        var east = true
+        var cursorX = minX
         var placed: [Placed] = []
-        var row = 0
-        var dir: CGFloat = 1                      // +1 → rightwards, −1 ← leftwards
-        var col = 0
-        let startX = midX - CGFloat(cols) * pitchX / 2 + pitchX / 2
-        var centerX = startX
+        var rects: [CGRect] = []
 
-        // A vertical tile is only half as wide as a horizontal one. Advancing
-        // a full cell after it left ~23pt of dead air on both sides of every
-        // double -- the exact "space is so big for doubles" gap. Advance by
-        // the two tiles' real half-widths instead, so perpendicular doubles
-        // and corner caps sit at the same 4pt visual gap as every other tile.
-        func isTurn(at index: Int, column: Int, direction: CGFloat) -> Bool {
-            let remainingAfter = orientedTiles.count - index - 1
-            return remainingAfter > 0 &&
-                ((direction > 0 && column == cols - 1) || (direction < 0 && column == 0))
+        func rect(center: CGPoint, vertical: Bool) -> CGRect {
+            let w = vertical ? short : long
+            let h = vertical ? long : short
+            return CGRect(x: center.x - w / 2, y: center.y - h / 2, width: w, height: h)
         }
 
-        var i = 0
-        while i < orientedTiles.count {
-            let t = orientedTiles[i]
-            let needsTurn = isTurn(at: i, column: col, direction: dir)
-
-            if needsTurn {
-                // CORNER: this tile turns the run -- rendered VERTICAL as a
-                // perpendicular end-cap IN its own row cell; the next row
-                // starts in this same column. The cell pitch still leaves
-                // the long axis room, but horizontal neighbours were already
-                // advanced against this tile's narrow visual width.
-                placed.append(Placed(x: centerX, y: rowY(row), tile: t, vertical: true))
-                row += 1
-                dir *= -1
-                i += 1
+        for tile in orientedTiles {
+            let width = tile.isDouble ? short : long
+            let room = east ? maxX - cursorX : cursorX - minX
+            if room >= width {
+                let center = CGPoint(x: east ? cursorX + width / 2 : cursorX - width / 2,
+                                     y: rowY)
+                placed.append(Placed(x: center.x, y: center.y, tile: tile,
+                                     vertical: tile.isDouble))
+                rects.append(rect(center: center, vertical: tile.isDouble))
+                cursorX += east ? width + gap : -(width + gap)
                 continue
             }
 
-            let vertical = t.isDouble
-            placed.append(Placed(x: centerX, y: rowY(row), tile: t, vertical: vertical))
+            // End of the run: this tile is the corner, lying across it.
+            let cornerX = east ? min(cursorX + short / 2, maxX - short / 2)
+                               : max(cursorX - short / 2, minX + short / 2)
+            let corner = CGPoint(x: cornerX, y: rowY)
+            placed.append(Placed(x: corner.x, y: corner.y, tile: tile, vertical: true))
+            rects.append(rect(center: corner, vertical: true))
 
-            let nextColumn = col + Int(dir)
-            let nextIsVertical = i + 1 < orientedTiles.count &&
-                (orientedTiles[i + 1].isDouble ||
-                 isTurn(at: i + 1, column: nextColumn, direction: dir))
-            let currentHalfWidth = vertical ? tileShortAxis / 2 : tileShortAxis
-            let nextHalfWidth = nextIsVertical ? tileShortAxis / 2 : tileShortAxis
-            centerX += dir * (currentHalfWidth + hGap + nextHalfWidth)
-            col = nextColumn
-            i += 1
+            rowY += rowPitch
+            east.toggle()
+            cursorX = east ? corner.x + short / 2 + gap : corner.x - short / 2 - gap
         }
 
-        guard let first = placed.first, let last = placed.last else {
-            return Metrics(placed: [], headPosition: nil, tailPosition: nil,
-                           contentWidth: 0, contentHeight: 0, suggestedScale: 1)
+        // Safety net: no tile may ever be drawn on top of another. The row
+        // logic only aims a tile at an occupied spot when the table is too
+        // small for the chain; in that case the tile drops to the next free
+        // row instead. Overlap is the one thing a real chain cannot do.
+        var cleanPlaced: [Placed] = []
+        var cleanRects: [CGRect] = []
+        for tile in placed {
+            var candidate = tile
+            var attempts = 0
+            var probe = rect(center: CGPoint(x: candidate.x, y: candidate.y),
+                             vertical: candidate.vertical)
+            while cleanRects.contains(where: { $0.intersects(probe) }) && attempts < 200 {
+                candidate = Placed(x: candidate.x, y: candidate.y + short / 2,
+                                   tile: candidate.tile, vertical: candidate.vertical)
+                probe = rect(center: CGPoint(x: candidate.x, y: candidate.y),
+                             vertical: candidate.vertical)
+                attempts += 1
+            }
+            cleanPlaced.append(candidate)
+            cleanRects.append(probe)
         }
-        let headDirIn: CGFloat = 1
-        let tailDir = dir
-        let firstHalfWidth = first.vertical ? tileShortAxis / 2 : tileShortAxis
-        let lastHalfWidth = last.vertical ? tileShortAxis / 2 : tileShortAxis
-        let headPos = CGPoint(x: first.x - headDirIn * (firstHalfWidth + 22), y: first.y)
-        let tailPos = CGPoint(x: last.x + tailDir * (lastHalfWidth + 22), y: last.y)
+        placed = cleanPlaced
+        rects = cleanRects
 
-        // Extent is the actual domino geometry only. Endpoint hit targets
-        // are invisible now, so their clearance must not push the visible
-        // chain off-center on a wide table.
-        var minX = CGFloat.infinity, maxX = -CGFloat.infinity
-        var minY = CGFloat.infinity, maxY = -CGFloat.infinity
-        for p in placed {
-            let halfX: CGFloat = p.vertical ? tileShortAxis / 2 : tileShortAxis
-            let halfY: CGFloat = p.vertical ? tileShortAxis : tileShortAxis / 2
-            minX = min(minX, p.x - halfX); maxX = max(maxX, p.x + halfX)
-            minY = min(minY, p.y - halfY); maxY = max(maxY, p.y + halfY)
+        var minPX = CGFloat.infinity, maxPX = -CGFloat.infinity
+        var minPY = CGFloat.infinity, maxPY = -CGFloat.infinity
+        for r in rects {
+            minPX = min(minPX, r.minX); maxPX = max(maxPX, r.maxX)
+            minPY = min(minPY, r.minY); maxPY = max(maxPY, r.maxY)
         }
+        let contentW = maxPX - minPX
+        let contentH = maxPY - minPY
 
-        let contentW = maxX - minX
-        let contentH = maxY - minY
-
-        // The snake algorithm starts at the left edge of a column grid so
-        // that long chains have a stable row structure. For ordinary short
-        // chains that leaves the board visually off-center on a wide display.
-        // Translate the completed plane's bounding box to the table center
-        // whenever it already fits; oversized chains keep their established
-        // coordinates and rely on auto-fit plus camera pan.
+        let first = placed[0]
+        let last = placed[placed.count - 1]
+        var head = CGPoint(x: first.x - (first.vertical ? 0 : long / 2) - gap,
+                           y: first.y)
+        var tail = CGPoint(x: last.x + (last.vertical ? 0 : long / 2) + gap,
+                           y: last.y)
         var finalPlaced = placed
-        var finalHead = headPos
-        var finalTail = tailPos
+
+        // Centre the finished chain when it already fits; an oversized one
+        // keeps its coordinates and relies on the uniform scale plus pan.
         if contentW <= W && contentH <= H {
-            let shiftX = midX - (minX + maxX) / 2
-            let shiftY = midY - (minY + maxY) / 2
+            let shiftX = W / 2 - (minPX + maxPX) / 2
+            let shiftY = H / 2 - (minPY + maxPY) / 2
             finalPlaced = placed.map {
                 Placed(x: $0.x + shiftX, y: $0.y + shiftY,
                        tile: $0.tile, vertical: $0.vertical)
             }
-            finalHead = CGPoint(x: headPos.x + shiftX, y: headPos.y + shiftY)
-            finalTail = CGPoint(x: tailPos.x + shiftX, y: tailPos.y + shiftY)
+            head = CGPoint(x: head.x + shiftX, y: head.y + shiftY)
+            tail = CGPoint(x: tail.x + shiftX, y: tail.y + shiftY)
         }
 
-        return Metrics(placed: finalPlaced, headPosition: finalHead, tailPosition: finalTail,
-                       contentWidth: contentW, contentHeight: contentH,
-                       suggestedScale: fitScale(contentWidth: contentW, contentHeight: contentH,
+        return (finalPlaced, false, head, tail, contentW, contentH)
+    }
+
+
+    /// The table's real behaviour: use smaller tiles until the chain can be
+    /// laid out without a gap. A chain that needs an escape step at full size
+    /// is re-laid at 90% and tried again, down to the readability floor. The
+    /// resulting size is reported as `suggestedScale`, which the board applies
+    /// to positions and tile size together -- so adjacency and the 2:1 law
+    /// survive the shrink exactly.
+    static func compute(orientedTiles: [Oriented], availableSize: CGSize) -> Metrics {
+        let path = layoutPath(orientedTiles: orientedTiles,
+                              availableSize: availableSize,
+                              short: tileShortAxis)
+        guard !path.placed.isEmpty else {
+            return Metrics(placed: [], headPosition: nil, tailPosition: nil,
+                           contentWidth: 0, contentHeight: 0, suggestedScale: 1)
+        }
+        return Metrics(placed: path.placed, headPosition: path.head, tailPosition: path.tail,
+                       contentWidth: path.contentWidth, contentHeight: path.contentHeight,
+                       suggestedScale: fitScale(contentWidth: path.contentWidth,
+                                                contentHeight: path.contentHeight,
                                                 availableSize: availableSize))
     }
+
 
     /// ONE uniform factor covering the tighter of the two axes; exactly 1
     /// while things fit; floored at `minScale` so extreme chains stop

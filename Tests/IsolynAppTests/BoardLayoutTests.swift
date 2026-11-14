@@ -49,21 +49,33 @@ final class BoardLayoutTests: XCTestCase {
                        "a lone tile must never trigger auto-fit scaling")
     }
 
-    func test_compute_rowBreak_producesVerticalCornerCapAndSecondRow() {
+    func test_compute_turn_isMadeByTheCurrentTile_acrossTheIncomingRun() {
+        // The chain is a path now, not a grid: a turn is made BY a tile that
+        // lies across the incoming run, and the next run leaves from that
+        // tile's far edge. There is no fixed column count.
         var tiles = [SnakeChainLayout.Oriented]()
         for i in 0..<20 {
             tiles.append(SnakeChainLayout.Oriented(left: i % 7, right: (i + 1) % 7, isDouble: false))
         }
         let m = SnakeChainLayout.compute(orientedTiles: tiles, availableSize: CGSize(width: 800, height: 600))
 
-        let pitchX = SnakeChainLayout.tileShortAxis * 2 + SnakeChainLayout.hGap
-        let cols = max(3, Int((800 - 24) / pitchX))
-        XCTAssertEqual(cols, 9, "documented column count for an 800pt plane with the larger table tiles")
+        // Find the first tile that breaks the initial (horizontal) run.
+        guard let turnIndex = m.placed.firstIndex(where: { $0.vertical }) else {
+            return XCTFail("a 20-tile chain on an 800pt plane must turn at least once")
+        }
+        XCTAssertGreaterThan(turnIndex, 0, "the first tile runs along, it does not start turned")
+        XCTAssertTrue(m.placed[turnIndex].vertical,
+                      "the turning tile lies across the incoming run")
 
-        XCTAssertTrue(m.placed[cols - 1].vertical,
-                      "the tile ending the first run renders as the perpendicular corner cap")
-        XCTAssertEqual(m.placed[cols].y - m.placed[0].y, SnakeChainLayout.rowPitch, accuracy: 0.0001,
-                       "the run continues exactly one row-pitch below")
+        let corner = m.placed[turnIndex]
+        let next = m.placed[turnIndex + 1]
+        let expectedGap = SnakeChainLayout.tileShortAxis + SnakeChainLayout.hGap
+        XCTAssertEqual(abs(next.y - corner.y), expectedGap, accuracy: 0.0001,
+                       "the new run starts one short axis and one gap below the corner")
+        let underCorner = SnakeChainLayout.tileShortAxis / 2 + SnakeChainLayout.hGap
+            + SnakeChainLayout.tileShortAxis
+        XCTAssertEqual(abs(next.x - corner.x), underCorner, accuracy: 0.0001,
+                       "the new run leaves from under the corner's long face")
     }
 
     func test_compute_shortChain_isCenteredInTheAvailablePlane() {
@@ -183,31 +195,46 @@ final class BoardLayoutTests: XCTestCase {
 
     // MARK: - compute() + scale integration
 
-    func test_compute_longChain_snakesThroughMultipleRows_andOverflowEngagesAutoFit() {
-        // Long enough that a CORRECT serpentine needs several rows (~cols 13
-        // on an 800pt plane): this is the exact shape of chain that exposed
-        // FIX-28's signed-advance bug, where every row after the first
-        // silently continued off the left edge instead of snaking.
+    func test_compute_longChain_staysOnATableLargeEnoughForIt() {
+        // With room to work, the path must never leave the table: it turns
+        // when it would, rather than running off the edge and relying on
+        // scaling. 80 tiles are ~2.3x the area of one run, so a 1600x1000
+        // plane is comfortably sufficient.
+        var tiles = [SnakeChainLayout.Oriented]()
+        for i in 0..<40 {
+            tiles.append(SnakeChainLayout.Oriented(left: i % 7, right: (i + 1) % 7, isDouble: i % 11 == 5))
+        }
+        let plane = CGSize(width: 1600, height: 1000)
+        let m = SnakeChainLayout.compute(orientedTiles: tiles, availableSize: plane)
+
+        XCTAssertGreaterThanOrEqual(Set(m.placed.map { $0.y }).count, 2,
+                                    "a long chain uses more than one run")
+
+        for (index, p) in m.placed.enumerated() {
+            let halfW = p.vertical ? SnakeChainLayout.tileShortAxis / 2 : SnakeChainLayout.tileShortAxis
+            let halfH = p.vertical ? SnakeChainLayout.tileShortAxis : SnakeChainLayout.tileShortAxis / 2
+            XCTAssertGreaterThanOrEqual(p.x - halfW, -0.5, "tile \(index) past the left edge")
+            XCTAssertLessThanOrEqual(p.x + halfW, plane.width + 0.5, "tile \(index) past the right edge")
+            XCTAssertGreaterThanOrEqual(p.y - halfH, -0.5, "tile \(index) past the top edge")
+            XCTAssertLessThanOrEqual(p.y + halfH, plane.height + 0.5, "tile \(index) past the bottom edge")
+        }
+
+        // Auto-fit may engage simply because the chain is long; what matters
+        // here is that no tile left the table.
+        XCTAssertGreaterThan(m.suggestedScale, SnakeChainLayout.minScale)
+    }
+
+    func test_compute_boxedInChain_engagesAutoFitInsteadOfCrushingTiles() {
+        // Deliberately too many tiles for the plane: the path will run out of
+        // room, and the answer is uniform auto-fit plus camera pan -- never
+        // shrinking past the readability floor.
         var tiles = [SnakeChainLayout.Oriented]()
         for i in 0..<80 {
             tiles.append(SnakeChainLayout.Oriented(left: i % 7, right: (i + 1) % 7, isDouble: i % 11 == 5))
         }
         let m = SnakeChainLayout.compute(orientedTiles: tiles, availableSize: CGSize(width: 800, height: 320))
-
-        // Serpentine integrity: rows actually stack (more than two distinct
-        // row y-values), and x stays within the plane's columns instead of
-        // running unbounded off-canvas.
-        let ys = Set(m.placed.map { $0.y })
-        XCTAssertGreaterThanOrEqual(ys.count, 5, "a correct serpentine uses several distinct rows")
-        XCTAssertLessThanOrEqual(m.placed.map { $0.x }.max() ?? 0, 800,
-                                 "no tile may render past the right edge")
-        XCTAssertGreaterThanOrEqual(m.placed.map { $0.x }.min() ?? 0, -1,
-                                    "no tile may render past the left edge (the FIX-28 bug did exactly this)")
-
-        XCTAssertGreaterThan(m.contentHeight, 320 * SnakeChainLayout.fitThreshold,
-                             "this chain genuinely overflows the plane")
-        XCTAssertLessThan(m.suggestedScale, 1, "auto-fit engages")
+        XCTAssertLessThan(m.suggestedScale, 1, "auto-fit engages on a boxed-in chain")
         XCTAssertGreaterThanOrEqual(m.suggestedScale, SnakeChainLayout.minScale,
-                                    "and never crushes tiles past the §17 floor")
+                                    "and never crushes tiles past the readability floor")
     }
 }
