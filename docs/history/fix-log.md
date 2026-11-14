@@ -2496,3 +2496,12 @@ three-seat ritual round.
   loudly rather than emitting a guessed row.
 - Merge output now uses LF line endings (the shards already do), so it is
   line-identical to the old output rather than byte-identical.
+
+### Hosted CI
+
+- Run **43649790947** on `0171ba4` concluded **failure** with **zero steps
+  executed** on both `Documentation gate` and `macOS build + full test suites`
+  (1–2 seconds each). The check-run annotation reads: *"The job was not started
+  because recent account payments have failed or your spending limit needs to
+  be increased. Please check the 'Billing & plans' section in your settings."*
+  This is infrastructure/billing, not a code failure; hosted CI is not green.
