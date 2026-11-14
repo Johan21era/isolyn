@@ -197,10 +197,14 @@ final class LabServiceTests: XCTestCase {
 
     func test_labScreenRendersWithoutAClick() throws {
         let launcher = FakeLauncher()
-        let model = LabService(launcher: launcher, root: try makeRepository())
+        let root = try makeRepository()
+        let model = LabService(launcher: launcher, root: root)
+        let estimator = LabEstimator(launcher: launcher, root: root)
         let view = LabView()
             .environment(AppState())
             .environment(model)
+            .environment(LabAnalysisService(launcher: launcher, root: root))
+            .environment(estimator)
             .frame(width: 1080, height: 720)
 
         let renderer = ImageRenderer(content: view)

@@ -150,6 +150,10 @@ final class LabService {
                 : "One run at a time — stop the active run first."
             return
         }
+        guard requested.games > 0 else {
+            phase = .failed("Choose at least one game.")
+            return
+        }
         guard LabPaths.isSafeRunID(requested.runID) else {
             phase = .failed("That configuration produces an invalid run id.")
             return
@@ -246,6 +250,8 @@ final class LabService {
         }
         return Array(
             manifests
+                // Warm-up probes are measurements, not runs the owner asked for.
+                .filter { !$0.runId.hasPrefix("probe-") }
                 .sorted { ($0.startedAt ?? $0.createdAt) > ($1.startedAt ?? $1.createdAt) }
                 .prefix(limit)
         )

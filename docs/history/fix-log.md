@@ -1924,3 +1924,43 @@ Kaggle buys breadth and a free machine, not speed.
 Kaggle limits quoted from `https://www.kaggle.com/docs/notebooks` (Technical
 Specifications) on 2026-11-14; GPU weekly quota from Kaggle's 30 h/week
 announcement.
+
+## OPS-29 — The Lab screen, rewritten for people who have never heard "seed"
+
+**Scope.** Presentation and one new capability (a measured workload meter).
+No engine, rule or runner behaviour changed.
+
+**What changed on screen.**
+
+- **Custom game counts.** A text field sits beside the presets, so "3,750,000"
+  is as easy as "5M". A non-positive count disables Start and the service
+  refuses it with "Choose at least one game."
+- **A workload meter measured, not guessed.** The screen runs a short real
+  workload — 8 games per shard process, at the currently selected depth,
+  samples, mode and parallel count — times it, and reports games/s, total
+  duration, batch count and disk size. It re-measures when the settings change
+  (debounced 800 ms) and has a "Measure again" action. Probe run ids start with
+  `probe-` and are filtered out of Recent runs.
+- **Plain words first, jargon second.** "Look-ahead" with `depth` as its
+  caption; "Worlds per move" for samples; "Batches at once" for shards; "Deal
+  seed" explained as *the same seed always deals the same games*. A sentence
+  under the grid says what each knob does.
+- **Cleaner structure.** One column at 720 pt, three cards with a single visual
+  weight, a log-scale gauge from one minute to seven days, and Recent runs
+  titled by what they are ("5.0M games · 1v1 · seed 1") rather than by folder
+  name.
+
+**The meter's own evidence.** A probe of 64 games at depth 8 / 64 samples with 8
+shards: `probe: 2.95s -> 21.7 games/s`, against 22.7 games/s for a full run.
+The probe includes Python and process startup, so it reads slightly
+conservative — the honest direction for an estimate.
+
+**A failure found by the tests, and what it meant.** Adding the estimator broke
+the existing offscreen render test with
+`Fatal error: No Observable object of type LabEstimator found` — the test built
+`LabView` with the old environment. The app itself injects it; the test was the
+thing that was stale. Fixed by giving the test the same environment the app
+provides, which is exactly what a render test is for.
+
+**Evidence.** `swift test`: `Executed 104 tests, with 0 failures (0 unexpected)
+in 3.812 (3.819) seconds`. `./scripts/ci/local.sh` runs the full six-step gate.

@@ -3,9 +3,9 @@ import SwiftUI
 
 /// The offline lab: runs on one tab, calibration analyses on the other.
 ///
-/// The screen is intentionally split between plain-language labels and
-/// monospaced technical detail (run ids, shard counts, search configuration), so
-/// the same page can be read at a glance or audited line by line.
+/// The screen is written for someone who has never heard the word "seed". The
+/// plain label is the one you read; the technical name is the caption under it,
+/// so the same page works for a first-time reader and for an audit.
 struct LabView: View {
     enum Tab: String, CaseIterable, Identifiable {
         case runs = "Runs"
@@ -18,7 +18,7 @@ struct LabView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 22) {
                 header
                 Picker("", selection: $tab) {
                     ForEach(Tab.allCases) { tab in
@@ -27,7 +27,7 @@ struct LabView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
-                .frame(width: 240)
+                .frame(width: 220)
 
                 switch tab {
                 case .runs:
@@ -36,18 +36,18 @@ struct LabView: View {
                     LabAnalysisView()
                 }
             }
-            .frame(maxWidth: 860, alignment: .leading)
-            .padding(.horizontal, 44)
-            .padding(.vertical, 36)
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(.horizontal, 40)
+            .padding(.vertical, 34)
             .frame(maxWidth: .infinity)
         }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("OFFLINE LAB")
-                    .font(IsolynTheme.display(30))
+                    .font(IsolynTheme.display(28))
                     .tracking(4)
                     .foregroundStyle(IsolynTheme.ivory)
                 Spacer()
@@ -59,8 +59,8 @@ struct LabView: View {
                 .foregroundStyle(IsolynTheme.ivoryMuted)
             }
 
-            Text("Self-play at volume. Runs are split into shards, so stopping or crashing costs minutes, and the same command — or the same button — picks up where it left off.")
-                .font(IsolynTheme.body(14))
+            Text("Let the computer play itself, thousands or millions of times. Runs are saved as they go, so stopping or quitting costs minutes — not the run.")
+                .font(IsolynTheme.body(13))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -71,6 +71,8 @@ struct LabView: View {
 
 struct LabRunsView: View {
     @Environment(LabService.self) private var lab
+    @Environment(LabEstimator.self) private var estimator
+
     @State private var showAdvanced = false
 
     private struct Preset: Identifiable {
@@ -80,28 +82,39 @@ struct LabRunsView: View {
     }
 
     private let presets: [Preset] = [
-        Preset(title: "Smoke", games: 200),
+        Preset(title: "Taste", games: 200),
         Preset(title: "10K", games: 10_000),
         Preset(title: "1M", games: 1_000_000),
         Preset(title: "5M", games: 5_000_000),
     ]
 
+    private var probeKey: String {
+        "\(lab.draft.mode)-\(lab.draft.depth)-\(lab.draft.determinizations)-\(lab.draft.parallel)"
+    }
+
     var body: some View {
         @Bindable var lab = lab
 
-        VStack(alignment: .leading, spacing: 24) {
-            statusCard
-            startCard(draft: $lab.draft, advanced: $showAdvanced)
+        VStack(alignment: .leading, spacing: 20) {
+            nowCard
+            startCard(games: $lab.draft.games, advanced: $showAdvanced)
+            workloadCard
             recentRuns
             footnote
         }
         .onAppear { lab.attachToActiveRun() }
+        .task(id: probeKey) {
+            guard !lab.isBusy else { return }
+            // Wait out a burst of stepper clicks before paying for a probe.
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            estimator.measure(lab.draft)
+        }
     }
 
-    // MARK: Current run
+    // MARK: What is happening
 
     @ViewBuilder
-    private var statusCard: some View {
+    private var nowCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 Circle().fill(indicatorColor).frame(width: 8, height: 8)
@@ -121,17 +134,17 @@ struct LabRunsView: View {
                     .progressViewStyle(.linear)
                     .tint(IsolynTheme.brass)
 
-                HStack(spacing: 28) {
-                    stat("Games", "\(formatted(manifest.doneGames)) / \(formatted(manifest.totalGames))")
-                    stat("Shards", "\(manifest.doneShards) / \(manifest.shards.count)")
+                HStack(spacing: 26) {
+                    stat("Played", "\(formatted(manifest.doneGames)) of \(formatted(manifest.totalGames))")
+                    stat("Batches", "\(manifest.doneShards) of \(manifest.shards.count)")
                     if let rate = manifest.gamesPerSecond() {
-                        stat("Rate", "\(Int(rate)) games/s")
+                        stat("Speed", "\(Int(rate)) games/s")
                     }
                     if let remaining = manifest.estimatedRemaining() {
-                        stat("Remaining", duration(remaining))
+                        stat("Left", duration(remaining))
                     }
                     if manifest.failedShards > 0 {
-                        stat("Failed", "\(manifest.failedShards)")
+                        stat("Retries", "\(manifest.failedShards)")
                     }
                     Spacer()
                 }
@@ -143,9 +156,9 @@ struct LabRunsView: View {
                             .font(IsolynTheme.body(13))
                             .foregroundStyle(IsolynTheme.ivory)
                     }
-                    actionLink("Reveal folder") { lab.reveal(runID: manifest.runId) }
+                    actionLink("Show folder") { lab.reveal(runID: manifest.runId) }
                     if manifest.isComplete {
-                        actionLink("Merge to CSV") { lab.merge(runID: manifest.runId) }
+                        actionLink("Combine into one file") { lab.merge(runID: manifest.runId) }
                     }
                     Spacer()
                 }
@@ -158,10 +171,10 @@ struct LabRunsView: View {
                     Text(tail)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(IsolynTheme.ivoryMuted)
-                        .lineLimit(6)
+                        .lineLimit(5)
                 }
             } else {
-                Text("Nothing running. A 5M run at depth 8 takes roughly 60 hours at the measured rate; it survives closing this app.")
+                Text("Nothing running. Choose a size below and start — the lab will tell you how long it will take on this Mac before you commit.")
                     .font(IsolynTheme.body(13))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -173,94 +186,149 @@ struct LabRunsView: View {
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             }
         }
-        .padding(20)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 14).fill(IsolynTheme.ebonyElevated))
     }
 
     // MARK: Start
 
-    private func startCard(draft: Binding<LabRunConfig>, advanced: Binding<Bool>) -> some View {
+    private func startCard(games: Binding<Int>, advanced: Binding<Bool>) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("START A RUN")
-                .font(IsolynTheme.caption(11))
-                .tracking(2)
-                .foregroundStyle(IsolynTheme.ivoryMuted)
-
-            HStack(spacing: 10) {
-                ForEach(presets) { preset in
-                    Button {
-                        lab.draft.games = preset.games
-                    } label: {
-                        VStack(spacing: 2) {
-                            Text(preset.title)
-                                .font(IsolynTheme.body(13))
-                            Text(estimate(preset.games))
-                                .font(IsolynTheme.caption(10))
-                                .opacity(0.75)
-                        }
-                        .foregroundStyle(draft.wrappedValue.games == preset.games ? IsolynTheme.ebony : IsolynTheme.ivory)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 7)
-                        .background(
-                            Capsule().fill(
-                                draft.wrappedValue.games == preset.games
-                                    ? IsolynTheme.brass
-                                    : IsolynTheme.ebonyElevated
-                            )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help("\(formatted(preset.games)) games")
-                }
+            HStack(alignment: .firstTextBaseline) {
+                Text("HOW MANY GAMES")
+                    .font(IsolynTheme.caption(11))
+                    .tracking(2)
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
                 Spacer()
-                Text("\(formatted(draft.wrappedValue.games)) games")
-                    .font(.system(size: 11, design: .monospaced))
+                Text("One game is one complete round.")
+                    .font(IsolynTheme.caption(11))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             }
 
+            HStack(spacing: 8) {
+                ForEach(presets) { preset in
+                    Button {
+                        games.wrappedValue = preset.games
+                    } label: {
+                        Text(preset.title)
+                            .font(IsolynTheme.body(13))
+                            .foregroundStyle(games.wrappedValue == preset.games ? IsolynTheme.ebony : IsolynTheme.ivory)
+                            .padding(.horizontal, 15)
+                            .padding(.vertical, 7)
+                            .background(
+                                Capsule().fill(
+                                    games.wrappedValue == preset.games
+                                        ? IsolynTheme.brass
+                                        : IsolynTheme.ebonyElevated
+                                )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                HStack(spacing: 6) {
+                    TextField("Custom", value: games, format: .number)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, design: .monospaced))
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 92)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule().stroke(
+                                presets.contains(where: { $0.games == games.wrappedValue })
+                                    ? IsolynTheme.ebonyLine
+                                    : IsolynTheme.brass,
+                                lineWidth: 1
+                            )
+                        )
+                    Text("games")
+                        .font(IsolynTheme.caption(11))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                }
+                Spacer()
+            }
+
             DisclosureGroup(isExpanded: advanced) {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 26) {
-                        labelledStepper("Depth", value: draft.depth, range: 2...12)
-                            .help("How many moves ahead each search looks. Deeper is stronger and slower.")
-                        labelledStepper("Samples", value: draft.determinizations, range: 4...128, step: 4)
-                            .help("Hidden worlds sampled per move. More samples are steadier and slower.")
-                        labelledStepper("Parallel", value: draft.parallel, range: 1...16)
-                            .help("Shard processes running at once. One worker each is fastest on this machine.")
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Mode")
-                                .font(IsolynTheme.caption(11))
-                                .foregroundStyle(IsolynTheme.ivoryMuted)
-                            Picker("", selection: draft.mode) {
-                                Text("1v1").tag("1v1")
-                                Text("1v1v1").tag("1v1v1")
-                                Text("2v2").tag("2v2")
+                VStack(alignment: .leading, spacing: 16) {
+                    Grid(alignment: .leading, horizontalSpacing: 26, verticalSpacing: 14) {
+                        GridRow {
+                            field("Look-ahead", caption: "depth") {
+                                Stepper(value: Binding(
+                                    get: { lab.draft.depth },
+                                    set: { lab.draft.depth = $0 }
+                                ), in: 2...12) {
+                                    Text("\(lab.draft.depth) moves")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundStyle(IsolynTheme.ivory)
+                                }
+                                .fixedSize()
                             }
-                            .labelsHidden()
-                            .pickerStyle(.segmented)
-                            .frame(width: 160)
+                            field("Worlds per move", caption: "samples") {
+                                Stepper(value: Binding(
+                                    get: { lab.draft.determinizations },
+                                    set: { lab.draft.determinizations = $0 }
+                                ), in: 4...128, step: 4) {
+                                    Text("\(lab.draft.determinizations)")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundStyle(IsolynTheme.ivory)
+                                }
+                                .fixedSize()
+                            }
+                            field("Batches at once", caption: "shards") {
+                                Stepper(value: Binding(
+                                    get: { lab.draft.parallel },
+                                    set: { lab.draft.parallel = $0 }
+                                ), in: 1...16) {
+                                    Text("\(lab.draft.parallel)")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundStyle(IsolynTheme.ivory)
+                                }
+                                .fixedSize()
+                            }
+                            field("Mode", caption: "players") {
+                                Picker("", selection: Binding(
+                                    get: { lab.draft.mode },
+                                    set: { lab.draft.mode = $0 }
+                                )) {
+                                    Text("1v1").tag("1v1")
+                                    Text("1v1v1").tag("1v1v1")
+                                    Text("2v2").tag("2v2")
+                                }
+                                .labelsHidden()
+                                .pickerStyle(.segmented)
+                                .frame(width: 150)
+                            }
                         }
-                        Spacer()
+                        GridRow {
+                            field("Deal seed", caption: "seed") {
+                                Stepper(value: Binding(
+                                    get: { lab.draft.seed },
+                                    set: { lab.draft.seed = $0 }
+                                ), in: 1...999_999) {
+                                    Text("\(lab.draft.seed)")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundStyle(IsolynTheme.ivory)
+                                }
+                                .fixedSize()
+                            }
+                            field("Run id", caption: "folder name") {
+                                Text(lab.draft.runID)
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                            }
+                        }
                     }
 
-                    HStack(spacing: 20) {
-                        labelledStepper("Seed", value: draft.seed, range: 1...999_999)
-                            .help("Same seed and configuration reproduce the same deals.")
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Run id")
-                                .font(IsolynTheme.caption(11))
-                                .foregroundStyle(IsolynTheme.ivoryMuted)
-                            Text(draft.wrappedValue.runID)
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(IsolynTheme.ivory)
-                        }
-                        Spacer()
-                    }
+                    Text("Look-ahead: how many moves ahead it plans. Worlds: how many possible hidden hands it considers each move. Batches: how many games run at once. Seed: changes which games are played — the same seed always deals the same games.")
+                        .font(IsolynTheme.caption(11))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.top, 12)
+                .padding(.top, 14)
             } label: {
-                Text("Advanced")
+                Text("Advanced (optional)")
                     .font(IsolynTheme.caption(12))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             }
@@ -269,82 +337,182 @@ struct LabRunsView: View {
                 Button {
                     lab.start()
                 } label: {
-                    Text(lab.isBusy ? "Running…" : "Start \(formatted(draft.wrappedValue.games))-game run")
+                    Text(lab.isBusy ? "Running…" : "Start \(formatted(games.wrappedValue)) games")
                 }
-                .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 280))
-                .disabled(lab.isBusy || !lab.harnessBuilt)
+                .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 250))
+                .disabled(lab.isBusy || !lab.harnessBuilt || games.wrappedValue < 1)
 
                 if !lab.harnessBuilt {
-                    Text("Build the harness first: ./tools/selfplay/build.sh")
+                    Text("The engine needs building once: ./tools/selfplay/build.sh")
                         .font(IsolynTheme.caption(11))
                         .foregroundStyle(IsolynTheme.brass)
                 }
                 Spacer()
             }
         }
-        .padding(20)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 14).stroke(IsolynTheme.ebonyLine, lineWidth: 1))
+    }
+
+    private func field<Content: View>(
+        _ title: String,
+        caption: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(IsolynTheme.body(12))
+                .foregroundStyle(IsolynTheme.ivory)
+            Text(caption)
+                .font(IsolynTheme.caption(10))
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+            content()
+                .padding(.top, 2)
+        }
+    }
+
+    // MARK: Workload
+
+    @ViewBuilder
+    private var workloadCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("WHAT THIS COSTS ON THIS MAC")
+                    .font(IsolynTheme.caption(11))
+                    .tracking(2)
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                Spacer()
+                if estimator.isMeasuring {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.mini)
+                        Text("measuring…")
+                            .font(IsolynTheme.caption(11))
+                            .foregroundStyle(IsolynTheme.ivoryMuted)
+                    }
+                }
+            }
+
+            if let estimate = estimator.estimate {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text(estimate.level.rawValue)
+                            .font(IsolynTheme.title(18))
+                            .foregroundStyle(levelColor(estimate.level))
+                        Spacer()
+                        Text(estimate.durationText)
+                            .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(IsolynTheme.ivory)
+                    }
+                    gauge(fraction: estimate.gaugeFraction)
+                }
+
+                HStack(spacing: 26) {
+                    stat("Batches", "\(estimate.shardCount) × 5,000 games")
+                    stat("Disk", "≈ \(estimate.outputText)")
+                    stat("Speed", estimate.rateText)
+                    Spacer()
+                    actionLink("Measure again") { estimator.measure(lab.draft, force: true) }
+                }
+
+                Text("Measured by playing \(estimate.probeGames) real games at these exact settings, \(relativeTime(estimate.measuredAt)).")
+                    .font(IsolynTheme.caption(10))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            } else if estimator.isMeasuring {
+                Text("Playing a short warm-up at these settings to time this Mac…")
+                    .font(IsolynTheme.body(12))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            } else {
+                Text(estimator.message ?? "Choose a size and the lab will time a short run to estimate the whole job.")
+                    .font(IsolynTheme.body(12))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(IsolynTheme.ebonyElevated))
+    }
+
+    private func gauge(fraction: Double) -> some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(IsolynTheme.ebonyLine.opacity(0.6))
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [IsolynTheme.brass.opacity(0.55), IsolynTheme.brass, Color(red: 0.72, green: 0.28, blue: 0.24)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(8, proxy.size.width * fraction))
+            }
+        }
+        .frame(height: 8)
+    }
+
+    private func levelColor(_ level: LabWorkloadEstimate.Level) -> Color {
+        switch level {
+        case .light, .moderate: return IsolynTheme.ivory
+        case .heavy: return IsolynTheme.brass
+        case .extreme: return Color(red: 0.72, green: 0.28, blue: 0.24)
+        }
     }
 
     // MARK: Recent
 
     @ViewBuilder
     private var recentRuns: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("RECENT RUNS")
                 .font(IsolynTheme.caption(11))
                 .tracking(2)
                 .foregroundStyle(IsolynTheme.ivoryMuted)
 
-            let runs = lab.recentRuns(limit: 8)
+            let runs = lab.recentRuns(limit: 6)
             if runs.isEmpty {
-                Text("No runs yet.")
+                Text("Nothing yet. Your first run will appear here.")
                     .font(IsolynTheme.body(13))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             } else {
                 ForEach(runs, id: \.runId) { run in
-                    HStack(spacing: 14) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(run.runId)
-                                .font(.system(size: 11, design: .monospaced))
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(friendlyTitle(run))
+                                .font(IsolynTheme.body(13))
                                 .foregroundStyle(IsolynTheme.ivory)
-                            Text("\(formatted(run.doneGames))/\(formatted(run.totalGames)) · \(run.config.mode) · d\(run.config.depth)/\(run.config.determinizations)")
+                            Text("\(formatted(run.doneGames)) of \(formatted(run.totalGames)) games · \(run.config.mode) · \(run.config.depth) moves · \(run.config.determinizations) worlds")
                                 .font(IsolynTheme.caption(10))
                                 .foregroundStyle(IsolynTheme.ivoryMuted)
                         }
-                        .frame(width: 330, alignment: .leading)
-
-                        ProgressView(value: run.fraction)
-                            .progressViewStyle(.linear)
-                            .tint(run.isComplete ? IsolynTheme.brass : IsolynTheme.ivoryMuted)
-                            .frame(width: 150)
-
-                        Text(run.isComplete ? "complete" : "\(run.doneShards)/\(run.shards.count)")
+                        Spacer()
+                        Text(run.isComplete ? "finished" : "paused")
                             .font(IsolynTheme.caption(11))
                             .foregroundStyle(run.isComplete ? IsolynTheme.brass : IsolynTheme.ivoryMuted)
-                            .frame(width: 80, alignment: .leading)
-
-                        Spacer()
-
                         if !run.isComplete {
                             actionLink("Resume") { lab.start(run.runConfig) }
                                 .disabled(lab.isBusy)
+                        } else {
+                            actionLink("Combine") { lab.merge(runID: run.runId) }
                         }
-                        if run.isComplete {
-                            actionLink("Merge") { lab.merge(runID: run.runId) }
-                        }
-                        actionLink("Reveal") { lab.reveal(runID: run.runId) }
+                        actionLink("Show") { lab.reveal(runID: run.runId) }
                     }
-                    .padding(.vertical, 7)
+                    .padding(.vertical, 8)
                     Divider().overlay(IsolynTheme.ebonyLine)
                 }
             }
         }
     }
 
+    private func friendlyTitle(_ run: LabManifest) -> String {
+        let size = run.totalGames >= 1_000_000
+            ? String(format: "%.1fM", Double(run.totalGames) / 1_000_000)
+            : formatted(run.totalGames)
+        return "\(size) games · \(run.config.mode) · seed \(run.config.seed)"
+    }
+
     private var footnote: some View {
-        Text("One run at a time. The Start button is guarded twice — in the app, and again by the runner's lock — so repeated presses cannot launch a second process.")
+        Text("One run at a time. Pressing Start twice cannot launch two runs — the app refuses the second, and the runner's own lock refuses it again.")
             .font(IsolynTheme.caption(11))
             .foregroundStyle(IsolynTheme.ivoryMuted)
             .fixedSize(horizontal: false, vertical: true)
@@ -360,27 +528,8 @@ struct LabRunsView: View {
         }
     }
 
-    private func labelledStepper(
-        _ title: String,
-        value: Binding<Int>,
-        range: ClosedRange<Int>,
-        step: Int = 1
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(IsolynTheme.caption(11))
-                .foregroundStyle(IsolynTheme.ivoryMuted)
-            Stepper(value: value, in: range, step: step) {
-                Text("\(value.wrappedValue)")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(IsolynTheme.ivory)
-            }
-            .fixedSize()
-        }
-    }
-
     private func stat(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(IsolynTheme.caption(10))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
@@ -403,23 +552,18 @@ struct LabRunsView: View {
         NumberFormatter.localizedString(from: NSNumber(value: value), number: .decimal)
     }
 
-    /// Measured on this machine: ~23 games/s at depth 8 / 64 samples with eight
-    /// single-worker shards.
-    private func estimate(_ games: Int) -> String {
-        let seconds = Double(games) / 23.0
-        if seconds < 90 { return "\(Int(seconds))s" }
-        let minutes = seconds / 60
-        if minutes < 90 { return "\(Int(minutes))m" }
-        let hours = minutes / 60
-        if hours < 36 { return "\(Int(hours))h" }
-        return String(format: "%.1f days", hours / 24)
-    }
-
     private func duration(_ seconds: TimeInterval) -> String {
         let totalMinutes = Int(seconds / 60)
         if totalMinutes >= 60 {
             return "\(totalMinutes / 60)h \(totalMinutes % 60)m"
         }
         return "\(max(1, totalMinutes))m"
+    }
+
+    private func relativeTime(_ date: Date) -> String {
+        let seconds = Int(Date().timeIntervalSince(date))
+        if seconds < 60 { return "just now" }
+        if seconds < 3_600 { return "\(seconds / 60) min ago" }
+        return "\(seconds / 3_600) h ago"
     }
 }
