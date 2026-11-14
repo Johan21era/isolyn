@@ -67,7 +67,10 @@ notion of winning chance** between "threat exists" and "threat does not"
 > and the action re-measured properly: **1,484 draws in 10,650 1v1 decisions
 > (14%)**, but pooled **+2.5 Elo, 95% CI [−4.7, +9.7]** over 9,000 rounds — not
 > resolved. Capability kept, **default off**; 1v1v1 has no branch and 2v2 never
-> chose a draw in 10,426 decisions.
+> chose a draw in 10,426 decisions. One ply deeper the action **resolves**:
+> **+9.4 Elo [+0.4, +18.3]** over 5,798 rounds at depth 5, with 16.3% of
+> decisions being draws. The value is horizon-dependent — it is a positional
+> investment — which is why the shipped depth-4 configuration shows nothing.
 
 **This is the largest structural gap found so far, and it is a missing move, not
 a missing weight.**

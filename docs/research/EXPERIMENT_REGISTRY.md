@@ -353,7 +353,12 @@ compute null (E-011, E-022) was a separate finding, and nothing here re-tests it
   (14%)**, every round completed, every draw applied legally.
 - **Strength at depth 4.** Three seeds, 3,000 rounds each: 50.90%, 51.10%,
   49.07%. Pooled 4,532/9,000 = **50.36%, +2.5 Elo, 95% CI [−4.7, +9.7]** —
-  **not resolved**. The action does not beat the champion as modelled.
+  **not resolved**. At the shipped horizon the action is neutral.
+- **Strength at depth 5 — resolved.** Same comparison, one ply deeper:
+  51.9% (n=3,000) and 50.7% (n=2,798). Pooled **2,977/5,798 = 51.35%,
+  +9.4 Elo, 95% CI [+0.4, +18.3]**, with draws rising to 16.3% of decisions.
+  Drawing is a positional investment, so it needs horizon to pay — the depth
+  dependence is the finding, not a curiosity.
 - **A model that had to be rejected.** Charging a draw a ply of horizon is not
   faithful — a draw does not advance the turn — but keeping depth constant
   re-enables draws after every placement and the tree grows as 2^depth. That
