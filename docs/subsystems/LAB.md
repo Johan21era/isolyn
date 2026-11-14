@@ -2,8 +2,10 @@
 
 **Status:** the C++ self-play generator is real, supports side-alternated
 head-to-head configurations, and the Python lab has a working calibration
-report plus a measured internal 1v1 ladder. There is still no trainer or
-exported weight set, and no Elo claim against external engines.
+report plus a measured internal 1v1 ladder. `./scripts/lab run` drives
+resumable sharded runs, so a multi-million-game dataset is one restartable
+command. There is still no trainer or exported weight set, and no Elo claim
+against external engines.
 
 ## Purpose
 
@@ -50,8 +52,8 @@ tools/selfplay/  ── CSV/JSONL ──▶  lab/ (Python)
 ### `lab/` — Python lab
 
 - `configs/` — experiment shape (TOML).
-- `src/isolyn_lab/` — CSV loading, calibration reports, training/evaluation
-  scaffolding.
+- `src/isolyn_lab/` — CSV loading, calibration reports, the resumable sharded
+  runner (`runner.py`), and training/evaluation scaffolding.
 - `data/` — generated datasets/weights (gitignored).
 - `pyproject.toml` — no runtime dependencies; optional `train` extras.
 

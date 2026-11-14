@@ -1689,3 +1689,62 @@ line past the documentation gate's twelve-line window and tripped
 `status-headers: FAIL (3)`; the VOID status line was moved directly under the
 title and the stale "living" paragraphs removed, so the documents no longer
 contradict their own banner.
+
+## OPS-24 — Resumable sharded self-play runner and a single lab entry point
+
+**Scope.** Make the offline lab reachable and make a multi-million-game run one
+restartable command. No engine, rule or scoring code changed.
+
+**What was added.**
+
+- `scripts/lab` — the entry point the lab never had: `run`, `status`, `list`,
+  `merge`, `evaluate`, `build`. It sets `PYTHONPATH` itself, so the lab no longer
+  requires the owner to know where the package lives.
+- `lab/src/isolyn_lab/runner.py` — plans shards, runs them with bounded
+  parallelism, and records each shard as `done` only when the harness exited 0,
+  its log reports zero incomplete rounds, **and** its CSV ends on a complete
+  line. Everything else is replayed from that shard's seed.
+
+**Two design decisions that are not cosmetic.**
+
+- **Shards resume from a seed, not a byte offset.** The C++ harness has no
+  mid-file resume, so a shard is the unit of loss; the default 5,000 games is
+  about two minutes at depth 8.
+- **Shard seeds advance by 1, not by the harness's golden-ratio stride.** The
+  harness seeds game `j` with `seed + j * 0x9E3779B97F4A7C15`; advancing each
+  shard's base by that constant would silently replay another shard's deals.
+
+**Two failures found by testing it, and fixed.**
+
+1. Ctrl-C recorded the in-flight shards as `failed` (`harness exit -15`). A shard
+   we stopped is unfinished, not broken; it is now `pending`, and `status`
+   reports 18 pending / 0 failed.
+2. SIGKILL of the runner left the harness children alive in their own session,
+   still writing the CSV the resumed run was about to truncate — two writers, one
+   file. Shard pids are now recorded at launch and any surviving `selfplay`
+   process is reaped on resume.
+
+**Evidence (literal, from this machine).**
+
+- `./scripts/lab run --games 400 --shards 8 --parallel 4 --depth 8
+  --determinizations 64`: `8/8 shards | 400/400 games (100.0%) | 33.0 games/s`,
+  `complete: 400 games`.
+- Rerunning the identical command: `nothing to do: every shard is already complete`.
+- Interrupt test at 900 games: exit `130`, status `18 total, 0 verified done,
+  18 pending, 0 failed`.
+- SIGKILL test at 900 games: `orphans alive after SIGKILL: 4`, then
+  `reaping orphaned shard 0..3`, `complete: 900 games`, `orphans after resume: 0`,
+  status `18 verified done, 0 pending, 0 failed`.
+- SIGKILL test at 600 games with a stale lock file: resumed to `600/600`.
+- Merged output audit: `merged: 900 unique games, ids 0..899, 15266 move rows`,
+  `gaps: none`.
+
+**Measured throughput (development M3, depth 8 / det 64).** Four parallel
+single-worker shards sustain ~33 games/s; eight sustain ~43. Five million games
+is therefore ~32 hours and ~9.5 GB of CSV at ~1.95 KB per game — a different
+order of magnitude from the archived "weeks" estimate, which came from a
+different configuration.
+
+**Not done, deliberately.** No trainer, no weight export, no app UI for Training
+or Sandbox. Those remain scaffolds; this change only makes the existing lab
+runnable at volume.

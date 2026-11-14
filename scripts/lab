@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# One entry point for the offline lab.
+#
+#   ./scripts/lab run --games 5000000      start or resume a sharded run
+#   ./scripts/lab status <run-id>          progress, with every shard verified
+#   ./scripts/lab list                     all runs under lab/data/runs
+#   ./scripts/lab merge <run-id>           one CSV from the finished shards
+#   ./scripts/lab evaluate --input X.csv   calibration report on a CSV
+#   ./scripts/lab build                    build the C++ self-play harness
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYTHONPATH="$ROOT/lab/src${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONDONTWRITEBYTECODE=1
+
+command="${1:-help}"
+if [[ $# -gt 0 ]]; then shift; fi
+
+case "$command" in
+  run|status|list|merge)
+    exec python3 -m isolyn_lab.runner "$command" "$@"
+    ;;
+  evaluate)
+    exec python3 -m isolyn_lab.cli evaluate "$@"
+    ;;
+  build)
+    exec "$ROOT/tools/selfplay/build.sh"
+    ;;
+  help|--help|-h)
+    sed -n '2,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    ;;
+  *)
+    echo "unknown lab command: $command" >&2
+    echo "try: ./scripts/lab help" >&2
+    exit 2
+    ;;
+esac

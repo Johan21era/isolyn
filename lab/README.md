@@ -1,6 +1,6 @@
 # IsolynV2.0 Offline Lab
 
-**Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` produces a real calibration report with Wilson intervals and Spearman correlations. The Python trainer and weight export are still scaffolds; the Elo report itself is implemented.
+**Status:** the C++ self-play generator is real, supports head-to-head search configurations, and emits per-move calibration data. `isolyn-lab evaluate` produces a real calibration report with Wilson intervals and Spearman correlations. `./scripts/lab run` drives resumable sharded multi-million-game runs. The Python trainer and weight export are still scaffolds; the Elo report itself is implemented.
 
 This directory is the home for offline self-play, calibration, and (later) learned-evaluation experiments. It is deliberately **outside the shipped app**: Python is a tooling language here, never a runtime dependency of IsolynV2.0.
 
@@ -57,6 +57,35 @@ isolyn-lab selfplay --dry-run
 ```
 
 `isolyn-lab selfplay` without `--dry-run` exits with code 2 and prints the intended next step. That is intentional: the scaffold must not pretend a trainer exists.
+
+## Large runs (resumable)
+
+A multi-million-game run is one command. It is split into shards, run with
+bounded parallelism, verified shard by shard, and replayed where it did not
+finish.
+
+```bash
+./scripts/lab run --games 5000000 --mode 1v1 --depth 8 --determinizations 64
+./scripts/lab status 1v1-d8x64-n5000000-s1
+./scripts/lab list
+./scripts/lab merge 1v1-d8x64-n5000000-s1
+```
+
+Measured on the development M3 at depth 8 / 64 determinizations: ~33 games/s
+with four parallel shards and ~43 games/s with eight single-worker shards. Five
+million games is therefore roughly 32 hours and about 9.5 GB of CSV (~1.95 KB per
+game).
+
+- Run ids default to `<mode>-d<depth>x<det>-n<games>-s<seed>`, so re-issuing the
+  same command **resumes** the same run instead of starting a second one.
+- A shard is marked `done` only when the harness exited 0, its log reports zero
+  incomplete rounds, and its CSV ends on a complete line. Anything else is
+  replayed from its seed.
+- Ctrl-C stops the children and leaves unfinished shards `pending`. A SIGKILL is
+  survivable too: the recorded child pids are checked and reaped on resume, so
+  an orphaned harness can never write a shard file the new run is using.
+- Shards keep their own CSV and log under `lab/data/runs/<run-id>/shards/`;
+  `merge` rewrites game ids into one continuous sequence.
 
 ## Planned milestones
 
