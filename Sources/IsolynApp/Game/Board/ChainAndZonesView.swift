@@ -507,13 +507,19 @@ enum SnakeChainLayout {
                 continue
             }
 
-            // End of the run: this tile is the corner, lying across it. It
-            // sits low in the band so its far end reaches down toward the run
-            // that leaves beneath it -- the two runs meet on its long face, as
-            // they do on a table, instead of leaving a hole at every turn.
+            // End of the run: this tile is the corner, lying across it. The
+            // corner sits ON its run's line, not below it. Offset below (the
+            // old geometry) its long face reached into the band and collided
+            // with the first tile of the return run whenever that tile was a
+            // crosswise double; the de-overlap net then shoved that tile down
+            // 19pt, which is the staircase a live test caught.
+            //
+            // On the line, the corner spans [rowY - 38, rowY + 38] and the
+            // worst case beneath it -- a double at rowY + rowPitch -- starts
+            // 4pt clear: (rowY + 80 - 38) - (rowY + 38) = 4 = the tile gap.
             let cornerX = east ? min(cursorX + short / 2, maxX - short / 2)
                                : max(cursorX - short / 2, minX + short / 2)
-            let cornerY = rowY + (rowPitch - long) / 2 + short / 2
+            let cornerY = rowY
             let corner = CGPoint(x: cornerX, y: cornerY)
             placed.append(Placed(x: corner.x, y: corner.y, tile: tile, vertical: true))
             rects.append(rect(center: corner, vertical: true))

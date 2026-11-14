@@ -69,14 +69,15 @@ final class BoardLayoutTests: XCTestCase {
 
         let corner = m.placed[turnIndex]
         let next = m.placed[turnIndex + 1]
-        // The corner lies across the run and sits low in its band, so the
-        // return run meets it along its long face: rows are one tile-and-a-gap
-        // apart, and the corner is raised by half of that difference.
+        // The corner lies across its own run, ON that run's line. The return
+        // run is exactly one row pitch below it, which leaves the tile gap of
+        // clearance even when that run starts with a crosswise double.
+        // A corner offset below the line (the old geometry) collided with such
+        // a double and the de-overlap net nudged it down -- the staircase a
+        // live test caught.
         let rowPitch = SnakeChainLayout.tileShortAxis * 2 + SnakeChainLayout.hGap
-        let cornerRise = (rowPitch - SnakeChainLayout.tileShortAxis * 2) / 2
-            + SnakeChainLayout.tileShortAxis / 2
-        XCTAssertEqual(abs(next.y - corner.y), rowPitch - cornerRise, accuracy: 0.0001,
-                       "the return run sits one row below the corner's low edge")
+        XCTAssertEqual(abs(next.y - corner.y), rowPitch, accuracy: 0.0001,
+                       "the return run sits exactly one row pitch below the corner")
         XCTAssertEqual(abs(next.x - corner.x), SnakeChainLayout.tileShortAxis, accuracy: 0.0001,
                        "the return run starts from the corner's far edge")
     }
