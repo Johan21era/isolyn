@@ -65,7 +65,8 @@ final class LabServiceTests: XCTestCase {
 
     func test_twoHundredStartPressesLaunchExactlyOneProcess() throws {
         let launcher = FakeLauncher()
-        let service = LabService(launcher: launcher, root: try makeRepository())
+        let root = try makeRepository()
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
 
         for _ in 0..<200 { service.start(config()) }
 
@@ -76,7 +77,8 @@ final class LabServiceTests: XCTestCase {
 
     func test_aDifferentConfigurationWhileRunningIsRejected() throws {
         let launcher = FakeLauncher()
-        let service = LabService(launcher: launcher, root: try makeRepository())
+        let root = try makeRepository()
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
 
         service.start(config(seed: 1))
         for seed in 2...50 { service.start(config(seed: seed)) }
@@ -87,7 +89,8 @@ final class LabServiceTests: XCTestCase {
 
     func test_stopTerminatesTheChildAndAllowsANewRun() throws {
         let launcher = FakeLauncher()
-        let service = LabService(launcher: launcher, root: try makeRepository())
+        let root = try makeRepository()
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
 
         service.start(config(seed: 1))
         service.stop()
@@ -102,7 +105,8 @@ final class LabServiceTests: XCTestCase {
 
     func test_pressesDuringTheRepeatWindowAfterAStopDoNotRelaunch() throws {
         let launcher = FakeLauncher()
-        let service = LabService(launcher: launcher, root: try makeRepository())
+        let root = try makeRepository()
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
 
         service.start(config(seed: 7))
         service.stop()
@@ -116,12 +120,12 @@ final class LabServiceTests: XCTestCase {
     func test_exitMarksFinishedWhenEveryShardIsDone() async throws {
         let root = try makeRepository()
         let launcher = FakeLauncher()
-        let service = LabService(launcher: launcher, root: root)
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
         let requested = config(games: 5, seed: 3)
 
         service.start(requested)
 
-        let runDirectory = LabPaths.runDirectory(root: root, runID: requested.runID)
+        let runDirectory = LabPaths.runDirectory(dataRoot: root, runID: requested.runID)
         try FileManager.default.createDirectory(at: runDirectory, withIntermediateDirectories: true)
         let manifest = """
         {
@@ -134,7 +138,7 @@ final class LabServiceTests: XCTestCase {
         }
         """
         try manifest.write(
-            to: LabPaths.manifestURL(root: root, runID: requested.runID),
+                            to: LabPaths.manifestURL(dataRoot: root, runID: requested.runID),
             atomically: true,
             encoding: .utf8
         )
@@ -198,12 +202,12 @@ final class LabServiceTests: XCTestCase {
     func test_labScreenRendersWithoutAClick() throws {
         let launcher = FakeLauncher()
         let root = try makeRepository()
-        let model = LabService(launcher: launcher, root: root)
-        let estimator = LabEstimator(launcher: launcher, root: root)
+        let model = LabService(launcher: launcher, root: root, dataRoot: root)
+        let estimator = LabEstimator(launcher: launcher, root: root, dataRoot: root)
         let view = LabView()
             .environment(AppState())
             .environment(model)
-            .environment(LabAnalysisService(launcher: launcher, root: root))
+            .environment(LabAnalysisService(launcher: launcher, root: root, dataRoot: root))
             .environment(estimator)
             .frame(width: 1080, height: 720)
 
@@ -220,7 +224,7 @@ final class LabServiceTests: XCTestCase {
             throw XCTSkip("repository root not found")
         }
         let launcher = ProcessLabLauncher()
-        let service = LabService(launcher: launcher, root: root)
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
         guard service.harnessBuilt else {
             throw XCTSkip("self-play harness not built")
         }

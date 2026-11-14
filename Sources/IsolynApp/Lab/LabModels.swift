@@ -98,6 +98,12 @@ enum LabPaths {
             let url = URL(fileURLWithPath: override)
             if isRepository(url, fileManager: fileManager) { return url }
         }
+        // Prefer the runtime staged in Application Support. Touching the
+        // checkout under ~/Desktop makes macOS demand Desktop access, and
+        // ad-hoc re-signing on every build means that permission never sticks.
+        if let staged = stagedRuntime(fileManager: fileManager) {
+            return staged
+        }
 
         var starts: [URL] = []
         if let executable = Bundle.main.executableURL {
@@ -131,20 +137,41 @@ enum LabPaths {
         return fileManager.fileExists(atPath: marker.path)
     }
 
-    static func runsDirectory(root: URL) -> URL {
-        root.appendingPathComponent("lab/data/runs", isDirectory: true)
+    /// Where the app keeps its run data. Application Support is not a
+    /// TCC-protected location, so a rebuilt (re-signed) app keeps working
+    /// without asking for permission again.
+    static func applicationSupport(fileManager: FileManager = .default) -> URL {
+        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+        return base.appendingPathComponent("IsolynV2.0", isDirectory: true)
     }
 
-    static func runDirectory(root: URL, runID: String) -> URL {
-        runsDirectory(root: root).appendingPathComponent(runID, isDirectory: true)
+    static func stagedRuntime(fileManager: FileManager = .default) -> URL? {
+        let staged = applicationSupport(fileManager: fileManager)
+            .appendingPathComponent("Lab", isDirectory: true)
+        return isRepository(staged, fileManager: fileManager) ? staged : nil
     }
 
-    static func manifestURL(root: URL, runID: String) -> URL {
-        runDirectory(root: root, runID: runID).appendingPathComponent("manifest.json")
+    static func dataDirectory(fileManager: FileManager = .default) -> URL {
+        if let override = ProcessInfo.processInfo.environment["ISOLYN_RUNS_DIR"], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+        return applicationSupport(fileManager: fileManager)
+            .appendingPathComponent("runs", isDirectory: true)
     }
 
-    static func lockURL(root: URL, runID: String) -> URL {
-        runDirectory(root: root, runID: runID).appendingPathComponent("run.lock")
+    static func runsDirectory(dataRoot: URL) -> URL { dataRoot }
+
+    static func runDirectory(dataRoot: URL, runID: String) -> URL {
+        dataRoot.appendingPathComponent(runID, isDirectory: true)
+    }
+
+    static func manifestURL(dataRoot: URL, runID: String) -> URL {
+        runDirectory(dataRoot: dataRoot, runID: runID).appendingPathComponent("manifest.json")
+    }
+
+    static func lockURL(dataRoot: URL, runID: String) -> URL {
+        runDirectory(dataRoot: dataRoot, runID: runID).appendingPathComponent("run.lock")
     }
 
     /// Run ids become directory names, so anything that could escape the runs

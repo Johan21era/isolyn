@@ -1964,3 +1964,56 @@ provides, which is exactly what a render test is for.
 
 **Evidence.** `swift test`: `Executed 104 tests, with 0 failures (0 unexpected)
 in 3.812 (3.819) seconds`. `./scripts/ci/local.sh` runs the full six-step gate.
+
+## OPS-30 — Stop the app asking for Desktop access on every rebuild
+
+**Symptom the owner reported.** Every time the app is closed and reopened
+(through `iso`), clicking Lab asks macOS for permission to access files.
+
+**Cause, and why it repeated.** The checkout lives under `~/Desktop`, a
+TCC-protected folder, so the app's first filesystem read (root discovery at
+launch, then the run manifest on the Lab screen) triggers a Desktop prompt.
+`run.sh` re-signs the bundle ad-hoc on every build, so the app's code identity
+changes each time; TCC keys its grant to that identity, which means the
+permission can never stick across a rebuild. The prompt was not a bug in the
+Lab — it was the Lab living inside a protected folder.
+
+**Fix: the app no longer touches the checkout at all.**
+
+- `run.sh` stages a runtime copy of `scripts/lab`, `lab/src/isolyn_lab`,
+  `lab/configs` and the built `selfplay` binary into
+  `~/Library/Application Support/IsolynV2.0/Lab`.
+- `LabPaths.repositoryRoot()` prefers that staged runtime; the walk-up from the
+  executable remains as a fallback for `swift test` and terminal use.
+- Run data moved to `~/Library/Application Support/IsolynV2.0/runs`, with
+  `--runs-dir` threaded through `runner.py` (`run`, `status`, `list`, `merge`) so
+  the app can point the CLI at that store for a single invocation.
+- `ISOLYN_RUNS_DIR` remains supported for ad-hoc use; the CLI's repo-local
+  default is unchanged.
+
+**Two failures found while doing it, both real.**
+
+1. `run.sh` used `$ROOT` without ever defining it, so staging died under
+   `set -u` and left an empty Lab folder. Fixed by setting `ROOT="$(pwd)"` after
+   the script `cd`s.
+2. Staging *inside* the bundle made `codesign` fail with
+   `resource fork, Finder information, or similar detritus not allowed`:
+   copied files carry `com.apple.provenance`, which `xattr -cr` does not remove.
+   The runtime therefore lives in Application Support instead — outside the
+   signature, outside TCC, and still outside the checkout. That is also why the
+   app must not ship the Python sources inside `Contents/Resources`.
+
+**Evidence.**
+
+- Staged runtime exists and runs with no repository in scope:
+  `cd /tmp && ISOLYN_RUNS_DIR=/tmp/isolyn-staged-runs "$HOME/Library/Application Support/IsolynV2.0/Lab/scripts/lab" run --games 6 ...`
+  → `1/1 shards | 6/6 games (100.0%)`, `complete: 6 games`.
+- `./scripts/iso` → `📦 Staged the lab runtime in Application Support`,
+  `🚀 Launching IsolynV2.0`, `APP RUNNING`.
+- `swift test`: `Executed 104 tests, with 0 failures`.
+- `./scripts/ci/local.sh`: PASS.
+
+**Trade-off, stated plainly.** Runs started from the terminal still live in
+`lab/data/runs` and no longer appear in the app's Recent list; the app's runs
+live in Application Support. Merging the two would mean reading Desktop again,
+which is the thing being fixed.

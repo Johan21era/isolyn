@@ -42,10 +42,8 @@ final class LabEstimatorTests: XCTestCase {
 
     func test_repeatedMeasureCallsLaunchOneProbe() throws {
         let launcher = LabServiceTests.FakeLauncher()
-        let estimator = LabEstimator(
-            launcher: launcher,
-            root: FileManager.default.temporaryDirectory
-        )
+        let store = FileManager.default.temporaryDirectory
+        let estimator = LabEstimator(launcher: launcher, root: store, dataRoot: store)
         let config = LabRunConfig(games: 1_000, mode: "1v1", depth: 4, determinizations: 8, parallel: 2, seed: 1)
 
         for _ in 0..<25 { estimator.measure(config) }
@@ -60,10 +58,8 @@ final class LabEstimatorTests: XCTestCase {
 
     func test_configChangeDuringAProbeIsQueuedNotDropped() async throws {
         let launcher = LabServiceTests.FakeLauncher()
-        let estimator = LabEstimator(
-            launcher: launcher,
-            root: FileManager.default.temporaryDirectory
-        )
+        let store = FileManager.default.temporaryDirectory
+        let estimator = LabEstimator(launcher: launcher, root: store, dataRoot: store)
         let first = LabRunConfig(games: 1_000, mode: "1v1", depth: 4, determinizations: 8, parallel: 2, seed: 1)
         let second = LabRunConfig(games: 1_000, mode: "1v1", depth: 6, determinizations: 8, parallel: 2, seed: 1)
 
@@ -89,7 +85,9 @@ final class LabEstimatorTests: XCTestCase {
             throw XCTSkip("repository or harness not available")
         }
 
-        let estimator = LabEstimator(root: root)
+        let store = FileManager.default.temporaryDirectory
+            .appendingPathComponent("isolyn-probe-\(UUID().uuidString)")
+        let estimator = LabEstimator(root: root, dataRoot: store)
         let config = LabRunConfig(
             games: 500,
             mode: "1v1",
@@ -112,8 +110,8 @@ final class LabEstimatorTests: XCTestCase {
 
     func test_runsScreenRendersWithTheWorkloadCard() throws {
         let root = FileManager.default.temporaryDirectory
-        let service = LabService(launcher: LabServiceTests.FakeLauncher(), root: root)
-        let estimator = LabEstimator(launcher: LabServiceTests.FakeLauncher(), root: root)
+        let service = LabService(launcher: LabServiceTests.FakeLauncher(), root: root, dataRoot: root)
+        let estimator = LabEstimator(launcher: LabServiceTests.FakeLauncher(), root: root, dataRoot: root)
 
         let view = LabRunsView()
             .environment(service)

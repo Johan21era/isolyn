@@ -33,7 +33,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SELFPLAY = ROOT / "tools" / "selfplay" / "build" / "selfplay"
-RUNS = ROOT / "lab" / "data" / "runs"
+# The app runs this from inside its bundle and keeps run data in Application
+# Support, because a bundle under ~/Desktop is a TCC-protected location: reading
+# it makes macOS ask for Desktop access on every rebuild (ad-hoc signing gives a
+# new identity each time). The CLI keeps the repo-local default.
+RUNS = Path(os.environ.get("ISOLYN_RUNS_DIR") or (ROOT / "lab" / "data" / "runs"))
 MANIFEST_VERSION = 1
 RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 
@@ -539,17 +543,25 @@ def build_parser() -> argparse.ArgumentParser:
     status = sub.add_parser("status", help="show a run's progress and verify its shards")
     status.add_argument("run_id")
 
-    sub.add_parser("list", help="list runs")
+    listing = sub.add_parser("list", help="list runs")
 
     merge = sub.add_parser("merge", help="merge completed shards into one CSV")
     merge.add_argument("run_id")
     merge.add_argument("--output", type=Path)
 
+    # The app keeps run data outside the checkout (see LabPaths.dataDirectory);
+    # this flag points the CLI at that store for one invocation.
+    for subparser in (run, status, listing, merge):
+        subparser.add_argument("--runs-dir", type=Path, help=argparse.SUPPRESS)
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    global RUNS
     args = build_parser().parse_args(argv)
+    if getattr(args, "runs_dir", None):
+        RUNS = args.runs_dir
     if args.command == "run":
         if args.games <= 0 or args.games_per_shard <= 0 or args.parallel <= 0:
             raise SystemExit("--games, --games-per-shard and --parallel must be positive")

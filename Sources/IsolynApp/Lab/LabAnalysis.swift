@@ -81,6 +81,7 @@ final class LabAnalysisService {
     private(set) var lastError: String?
 
     let root: URL?
+    let dataRoot: URL
     private let launcher: LabLaunching
     private var handle: LabProcessHandle?
     private var lastInputs: [String] = []
@@ -91,17 +92,22 @@ final class LabAnalysisService {
     /// before this; 20 is the point where the screen stays readable.
     let maxInputs = 20
 
-    init(launcher: LabLaunching = ProcessLabLauncher(), root: URL? = LabPaths.repositoryRoot()) {
+    init(
+        launcher: LabLaunching = ProcessLabLauncher(),
+        root: URL? = LabPaths.repositoryRoot(),
+        dataRoot: URL? = nil
+    ) {
         self.launcher = launcher
         self.root = root
+        self.dataRoot = dataRoot ?? LabPaths.dataDirectory()
     }
 
     /// A finished run's `merged.csv` if it has one, otherwise up to eight of its
     /// shard CSVs. Unmerged shards are legitimate separate analyses — each file
     /// carries its own game ids.
     func inputs(for runID: String) -> [URL] {
-        guard let root, LabPaths.isSafeRunID(runID) else { return [] }
-        let directory = LabPaths.runDirectory(root: root, runID: runID)
+        guard LabPaths.isSafeRunID(runID) else { return [] }
+        let directory = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
         let merged = directory.appendingPathComponent("merged.csv")
         if FileManager.default.fileExists(atPath: merged.path) { return [merged] }
 
@@ -142,8 +148,8 @@ final class LabAnalysisService {
             return
         }
 
-        let logURL = root
-            .appendingPathComponent("lab/data/analyses", isDirectory: true)
+        let logURL = dataRoot
+            .appendingPathComponent("analyses", isDirectory: true)
             .appendingPathComponent("analysis-\(Int(Date().timeIntervalSince1970)).log")
         let arguments = ["evaluate", "--json"]
             + capped.flatMap { ["--input", $0.path] }

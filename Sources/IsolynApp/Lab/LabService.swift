@@ -96,6 +96,9 @@ final class LabService {
     var draft = LabRunConfig()
 
     let root: URL?
+    /// Run data lives in Application Support, never in the checkout: the app is
+    /// ad-hoc re-signed on each build, so macOS would forget a Desktop grant.
+    let dataRoot: URL
     private let launcher: LabLaunching
     private var handle: LabProcessHandle?
     private var pollTask: Task<Void, Never>?
@@ -104,10 +107,16 @@ final class LabService {
     /// A second Start for the same run inside this window is treated as noise.
     private let repeatWindow: TimeInterval = 2.0
 
-    init(launcher: LabLaunching = ProcessLabLauncher(), root: URL? = LabPaths.repositoryRoot()) {
+    init(
+        launcher: LabLaunching = ProcessLabLauncher(),
+        root: URL? = LabPaths.repositoryRoot(),
+        dataRoot: URL? = nil
+    ) {
         self.launcher = launcher
         self.root = root
+        self.dataRoot = dataRoot ?? LabPaths.dataDirectory()
         self.config = draft
+        try? FileManager.default.createDirectory(at: self.dataRoot, withIntermediateDirectories: true)
     }
 
     // MARK: - Derived state
@@ -179,9 +188,10 @@ final class LabService {
         startedAt = Date()
 
         do {
-            let logURL = LabPaths.runDirectory(root: root, runID: requested.runID)
+            let logURL = LabPaths.runDirectory(dataRoot: dataRoot, runID: requested.runID)
                 .appendingPathComponent("runner.log")
-            handle = try launcher.launch(root: root, arguments: requested.arguments, logURL: logURL) { [weak self] code in
+            let arguments = requested.arguments + ["--runs-dir", dataRoot.path]
+            handle = try launcher.launch(root: root, arguments: arguments, logURL: logURL) { [weak self] code in
                 Task { @MainActor [weak self] in self?.finish(code: code) }
             }
             phase = .running
@@ -222,8 +232,7 @@ final class LabService {
     }
 
     func refresh() {
-        guard let root else { return }
-        guard let decoded = loadManifest(root: root, runID: config.runID) else { return }
+        guard let decoded = loadManifest(runID: config.runID) else { return }
         manifest = decoded
         if decoded.isComplete, phase == .running, handle == nil {
             phase = .finished
@@ -234,8 +243,7 @@ final class LabService {
     // MARK: - Other run actions
 
     func recentRuns(limit: Int = 6) -> [LabManifest] {
-        guard let root else { return [] }
-        let directory = LabPaths.runsDirectory(root: root)
+        let directory = LabPaths.runsDirectory(dataRoot: dataRoot)
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: directory,
             includingPropertiesForKeys: nil
@@ -264,15 +272,16 @@ final class LabService {
         }
         guard let root else { return }
         guard LabPaths.isSafeRunID(runID) else { return }
-        guard let manifest = loadManifest(root: root, runID: runID), manifest.isComplete else {
+        guard let manifest = loadManifest(runID: runID), manifest.isComplete else {
             message = "Only a finished run can be merged."
             return
         }
         message = "Merging \(runID)…"
-        let logURL = LabPaths.runDirectory(root: root, runID: runID)
+        let logURL = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
             .appendingPathComponent("merge.log")
         do {
-            _ = try launcher.launch(root: root, arguments: ["merge", runID], logURL: logURL) { [weak self] code in
+            let arguments = ["merge", runID, "--runs-dir", dataRoot.path]
+            _ = try launcher.launch(root: root, arguments: arguments, logURL: logURL) { [weak self] code in
                 Task { @MainActor [weak self] in
                     self?.message = code == 0 ? "Merged \(runID) into merged.csv." : "Merge failed (exit \(code))."
                 }
@@ -283,8 +292,7 @@ final class LabService {
     }
 
     func reveal(runID: String) {
-        guard let root else { return }
-        let directory = LabPaths.runDirectory(root: root, runID: runID)
+        let directory = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
         NSWorkspace.shared.activateFileViewerSelecting([directory])
     }
 
@@ -329,9 +337,9 @@ final class LabService {
         }
     }
 
-    private func loadManifest(root: URL, runID: String) -> LabManifest? {
+    private func loadManifest(runID: String) -> LabManifest? {
         guard LabPaths.isSafeRunID(runID) else { return nil }
-        let url = LabPaths.manifestURL(root: root, runID: runID)
+        let url = LabPaths.manifestURL(dataRoot: dataRoot, runID: runID)
         guard let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -339,8 +347,7 @@ final class LabService {
     }
 
     private func readLogTail(root: URL?, runID: String) -> String? {
-        guard let root else { return nil }
-        let url = LabPaths.runDirectory(root: root, runID: runID)
+        let url = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
             .appendingPathComponent("runner.log")
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         let tail = text.suffix(600)
@@ -348,7 +355,7 @@ final class LabService {
     }
 
     private func recordedRunnerPID(root: URL, runID: String) -> pid_t? {
-        let url = LabPaths.lockURL(root: root, runID: runID)
+        let url = LabPaths.lockURL(dataRoot: dataRoot, runID: runID)
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         guard let pid = pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)) else { return nil }
         return pid > 0 ? pid : nil

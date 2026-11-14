@@ -67,6 +67,7 @@ final class LabEstimator {
     private(set) var measuredConfig: LabRunConfig?
 
     let root: URL?
+    let dataRoot: URL
     private let launcher: LabLaunching
     private var probeStart: Date?
     private var probeGames = 0
@@ -78,9 +79,14 @@ final class LabEstimator {
     /// honest than a shorter one.
     private let gamesPerShard = 8
 
-    init(launcher: LabLaunching = ProcessLabLauncher(), root: URL? = LabPaths.repositoryRoot()) {
+    init(
+        launcher: LabLaunching = ProcessLabLauncher(),
+        root: URL? = LabPaths.repositoryRoot(),
+        dataRoot: URL? = nil
+    ) {
         self.launcher = launcher
         self.root = root
+        self.dataRoot = dataRoot ?? LabPaths.dataDirectory()
     }
 
     func measure(_ config: LabRunConfig, force: Bool = false) {
@@ -108,8 +114,8 @@ final class LabEstimator {
             parallel: parallel,
             seed: config.seed &+ 7_919
         )
-        let logURL = root
-            .appendingPathComponent("lab/data/probes", isDirectory: true)
+        let logURL = dataRoot
+            .appendingPathComponent("probes", isDirectory: true)
             .appendingPathComponent("probe-\(parallel)-\(config.depth)-\(config.determinizations).log")
 
         isMeasuring = true
@@ -124,7 +130,7 @@ final class LabEstimator {
         do {
             _ = try launcher.launch(
                 root: root,
-                arguments: probe.arguments + ["--run-id", probeID, "--restart", "--quiet"],
+                arguments: probe.arguments + ["--run-id", probeID, "--runs-dir", dataRoot.path, "--restart", "--quiet"],
                 logURL: logURL
             ) { [weak self] code in
                 Task { @MainActor [weak self] in

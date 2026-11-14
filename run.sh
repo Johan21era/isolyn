@@ -8,6 +8,7 @@
 # launches correctly. For Xcode debugging, open Package.swift directly.
 set -euo pipefail
 cd "$(dirname "$0")"
+ROOT="$(pwd)"
 
 CONFIG="debug"
 [[ "${1:-}" == "--release" ]] && CONFIG="release"
@@ -22,6 +23,26 @@ APP="build/IsolynV2.0.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/IsolynV2.0"
 cp "Assets/Isolyn.icns" "$APP/Contents/Resources/Isolyn.icns"
+
+# Stage the lab runtime outside the checkout. The app must never read the
+# sources under ~/Desktop: macOS treats that as a protected folder, and because
+# this bundle is ad-hoc signed on every build, a granted permission never
+# survives the next rebuild. Application Support is not protected, and keeping
+# the runtime out of the bundle also avoids codesign rejecting nested binaries
+# that carry com.apple.provenance.
+LAB="$HOME/Library/Application Support/IsolynV2.0/Lab"
+rm -rf "$LAB"
+mkdir -p "$LAB/scripts" "$LAB/lab/src" "$LAB/lab/configs" "$LAB/tools/selfplay/build"
+cp "$ROOT/scripts/lab" "$LAB/scripts/lab"
+cp -R "$ROOT/lab/src/isolyn_lab" "$LAB/lab/src/isolyn_lab"
+cp -R "$ROOT/lab/configs/." "$LAB/lab/configs/"
+if [ -f "$ROOT/tools/selfplay/build/selfplay" ]; then
+    cp "$ROOT/tools/selfplay/build/selfplay" "$LAB/tools/selfplay/build/selfplay"
+fi
+chmod +x "$LAB/scripts/lab" 2>/dev/null || true
+chmod +x "$LAB/tools/selfplay/build/selfplay" 2>/dev/null || true
+# Python bytecode the interpreter writes there is fine; nothing else is expected.
+echo "📦 Staged the lab runtime in Application Support"
 
 cat > "$APP/Contents/Info.plist" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

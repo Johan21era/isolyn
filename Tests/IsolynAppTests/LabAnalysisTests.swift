@@ -117,7 +117,7 @@ final class LabAnalysisTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("isolyn-analysis-\(UUID().uuidString)")
         let runID = "1v1-d8x64-n100-s1"
-        let runDirectory = LabPaths.runDirectory(root: root, runID: runID)
+        let runDirectory = LabPaths.runDirectory(dataRoot: root, runID: runID)
         let shardDirectory = runDirectory.appendingPathComponent("shards", isDirectory: true)
         try FileManager.default.createDirectory(at: shardDirectory, withIntermediateDirectories: true)
         for index in 0..<12 {
@@ -127,7 +127,7 @@ final class LabAnalysisTests: XCTestCase {
             )
         }
 
-        let service = LabAnalysisService(launcher: FakeLauncher(), root: root)
+        let service = LabAnalysisService(launcher: FakeLauncher(), root: root, dataRoot: root)
         XCTAssertEqual(service.inputs(for: runID).count, 8, "unmerged runs analyze at most eight shards")
 
         FileManager.default.createFile(
@@ -141,7 +141,9 @@ final class LabAnalysisTests: XCTestCase {
         guard let root = LabPaths.repositoryRoot() else {
             throw XCTSkip("repository root not found")
         }
-        let lab = LabService(root: root)
+        let store = FileManager.default.temporaryDirectory
+            .appendingPathComponent("isolyn-e2e-\(UUID().uuidString)")
+        let lab = LabService(root: root, dataRoot: store)
         guard lab.harnessBuilt else { throw XCTSkip("self-play harness not built") }
 
         let config = LabRunConfig(
@@ -158,7 +160,7 @@ final class LabAnalysisTests: XCTestCase {
         }
         XCTAssertEqual(lab.phase, .finished, "the source run must finish before it can be analyzed")
 
-        let analysis = LabAnalysisService(root: root)
+        let analysis = LabAnalysisService(root: root, dataRoot: store)
         let inputs = analysis.inputs(for: config.runID)
         XCTAssertFalse(inputs.isEmpty)
 
@@ -175,8 +177,9 @@ final class LabAnalysisTests: XCTestCase {
     }
 
     func test_analysisTabRendersWithReports() throws {
-        let lab = LabService(launcher: FakeLauncher(), root: FileManager.default.temporaryDirectory)
-        let analysis = LabAnalysisService(launcher: FakeLauncher(), root: FileManager.default.temporaryDirectory)
+        let store = FileManager.default.temporaryDirectory
+        let lab = LabService(launcher: FakeLauncher(), root: store, dataRoot: store)
+        let analysis = LabAnalysisService(launcher: FakeLauncher(), root: store, dataRoot: store)
 
         let view = LabAnalysisView()
             .environment(AppState())

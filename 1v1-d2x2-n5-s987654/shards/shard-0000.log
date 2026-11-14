@@ -1,0 +1,15 @@
+IsolynV2.0 self-play
+  games: 5
+  mode: 1v1
+  depth: 2
+  determinizations: 2
+  opponent depth: 2
+  opponent determinizations: 2
+  time-ms: 0
+  seed: 987654
+  output: "/Users/johanrembeci/Desktop/Isolyn-current_4/1v1-d2x2-n5-s987654/shards/shard-0000.csv"
+  finished 5/5 rounds (85 decisions)
+wrote "/Users/johanrembeci/Desktop/Isolyn-current_4/1v1-d2x2-n5-s987654/shards/shard-0000.csv"
+  completed rounds: 5
+  incomplete rounds: 0
+  decisions: 85
