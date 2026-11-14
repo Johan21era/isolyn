@@ -388,11 +388,14 @@ Both generalisations were wrong.
   ply shallow. The shipped elite tier (8/64) is therefore earned, not over-
   configured — the earlier "depth 10 vs 8 is worse" result stands as the plateau
   evidence, not "depth 6".
-- **Draw action at the elite horizon.** Depth 8, draws on vs off, 835 rounds:
-  **+49.0 Elo [+25.2, +72.8]**. Provisional — one seed, and the run is expensive
-  because each draw triggers a full-width depth-8 search. Direction is
-  consistent with E-025 (neutral at 4, +9.4 at 5, large at 8): drawing is a
-  positional investment whose value needs horizon.
+- **Draw action at the elite horizon.** Depth 8, draws on vs off, two seeds
+  pooled over 1,207 rounds: 680 wins, **56.34%, +44.3 Elo [+24.6, +64.2]**
+  (seeds 57.0% and 54.8%, draws ~17% of decisions).
+- **The horizon curve is the finding.** The same action measures **+2.5 at depth
+  4, +9.4 at depth 5, +44.3 at depth 8**. Drawing buys hand quality at the cost
+  of pips and a ply; only a deep search can see the quality. A shallower test
+  would have rejected a +44 Elo action as worthless — which is exactly what the
+  depth-4 result nearly did.
 
 ## Strategic conclusion after E-007 – E-019
 
