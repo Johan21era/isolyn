@@ -35,16 +35,24 @@ Positive Elo favours side A. Intervals are 95%.
 
 | A vs B | Games | A wins | A score | Elo(A) | 95% CI | Resolved? |
 |---|---:|---:|---:|---:|---|---|
-| 2/8 vs 3/16 | 1,000 | 481 | 48.1% | −13.2 | [−34.7, +8.3] | no |
-| 3/16 vs 4/24 | 1,000 | 485 | 48.5% | −10.4 | [−32.0, +11.1] | no |
+| 2/8 vs 3/16 | 4,000 | 1,915 | 47.9% | **−14.8** | [−25.6, −4.0] | **yes** |
+| 3/16 vs 4/24 | 4,000 | 1,914 | 47.9% | **−14.9** | [−25.7, −4.2] | **yes** |
 | 4/24 vs 5/40 | 600 | 266 | 44.3% | −39.5 | [−67.5, −11.6] | **yes** |
 
-The direction of the ladder is correct — each tier beats the one below it — but
-only the 4/24 → 5/40 step is statistically resolved. **Correction to an earlier
-record:** `docs/subsystems/LAB.md` reports 4/24 *beating* 5/40 (205–195 over 400
-games). That does not reproduce at seed 42 over 600 games, where 5/40 wins at
-55.7% with an interval excluding zero. The earlier result is a 400-game sample
-of a small effect; treat the direction as settled and the magnitude as ±30 Elo.
+Earlier 1,000-game runs of the first two pairs read −13.2 [−34.7, +8.3] and
+−10.4 [−32.0, +11.1]; at 4,000 games both resolve. **The difficulty ladder is
+correctly ordered and every adjacent step tested is statistically separable**, at
+roughly **15 Elo per tier** for the lower three steps and ~40 for the fourth.
+
+That is a real but modest separation. Fifteen Elo means the stronger tier wins
+about 52% of head-to-head games — measurable, not dramatic. Presenting the five
+bands as five clearly different opponents is defensible on ordering and
+separation, but not on magnitude.
+
+**Correction to an earlier record:** `docs/subsystems/LAB.md` reported 4/24
+*beating* 5/40 (205–195 over 400 games). That does not reproduce at seed 42 over
+600 games, where 5/40 wins at 55.7% with an interval excluding zero. The earlier
+result was a 400-game sample of a small effect.
 
 ## Timing
 

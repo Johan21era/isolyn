@@ -47,10 +47,12 @@ Ranked by expected strength return, not by how interesting the work is.
 at 64, and depth 10 loses to depth 8 at 4.3× the cost. Any further strength must
 come from better decisions per node, not from more nodes.
 
-1. **The difficulty ladder is not validated per tier.** Adjacent tiers differ by
-   ~10–13 Elo and two of the three adjacent comparisons are inside noise at
-   1,000 games. Only the 4/24 → 5/40 pair resolved (−39.5 Elo). The five labels
-   are therefore presentation, not proven strength.
+1. **The difficulty ladder is ordered but the separation is modest.** At 4,000
+   games the 2/8 → 3/16 and 3/16 → 4/24 steps resolve at −14.8 and −14.9 Elo,
+   and 4/24 → 5/40 resolves at −39.5. Every adjacent step tested is separable,
+   at roughly a 52% head-to-head win rate per tier — real, but not the dramatic
+   difficulty cliff the labels imply. The 5/40 → 8/64 step has not been measured
+   directly.
 2. **CPU is under-used end-to-end.** Root sampling is now parallel, but total
    CPU work rose ~47% (TT dilution across lanes); effective core use measured
    3.3× of 8. Thread-level work is done; the waste is allocator contention and
