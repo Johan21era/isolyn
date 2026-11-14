@@ -2062,3 +2062,32 @@ touching what a run means or how it is measured.
 **Not verified.** The new layout was not inspected visually; the render test
 proves it draws, not that it looks right. If a row or the detail sheet crowds at
 small window sizes, that needs a human look before it is called done.
+
+## OPS-32 — A run table that can be read months later
+
+**What the owner asked for.** The run ids (`1v1-d8x64-n5000000-s1`) are accurate
+but unreadable at a glance; weeks later the list should still answer "how many
+games, what depth" without decoding a string.
+
+**Change.** The Runs library is a table with one value per column: Started,
+Games, Mode, Depth, Worlds, Seed, Progress, Status. A run id is never required to
+read a row; the id remains in the detail sheet and the copy action for exact
+reference. Sort options are Newest (default), Oldest and Largest, and the list
+keeps the existing All / Unfinished / Finished filters and search.
+
+Rows show `5.0M` / `10K` for game counts rather than `5,000,000`, the start date
+adds a year once it differs from the current one, and a one-line glossary under
+the table states what Depth, Worlds and Seed mean in plain language. The detail
+sheet now also spells the configuration out as a sentence: *"5,000,000 games of
+1v1, planning 8 moves ahead, weighing 64 possible hands per move, dealt from seed
+1."*
+
+**Verification.**
+
+- `swift test`: `Executed 106 tests, with 0 failures`, including sort order
+  (newest, oldest, largest) alongside the existing filter/search assertions.
+- `./scripts/ci/local.sh`: PASS; `python3 scripts/docs_audit.py`: PASS.
+
+**Not verified.** The table was not inspected visually. Column widths were chosen
+to fit the 740 pt content column (478 pt of cells + 70 pt of gaps + menu), but a
+cramped window or very large accessibility text size is untested.

@@ -273,9 +273,13 @@ final class LabService {
         libraryLoadedAt = Date()
     }
 
-    func runs(filter: LabRunFilter = .all, query: String = "") -> [LabManifest] {
+    func runs(
+        filter: LabRunFilter = .all,
+        query: String = "",
+        sort: LabRunSort = .newest
+    ) -> [LabManifest] {
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
-        return library.filter { run in
+        let matched = library.filter { run in
             let matchesFilter: Bool
             switch filter {
             case .all: matchesFilter = true
@@ -286,6 +290,15 @@ final class LabService {
             guard !needle.isEmpty else { return true }
             return run.runId.lowercased().contains(needle)
                 || run.config.mode.lowercased().contains(needle)
+        }
+
+        switch sort {
+        case .newest:
+            return matched
+        case .oldest:
+            return matched.reversed()
+        case .largest:
+            return matched.sorted { $0.totalGames > $1.totalGames }
         }
     }
 

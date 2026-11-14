@@ -81,6 +81,7 @@ struct LabRunsView: View {
     @State private var showAdvanced = false
     @State private var search = ""
     @State private var filter: LabRunFilter = .all
+    @State private var sort: LabRunSort = .newest
     @State private var openRun: LabManifest?
 
     private struct Preset: Identifiable {
@@ -101,7 +102,7 @@ struct LabRunsView: View {
     }
 
     private var visibleRuns: [LabManifest] {
-        lab.runs(filter: filter, query: search)
+        lab.runs(filter: filter, query: search, sort: sort)
     }
 
     var body: some View {
@@ -526,6 +527,24 @@ struct LabRunsView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 210)
 
+                Menu {
+                    ForEach(LabRunSort.allCases) { option in
+                        Button {
+                            sort = option
+                        } label: {
+                            Text(option == sort ? "✓ \(option.rawValue)" : option.rawValue)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 11))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .frame(width: 22)
+                .help("Sort runs")
+
                 Button {
                     lab.refreshLibrary(force: true)
                 } label: {
@@ -551,14 +570,43 @@ struct LabRunsView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
             } else {
-                VStack(spacing: 2) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 10) {
+                        column("Started", 74, .leading)
+                        column("Games", 58, .trailing)
+                        column("Mode", 40, .leading)
+                        column("Depth", 38, .trailing)
+                        column("Worlds", 46, .trailing)
+                        column("Seed", 46, .trailing)
+                        column("Progress", 84, .leading)
+                        column("Status", 92, .leading)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+
+                    Divider().overlay(IsolynTheme.ebonyLine.opacity(0.6))
+
                     ForEach(visibleRuns) { run in
                         LabRunRow(run: run) { openRun = run }
                     }
                 }
+
+                Text("Depth = moves it plans ahead · Worlds = possibilities it weighs per move · Seed = which games get dealt")
+                    .font(IsolynTheme.caption(10))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                    .padding(.top, 4)
             }
         }
         .labCard()
+    }
+
+    private func column(_ title: String, _ width: CGFloat, _ align: Alignment) -> some View {
+        Text(title)
+            .font(IsolynTheme.caption(9))
+            .tracking(0.6)
+            .foregroundStyle(IsolynTheme.ivoryMuted)
+            .frame(width: width, alignment: align)
     }
 
     // MARK: Pieces
@@ -611,24 +659,46 @@ struct LabRunRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(IsolynTheme.body(13))
-                    .foregroundStyle(IsolynTheme.ivory)
-                Text(run.summaryLine)
-                    .font(IsolynTheme.caption(10))
-                    .foregroundStyle(IsolynTheme.ivoryMuted)
-            }
+        HStack(spacing: 10) {
+            Text(startedText)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+                .frame(width: 74, alignment: .leading)
 
-            Spacer(minLength: 10)
+            Text(gamesText)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivory)
+                .frame(width: 58, alignment: .trailing)
+
+            Text(run.config.mode)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivory)
+                .frame(width: 40, alignment: .leading)
+
+            Text("\(run.config.depth)")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivory)
+                .frame(width: 38, alignment: .trailing)
+
+            Text("\(run.config.determinizations)")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivory)
+                .frame(width: 46, alignment: .trailing)
+
+            Text("\(run.config.seed)")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+                .frame(width: 46, alignment: .trailing)
 
             ProgressView(value: run.fraction)
                 .progressViewStyle(.linear)
                 .tint(run.isComplete ? IsolynTheme.brass : IsolynTheme.ivoryMuted)
-                .frame(width: 110)
+                .frame(width: 84)
 
             LabStatusPill(text: statusText, tone: statusTone)
+                .frame(width: 92, alignment: .leading)
+
+            Spacer(minLength: 0)
 
             Menu {
                 if !run.isComplete {
@@ -669,22 +739,42 @@ struct LabRunRow: View {
         .onTapGesture(perform: onOpen)
     }
 
-    private var title: String {
-        let size = run.totalGames >= 1_000_000
-            ? String(format: "%.1fM", Double(run.totalGames) / 1_000_000)
-            : NumberFormatter.localizedString(from: NSNumber(value: run.totalGames), number: .decimal)
-        return "\(size) games · \(run.config.mode) · seed \(run.config.seed)"
+    /// "14 Nov", or "14 Nov 2025" once the year differs from today's, so a list
+    /// opened months later still reads correctly.
+    private var startedText: String {
+        guard let date = run.startedDate else { return "—" }
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            return date.formatted(date: .omitted, time: .shortened)
+        }
+        if calendar.component(.year, from: date) != calendar.component(.year, from: Date()) {
+            return date.formatted(.dateTime.day().month(.abbreviated).year())
+        }
+        return date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    private var gamesText: String {
+        switch run.totalGames {
+        case 1_000_000...:
+            return String(format: "%.1fM", Double(run.totalGames) / 1_000_000)
+        case 1_000...:
+            return "\(run.totalGames / 1_000)K"
+        default:
+            return "\(run.totalGames)"
+        }
     }
 
     private var statusText: String {
         if run.isComplete { return "finished" }
-        if run.failedShards > 0 { return "needs attention" }
-        return "\(run.doneShards)/\(run.shards.count)"
+        if run.failedShards > 0 { return "failed" }
+        if lab.isBusy, lab.manifest?.runId == run.runId { return "running" }
+        return "paused"
     }
 
     private var statusTone: LabStatusPill.Tone {
         if run.isComplete { return .finished }
         if run.failedShards > 0 { return .failed }
+        if lab.isBusy, lab.manifest?.runId == run.runId { return .active }
         return .paused
     }
 }
@@ -706,6 +796,9 @@ struct LabRunDetailView: View {
                         .foregroundStyle(IsolynTheme.ivory)
                     Text(run.runId)
                         .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                    Text("\(run.totalGames.formatted()) games of \(run.config.mode), planning \(run.config.depth) moves ahead, weighing \(run.config.determinizations) possible hands per move, dealt from seed \(run.config.seed)")
+                        .font(IsolynTheme.caption(11))
                         .foregroundStyle(IsolynTheme.ivoryMuted)
                 }
                 Spacer()

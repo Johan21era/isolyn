@@ -276,6 +276,15 @@ final class LabServiceTests: XCTestCase {
         XCTAssertEqual(service.runs(filter: .unfinished).map(\.runId), ["1v1-d2x4-n10-s1"])
         XCTAssertEqual(service.runs(query: "1v1v1").count, 1)
         XCTAssertTrue(service.runs(query: "nothing-matches").isEmpty)
+        XCTAssertEqual(
+            service.runs(sort: .oldest).map(\.runId),
+            ["1v1-d2x4-n10-s1", "1v1v1-d2x4-n20-s2"]
+        )
+        XCTAssertEqual(
+            service.runs(sort: .largest).map(\.totalGames),
+            [20, 10],
+            "largest run first, whatever its date"
+        )
     }
 
     func test_manifestPredictsAFinishTimeFromItsOwnPace() throws {

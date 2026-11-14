@@ -33,6 +33,14 @@ struct LabRunConfig: Equatable, Codable {
     }
 }
 
+enum LabRunSort: String, CaseIterable, Identifiable {
+    case newest = "Newest"
+    case oldest = "Oldest"
+    case largest = "Largest"
+
+    var id: String { rawValue }
+}
+
 enum LabRunFilter: String, CaseIterable, Identifiable {
     case all = "All"
     case unfinished = "Unfinished"
