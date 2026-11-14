@@ -1806,3 +1806,25 @@ launch decisions therefore live in `LabService`, which owns at most one child:
 **Not done, deliberately.** No trainer and no Sandbox screen. The Lab screen
 drives the existing runner; it does not invent capabilities the lab does not
 have.
+
+## OPS-26 — The Lab screen renders without a click
+
+**Scope.** Close the one gap left by OPS-25: the tests proved the service, not
+that the screen itself renders.
+
+**What was added.** `test_labScreenRendersWithoutAClick` renders `LabView` through
+`ImageRenderer` at the default 1080×720 window size with a real `AppState` and a
+fake-backed `LabService`, and asserts an image is produced. A missing environment
+value or a broken body would crash the render rather than pass silently.
+
+**Evidence (literal).** `swift test`:
+`Executed 92 tests, with 0 failures (0 unexpected) in 2.798 (2.805) seconds`,
+with `test_labScreenRendersWithoutAClick` reported as passed (0.147 seconds).
+
+**Correction to OPS-25.** That entry records 91 tests; the render test makes the
+current total 92. The earlier figure was true when written and is not edited here,
+per the append-only rule.
+
+**Still not done.** No click-through of the native screen: this machine has no
+UI-automation harness attached to the app, so the render test is the strongest
+check available without a human at the window.

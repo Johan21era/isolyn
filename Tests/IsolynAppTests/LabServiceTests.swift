@@ -1,3 +1,4 @@
+import SwiftUI
 import XCTest
 @testable import IsolynApp
 
@@ -190,6 +191,22 @@ final class LabServiceTests: XCTestCase {
         XCTAssertFalse(LabPaths.isSafeRunID("a/b"))
         XCTAssertFalse(LabPaths.isSafeRunID(".hidden"))
         XCTAssertFalse(LabPaths.isSafeRunID(""))
+    }
+
+    // MARK: - Rendering
+
+    func test_labScreenRendersWithoutAClick() throws {
+        let launcher = FakeLauncher()
+        let model = LabService(launcher: launcher, root: try makeRepository())
+        let view = LabView()
+            .environment(AppState())
+            .environment(model)
+            .frame(width: 1080, height: 720)
+
+        let renderer = ImageRenderer(content: view)
+        renderer.proposedSize = ProposedViewSize(width: 1080, height: 720)
+
+        XCTAssertNotNil(renderer.nsImage, "the Lab screen must render at the default window size")
     }
 
     // MARK: - Real process
