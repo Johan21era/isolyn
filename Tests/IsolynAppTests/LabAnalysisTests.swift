@@ -70,6 +70,24 @@ final class LabAnalysisTests: XCTestCase {
     ]
     """
 
+    func test_savedReportSurvivesRelaunch() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("isolyn-saved-analysis-\(UUID().uuidString)")
+        let analyses = root.appendingPathComponent("analyses", isDirectory: true)
+        try FileManager.default.createDirectory(at: analyses, withIntermediateDirectories: true)
+        try fixture.write(
+            to: analyses.appendingPathComponent("latest.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let service = LabAnalysisService(launcher: FakeLauncher(), root: root, dataRoot: root)
+
+        XCTAssertEqual(service.reports.count, 2)
+        XCTAssertNotNil(service.savedAt)
+        XCTAssertEqual(service.message, "Loaded the last saved analysis.")
+    }
+
     func test_analysisJSONDecodesBothShapes() throws {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -101,6 +119,22 @@ final class LabAnalysisTests: XCTestCase {
 
         XCTAssertEqual(launcher.launches.count, 1)
         XCTAssertTrue(service.isRunning)
+    }
+
+    func test_stopEndsAnAnalysisWithoutTurningItIntoAFailure() throws {
+        let launcher = FakeLauncher()
+        let service = LabAnalysisService(
+            launcher: launcher,
+            root: FileManager.default.temporaryDirectory
+        )
+        let input = FileManager.default.temporaryDirectory.appendingPathComponent("x.csv")
+        service.run(inputs: [input])
+        XCTAssertTrue(service.isRunning)
+
+        service.stop()
+        XCTAssertFalse(service.isRunning)
+        XCTAssertEqual(service.message, "Analysis stopped.")
+        XCTAssertNotNil(service.lastLogURL)
     }
 
     func test_analysisIsRefusedWithNoInputs() throws {

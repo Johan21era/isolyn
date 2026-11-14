@@ -83,6 +83,7 @@ struct LabRunsView: View {
     @State private var filter: LabRunFilter = .all
     @State private var sort: LabRunSort = .newest
     @State private var openRun: LabManifest?
+    @State private var deleteCandidate: LabManifest?
 
     private struct Preset: Identifiable {
         let title: String
@@ -134,6 +135,22 @@ struct LabRunsView: View {
         .sheet(item: $openRun) { run in
             LabRunDetailView(run: run)
         }
+        .alert(
+            "Delete this run?",
+            isPresented: Binding(
+                get: { deleteCandidate != nil },
+                set: { if !$0 { deleteCandidate = nil } }
+            ),
+            presenting: deleteCandidate
+        ) { run in
+            Button("Delete run", role: .destructive) {
+                lab.delete(runID: run.runId)
+                deleteCandidate = nil
+            }
+            Button("Cancel", role: .cancel) { deleteCandidate = nil }
+        } message: { run in
+            Text("This permanently removes \(run.runId), including its shard CSVs and logs. This cannot be undone.")
+        }
     }
 
     // MARK: What is happening
@@ -160,7 +177,7 @@ struct LabRunsView: View {
                     .tint(IsolynTheme.brass)
 
                 HStack(spacing: 22) {
-                    stat("Played", "\(formatted(manifest.doneGames)) of \(formatted(manifest.totalGames))")
+                    stat("Played", "\(formatted(manifest.playedGames)) of \(formatted(manifest.totalGames))")
                     stat("Batches", "\(manifest.doneShards) of \(manifest.shards.count)")
                     if let rate = manifest.gamesPerSecond() {
                         stat("Speed", "\(Int(rate)) games/s")
@@ -173,17 +190,31 @@ struct LabRunsView: View {
 
                 HStack(spacing: 16) {
                     if lab.isBusy {
-                        Button("Pause") { lab.stop() }
+                        Button(lab.isMerging ? "Stop merge" : "Pause") { lab.stop() }
                             .buttonStyle(.plain)
                             .font(IsolynTheme.body(13))
                             .foregroundStyle(IsolynTheme.ivory)
                             .keyboardShortcut(".", modifiers: .command)
                     }
                     LabLink(title: "Show folder") { lab.reveal(runID: manifest.runId) }
+                    LabLink(title: "Open log") { lab.openLog(runID: manifest.runId) }
                     if manifest.isComplete {
-                        LabLink(title: "Combine into one file") { lab.merge(runID: manifest.runId) }
+                        if lab.isMerging, lab.mergingRunID == manifest.runId {
+                            Text("Combining…")
+                                .font(IsolynTheme.caption(12))
+                                .foregroundStyle(IsolynTheme.brass)
+                        } else {
+                            LabLink(title: "Combine into one file") { lab.merge(runID: manifest.runId) }
+                        }
                     }
                     Spacer()
+                }
+
+                if !manifest.failedShardReasons.isEmpty {
+                    Text(manifest.failedShardReasons.prefix(2).map { "Shard \($0.index): \($0.reason)" }.joined(separator: " · "))
+                        .font(IsolynTheme.caption(10))
+                        .foregroundStyle(IsolynTheme.brass)
+                        .lineLimit(2)
                 }
             } else if case .failed(let reason) = lab.phase {
                 Text(reason)
@@ -588,7 +619,7 @@ struct LabRunsView: View {
                     Divider().overlay(IsolynTheme.ebonyLine.opacity(0.6))
 
                     ForEach(visibleRuns) { run in
-                        LabRunRow(run: run) { openRun = run }
+                        LabRunRow(run: run, onOpen: { openRun = run }, onDelete: { deleteCandidate = run })
                     }
                 }
 
@@ -654,6 +685,7 @@ struct LabRunsView: View {
 struct LabRunRow: View {
     let run: LabManifest
     let onOpen: () -> Void
+    let onDelete: () -> Void
 
     @Environment(LabService.self) private var lab
     @State private var hovering = false
@@ -708,6 +740,7 @@ struct LabRunRow: View {
                 if run.isComplete {
                     Button("Combine into one file") { lab.merge(runID: run.runId) }
                 }
+                Button("Open runner log") { lab.openLog(runID: run.runId) }
                 Button("Show in Finder") { lab.reveal(runID: run.runId) }
                 Divider()
                 Button("Copy run id") {
@@ -719,6 +752,8 @@ struct LabRunRow: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(path, forType: .string)
                 }
+                Divider()
+                Button("Delete run…", role: .destructive, action: onDelete)
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 12))
@@ -765,6 +800,7 @@ struct LabRunRow: View {
     }
 
     private var statusText: String {
+        if lab.isMerging, lab.mergingRunID == run.runId { return "combining" }
         if run.isComplete { return "finished" }
         if run.failedShards > 0 { return "failed" }
         if lab.isBusy, lab.manifest?.runId == run.runId { return "running" }
@@ -772,6 +808,7 @@ struct LabRunRow: View {
     }
 
     private var statusTone: LabStatusPill.Tone {
+        if lab.isMerging, lab.mergingRunID == run.runId { return .active }
         if run.isComplete { return .finished }
         if run.failedShards > 0 { return .failed }
         if lab.isBusy, lab.manifest?.runId == run.runId { return .active }
@@ -786,6 +823,14 @@ struct LabRunDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(LabService.self) private var lab
+    @State private var confirmDelete = false
+
+    /// The sheet is opened with a snapshot, but a running shard publishes new
+    /// progress while the sheet is open. Prefer the live manifest when it is
+    /// the same run.
+    private var current: LabManifest {
+        lab.manifest?.runId == run.runId ? (lab.manifest ?? run) : run
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -794,10 +839,10 @@ struct LabRunDetailView: View {
                     Text("Run details")
                         .font(IsolynTheme.title(18))
                         .foregroundStyle(IsolynTheme.ivory)
-                    Text(run.runId)
+                    Text(current.runId)
                         .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(IsolynTheme.ivoryMuted)
-                    Text("\(run.totalGames.formatted()) games of \(run.config.mode), planning \(run.config.depth) moves ahead, weighing \(run.config.determinizations) possible hands per move, dealt from seed \(run.config.seed)")
+                    Text("\(current.totalGames.formatted()) games of \(current.config.mode), planning \(current.config.depth) moves ahead, weighing \(current.config.determinizations) possible hands per move, dealt from seed \(current.config.seed)")
                         .font(IsolynTheme.caption(11))
                         .foregroundStyle(IsolynTheme.ivoryMuted)
                 }
@@ -808,49 +853,84 @@ struct LabRunDetailView: View {
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             }
 
-            ProgressView(value: run.fraction)
+            ProgressView(value: current.fraction)
                 .progressViewStyle(.linear)
                 .tint(IsolynTheme.brass)
 
             Grid(alignment: .leading, horizontalSpacing: 26, verticalSpacing: 10) {
                 GridRow {
-                    detail("Games", "\(run.doneGames) of \(run.totalGames)")
-                    detail("Batches", "\(run.doneShards) of \(run.shards.count)")
-                    detail("Failed", "\(run.failedShards)")
+                    detail("Played", "\(current.playedGames) of \(current.totalGames)")
+                    detail("Finished batches", "\(current.doneShards) of \(current.shards.count)")
+                    detail("Failed", "\(current.failedShards)")
                 }
                 GridRow {
-                    detail("Search", run.config.mode + " · depth \(run.config.depth)")
-                    detail("Samples", "\(run.config.determinizations)")
-                    detail("Seed", "\(run.config.seed)")
+                    detail("Search", current.config.mode + " · depth \(current.config.depth)")
+                    detail("Samples", "\(current.config.determinizations)")
+                    detail("Seed", "\(current.config.seed)")
                 }
                 GridRow {
-                    detail("Started", run.startedDate?.formatted(date: .abbreviated, time: .shortened) ?? "—")
-                    detail("Rows", "\(run.rowCount)")
-                    detail("Status", run.isComplete ? "finished" : "paused")
+                    detail("Started", current.startedDate?.formatted(date: .abbreviated, time: .shortened) ?? "—")
+                    detail("Rows", "\(current.rowCount)")
+                    detail("Status", current.isComplete ? "finished" : (lab.isBusy && lab.manifest?.runId == current.runId ? "running" : "paused"))
                 }
             }
 
-            Text(LabPaths.runDirectory(dataRoot: lab.dataRoot, runID: run.runId).path)
+            if !current.failedShardReasons.isEmpty {
+                let failures = Array(current.failedShardReasons.prefix(4))
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(failures.indices, id: \.self) { index in
+                        HStack(spacing: 10) {
+                            Text("Shard \(failures[index].index): \(failures[index].reason)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(IsolynTheme.brass)
+                                .textSelection(.enabled)
+                            LabLink(title: "Open") {
+                                lab.openShardLog(runID: current.runId, index: failures[index].index)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text(LabPaths.runDirectory(dataRoot: lab.dataRoot, runID: current.runId).path)
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
                 .textSelection(.enabled)
 
             HStack(spacing: 14) {
-                if !run.isComplete {
-                    Button("Resume") { lab.start(run.runConfig) }
+                if !current.isComplete {
+                    Button("Resume") { lab.start(current.runConfig) }
                         .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 130))
                         .disabled(lab.isBusy)
                 } else {
-                    Button("Combine into one file") { lab.merge(runID: run.runId) }
-                        .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 180))
+                    Button(lab.isMerging && lab.mergingRunID == current.runId ? "Combining…" : "Combine into one file") {
+                        lab.merge(runID: current.runId)
+                    }
+                    .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 180))
+                    .disabled(lab.isBusy)
                 }
-                LabLink(title: "Show in Finder") { lab.reveal(runID: run.runId) }
+                LabLink(title: "Open log") { lab.openLog(runID: current.runId) }
+                LabLink(title: "Show in Finder") { lab.reveal(runID: current.runId) }
                 Spacer()
+                Button("Delete…", role: .destructive) { confirmDelete = true }
+                    .buttonStyle(.plain)
+                    .font(IsolynTheme.caption(12))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                    .disabled(lab.isBusy)
             }
         }
         .padding(22)
         .frame(width: 560)
         .background(IsolynTheme.ebony)
+        .alert("Delete this run?", isPresented: $confirmDelete) {
+            Button("Delete run", role: .destructive) {
+                lab.delete(runID: current.runId)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently removes \(current.runId), including its shard CSVs and logs. This cannot be undone.")
+        }
     }
 
     private func detail(_ title: String, _ value: String) -> some View {

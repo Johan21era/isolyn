@@ -69,8 +69,12 @@ finish.
 
 ```bash
 ./scripts/lab run --games 5000000 --mode 1v1 --depth 8 --determinizations 64
+./scripts/lab run --games 5000000 --mode 1v1 --depth 8 --determinizations 64 --dry-run
 ./scripts/lab status 1v1-d8x64-n5000000-s1
 ./scripts/lab list
+./scripts/lab stop 1v1-d8x64-n5000000-s1
+./scripts/lab doctor
+./scripts/lab clean --probes --yes
 ./scripts/lab merge 1v1-d8x64-n5000000-s1
 
 # Calibration reports: one or several CSVs in a single run.
@@ -83,6 +87,13 @@ finish.
 report per input (games, decisions, outcomes, per-player win rates with Wilson
 intervals, Elo with a confidence interval when both sides are present, and the
 starting-hand correlations). Without `--json` the same report prints as text.
+
+`run --dry-run` validates the configuration and prints the shard/seed plan
+without creating a directory. `doctor` checks the harness, free disk, active
+and dead locks, probe storage and manifest readability. `stop` signals only a
+pid whose command line is this lab's runner. `clean --probes` removes only
+regenerable warm-up runs; `--stale-locks` removes dead lock files; neither
+touches a real run.
 
 The read path is now linear. `dataset.iter_games` keeps one game in memory, and
 `calibration.analyze` accepts that iterator instead of requiring a list. The
@@ -114,6 +125,13 @@ before this was fixed were measured against the weaker default and were too fast
 
 - Run ids default to `<mode>-d<depth>x<det>-n<games>-s<seed>`, so re-issuing the
   same command **resumes** the same run instead of starting a second one.
+- Manifest progress is refreshed every two seconds from the harness's flushed
+  `finished N/M rounds` lines. The app and `status` therefore move within a
+  shard, not only when a 5,000-game shard completes. A resume records
+  `resumed_at`, so the rate and ETA describe the current session rather than a
+  pause that may have lasted overnight.
+- A merge is a tracked child process in the app: it blocks Start/Delete while it
+  runs, reports its own failure, and writes `merged.csv` atomically.
 - A shard is marked `done` only when the harness exited 0, its log reports zero
   incomplete rounds, and its CSV ends on a complete line. Anything else is
   replayed from its seed.
@@ -122,6 +140,15 @@ before this was fixed were measured against the weaker default and were too fast
   an orphaned harness can never write a shard file the new run is using.
 - Shards keep their own CSV and log under `lab/data/runs/<run-id>/shards/`;
   `merge` rewrites game ids into one continuous sequence.
+
+## Quality-of-life checks
+
+The app can stop an analysis, open its captured log, copy a report, and reload
+the last saved reports after relaunch. The Runs screen opens a run's runner log
+and any failed shard's log, shows failed-shard reasons, and deletes a run only
+after confirmation and only when no lock is active. Unmerged runs with more than
+eight shards say that the Analyses tab is previewing a subset; combining the run
+removes that limit.
 
 ## Planned milestones
 

@@ -160,7 +160,7 @@ serializes with the session's own command stream.
 Verified: SmokeTest match section (record/duplicate-reject/starter/
 accumulation/idempotent close) plus the reveal-on-end assertions -- current
 bridge suite 133/133; ASan+UBSan clean over the new paths; Swift package
-currently 112 tests, 0 skipped, 0 failures (re-measured 2026-11-14).
+currently 120 tests, 0 skipped, 0 failures (re-measured 2026-11-14).
 
 **Closed: AUD-01.** `bridge_match_record_round` now checks that the finished
 session's mode and player count match the match before it touches any score,

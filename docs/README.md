@@ -81,7 +81,7 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 |---|---|---|
 | Engine checks (490, 19 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
 | Bridge checks (133, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
-| Swift tests (112, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
+| Swift tests (120, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
 | Sanitizer (623 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
 | Accelerator (94 pass / 6 fail, parity red) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |

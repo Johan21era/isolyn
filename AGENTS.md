@@ -51,7 +51,7 @@ continuing. Do not skip a failing step and continue as if it passed.
 ./scripts/ci/test_engine.sh        # expect: 19 executables, 490 checks, 0 failed
 ./scripts/ci/test_bridge.sh        # expect: 2 executables, 133 checks, 0 failed
 swift build                        # expect: Build complete!
-swift test                         # expect: 112 tests, 0 skipped, 0 failures
+swift test                         # expect: 120 tests, 0 skipped, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
 python3 scripts/docs_audit.py      # expect: RESULT: PASS
@@ -62,7 +62,8 @@ The expected counts above are the state at commit `1352063`, updated at OPS-34
 bridge 73 → 74, Swift 75 (1 skipped) → 112 (0 skipped); later that day Phase 1
 took bridge 74 → 87, and Phase 2 took engine 451 → 471 and bridge 87 → 110;
 R-17's private look took engine 471 → 480 and bridge 110 → 116; R-22's
-elimination took engine 480 → 490 and bridge 116 → 133; Swift stayed at 112.
+elimination took engine 480 → 490 and bridge 116 → 133; Swift stayed at 112
+until the Lab quality-of-life pass added eight tests (112 → 120).
 If your run differs, the difference is a finding: explain it, do not quietly
 update the numbers.
 

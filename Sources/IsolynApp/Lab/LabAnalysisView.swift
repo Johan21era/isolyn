@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Calibration analyses over finished runs. Several inputs can be analyzed at
@@ -29,6 +30,14 @@ struct LabAnalysisView: View {
                     Text("Reading CSVs and computing reports…")
                         .font(IsolynTheme.body(13))
                         .foregroundStyle(IsolynTheme.ivoryMuted)
+                    Button("Stop") { analysis.stop() }
+                        .buttonStyle(.plain)
+                        .font(IsolynTheme.caption(12))
+                        .foregroundStyle(IsolynTheme.brass)
+                    if let log = analysis.lastLogURL {
+                        LabLink(title: "Open log") { NSWorkspace.shared.open(log) }
+                    }
+                    Spacer()
                 }
             }
             results
@@ -89,6 +98,13 @@ struct LabAnalysisView: View {
 
                     Spacer()
                 }
+
+                if selectedInputs.count > analysis.maxInputs {
+                    Text("This selection has \(selectedInputs.count) inputs; only the first \(analysis.maxInputs) will be analyzed. Combine large runs into one CSV first.")
+                        .font(IsolynTheme.caption(11))
+                        .foregroundStyle(IsolynTheme.brass)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             if let message = analysis.message {
@@ -128,6 +144,11 @@ struct LabAnalysisView: View {
                     Text("\(formatted(run.totalGames)) games · \(run.config.mode) · depth \(run.config.depth) / \(run.config.determinizations) samples · \(inputs.count) input\(inputs.count == 1 ? "" : "s")")
                         .font(IsolynTheme.caption(11))
                         .foregroundStyle(IsolynTheme.ivoryMuted)
+                    if analysis.isInputPreviewLimited(for: run.runId) {
+                        Text("Showing 8 of \(analysis.shardCount(for: run.runId)) shards. Combine this run for a complete analysis.")
+                            .font(IsolynTheme.caption(10))
+                            .foregroundStyle(IsolynTheme.brass)
+                    }
                 }
                 Spacer()
                 Text(inputs.first?.lastPathComponent ?? "no CSV")
@@ -172,6 +193,7 @@ struct LabAnalysisView: View {
                 Text("A d\(report.configA.depth)/\(report.configA.determinizations) · B d\(report.configB.depth)/\(report.configB.determinizations)")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(IsolynTheme.ivoryMuted)
+                LabLink(title: "Copy") { copyReport(report) }
             }
 
             if !report.isSymmetric {
@@ -256,6 +278,33 @@ struct LabAnalysisView: View {
         let points = spearman.initialVsPoints.map { String(format: "%+.3f", $0) } ?? "n/a"
         let wins = spearman.initialVsWin.map { String(format: "%+.3f", $0) } ?? "n/a"
         return "Spearman(initial pips, points) = \(points)  ·  (initial pips, win) = \(wins)  ·  n=\(spearman.samples)"
+    }
+
+    private func copyReport(_ report: LabAnalysisReport) {
+        var lines = [
+            "Isolyn calibration report",
+            "input: \(report.input ?? "—")",
+            "mode: \(report.mode)",
+            "games: \(report.games)",
+            "decisions: \(report.decisions)",
+            "outcomes: \(report.outcomeSummary)",
+            "config A: depth=\(report.configA.depth) determinizations=\(report.configA.determinizations)",
+            "config B: depth=\(report.configB.depth) determinizations=\(report.configB.determinizations)",
+            "",
+        ]
+        for participant in report.participants {
+            lines.append(
+                "\(participant.label): \(participant.games) games, \(participant.wins) wins, "
+                + String(format: "%.1f%%", participant.winRate * 100)
+                + String(format: ", %.2f avg points, %.1f avg start", participant.averagePoints, participant.averageInitialPips)
+            )
+        }
+        if let elo = report.elo {
+            lines.append(eloLine(elo))
+        }
+        lines.append(spearmanLine(report.spearman))
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
     }
 
     private func formatted(_ value: Int) -> String {

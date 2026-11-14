@@ -94,6 +94,9 @@ final class LabService {
     private(set) var message: String?
     private(set) var logTail: String?
     private(set) var startedAt: Date?
+    /// A merge is a child process too. It must block Start and expose its own
+    /// failure instead of leaving a silent empty message behind.
+    private(set) var mergingRunID: String?
 
     var draft = LabRunConfig()
 
@@ -103,6 +106,9 @@ final class LabService {
     let dataRoot: URL
     private let launcher: LabLaunching
     private var handle: LabProcessHandle?
+    private var runToken: UUID?
+    private var mergeHandle: LabProcessHandle?
+    private var mergeToken: UUID?
     private var pollTask: Task<Void, Never>?
     private var lastAttempt: (config: LabRunConfig, date: Date)?
     private var libraryLoadedAt: Date?
@@ -124,7 +130,8 @@ final class LabService {
 
     // MARK: - Derived state
 
-    var isBusy: Bool { phase.isBusy }
+    var isBusy: Bool { phase.isBusy || mergingRunID != nil }
+    var isMerging: Bool { mergingRunID != nil }
 
     var harnessBuilt: Bool {
         guard let root else { return false }
@@ -136,6 +143,7 @@ final class LabService {
     var progress: Double { manifest?.fraction ?? 0 }
 
     var statusTitle: String {
+        if isMerging { return "Combining shards…" }
         switch phase {
         case .idle: return "No run started"
         case .launching: return "Starting…"
@@ -157,13 +165,21 @@ final class LabService {
             return
         }
         if isBusy {
-            message = requested.runID == config.runID
-                ? "That run is already active."
-                : "One run at a time — stop the active run first."
+            if isMerging {
+                message = "Stop the active merge first."
+            } else {
+                message = requested.runID == config.runID
+                    ? "That run is already active."
+                    : "One run at a time — stop the active run first."
+            }
             return
         }
         guard requested.games > 0 else {
             phase = .failed("Choose at least one game.")
+            return
+        }
+        guard requested.depth > 0, requested.determinizations > 0, requested.parallel > 0 else {
+            phase = .failed("Depth, worlds and batches must all be positive.")
             return
         }
         guard LabPaths.isSafeRunID(requested.runID) else {
@@ -194,21 +210,33 @@ final class LabService {
             let logURL = LabPaths.runDirectory(dataRoot: dataRoot, runID: requested.runID)
                 .appendingPathComponent("runner.log")
             let arguments = requested.arguments + ["--runs-dir", dataRoot.path]
+            let token = UUID()
+            runToken = token
             handle = try launcher.launch(root: root, arguments: arguments, logURL: logURL) { [weak self] code in
-                Task { @MainActor [weak self] in self?.finish(code: code) }
+                Task { @MainActor [weak self] in self?.finish(code: code, token: token) }
             }
             phase = .running
             refresh()
             startPolling()
         } catch {
             handle = nil
+            runToken = nil
             phase = .failed("Could not start the runner: \(error.localizedDescription)")
         }
     }
 
     func stop() {
+        if isMerging {
+            mergeHandle?.terminate()
+            mergeHandle = nil
+            mergingRunID = nil
+            mergeToken = nil
+            message = "Merge stopped; the shard files were not changed."
+            return
+        }
         guard isBusy else { return }
         phase = .stopped
+        runToken = nil
         message = "Stopping… unfinished shards are kept."
         if let handle, handle.isRunning {
             handle.terminate()
@@ -290,6 +318,8 @@ final class LabService {
             guard !needle.isEmpty else { return true }
             return run.runId.lowercased().contains(needle)
                 || run.config.mode.lowercased().contains(needle)
+                || String(run.config.depth).contains(needle)
+                || String(run.config.seed).contains(needle)
         }
 
         switch sort {
@@ -309,7 +339,7 @@ final class LabService {
 
     func merge(runID: String) {
         guard !isBusy else {
-            message = "Stop the active run before merging."
+            message = "Stop the active run or merge before starting another."
             return
         }
         guard let root else { return }
@@ -318,19 +348,84 @@ final class LabService {
             message = "Only a finished run can be merged."
             return
         }
-        message = "Merging \(runID)…"
+        message = "Combining \(runID) into one CSV…"
         let logURL = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
             .appendingPathComponent("merge.log")
         do {
+            mergingRunID = runID
+            let token = UUID()
+            mergeToken = token
             let arguments = ["merge", runID, "--runs-dir", dataRoot.path]
-            _ = try launcher.launch(root: root, arguments: arguments, logURL: logURL) { [weak self] code in
+            mergeHandle = try launcher.launch(root: root, arguments: arguments, logURL: logURL) { [weak self] code in
                 Task { @MainActor [weak self] in
-                    self?.message = code == 0 ? "Merged \(runID) into merged.csv." : "Merge failed (exit \(code))."
+                    self?.finishMerge(code: code, runID: runID, token: token)
                 }
             }
         } catch {
+            mergingRunID = nil
+            mergeHandle = nil
+            mergeToken = nil
             message = "Could not merge: \(error.localizedDescription)"
         }
+    }
+
+    private func finishMerge(code: Int32, runID: String, token: UUID) {
+        guard token == mergeToken else { return }
+        mergeHandle = nil
+        mergingRunID = nil
+        mergeToken = nil
+        message = code == 0
+            ? "Combined \(runID) into merged.csv."
+            : "Merge failed (exit \(code)); shard files are unchanged."
+        refreshLibrary(force: true)
+    }
+
+    /// Deletes one run directory after the caller has confirmed it. The service
+    /// still refuses while work is active and never accepts a path-like id.
+    func delete(runID: String) {
+        guard !isBusy else {
+            message = "Stop the active run or merge before deleting."
+            return
+        }
+        guard LabPaths.isSafeRunID(runID) else { return }
+        let directory = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
+        let lock = LabPaths.lockURL(dataRoot: dataRoot, runID: runID)
+        guard !FileManager.default.fileExists(atPath: lock.path) else {
+            message = "That run still has an active lock. Stop it before deleting."
+            return
+        }
+        do {
+            try FileManager.default.removeItem(at: directory)
+            if config.runID == runID {
+                manifest = nil
+                phase = .idle
+            }
+            refreshLibrary(force: true)
+            message = "Deleted \(runID)."
+        } catch {
+            message = "Could not delete \(runID): \(error.localizedDescription)"
+        }
+    }
+
+    func openLog(runID: String) {
+        let url = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
+            .appendingPathComponent("runner.log")
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            message = "No runner log exists for \(runID) yet."
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
+    func openShardLog(runID: String, index: Int) {
+        let url = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
+            .appendingPathComponent("shards", isDirectory: true)
+            .appendingPathComponent(String(format: "shard-%04d.log", index))
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            message = "No log exists for shard \(index)."
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     func reveal(runID: String) {
@@ -356,8 +451,10 @@ final class LabService {
         pollTask = nil
     }
 
-    private func finish(code: Int32) {
+    private func finish(code: Int32, token: UUID) {
+        guard token == runToken else { return }
         handle = nil
+        runToken = nil
         stopPolling()
         refresh()
         refreshLibrary(force: true)

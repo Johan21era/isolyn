@@ -77,12 +77,18 @@ The Lab screen removes the terminal from the loop without changing what a run is
   invocation can target that store. The CLI default remains `lab/data/runs`.
 - One run at a time is enforced three ways: a service guard, a short repeat
   window, and the runner's `run.lock`. The app attaches to a run that is already
-  active instead of starting a second process.
+  active instead of starting a second process. A merge is a tracked child too;
+  it blocks Start and Delete until it exits.
 - The run library is read from a cached, once-a-second directory scan rather
   than on every redraw, and shows Started / Games / Mode / Depth / Worlds /
-  Seed / Progress / Status as columns. Analyses read finished CSVs only, and
-  stream them one game at a time; a multi-million-row report no longer requires
-  holding the CSV in memory.
+  Seed / Progress / Status as columns. The manifest publishes partial shard
+  progress every two seconds, so a long shard moves the bar instead of looking
+  frozen. Analyses read finished CSVs only, and stream them one game at a time;
+  a multi-million-row report no longer requires holding the CSV in memory.
+- The detail sheet follows the live manifest, lists failed-shard reasons, and
+  opens the runner or failed-shard log. Deleting a run requires confirmation and
+  is refused while its lock is active. Analyses can be stopped, their log opened,
+  their report copied, and the last report set is reloaded after relaunch.
 - A minimized window is restored by the app delegate on Dock reopen or
   activation; `Window ▸ Show Isolyn Window` (⌘0) is the manual fallback.
 
@@ -105,8 +111,10 @@ streaming reader relies on that shape and rejects a file whose ids go backwards
 rather than folding it incorrectly; `runner merge` renumbers shards into the
 same shape. The calibration report uses exact weighted-rank counts, so its
 memory is bounded by distinct hand/result values rather than by corpus size.
-Measured pipeline timings live in [`lab/README.md`](../../lab/README.md), not
-duplicated here.
+A manifest records a per-shard `progress` count and a `resumed_at` timestamp;
+both are advisory display fields and never substitute for a verified `done`
+shard. Measured pipeline timings live in [`lab/README.md`](../../lab/README.md),
+not duplicated here.
 
 Game-level fields (repeated on every move row):
 

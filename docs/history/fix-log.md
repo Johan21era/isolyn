@@ -2505,3 +2505,69 @@ three-seat ritual round.
   because recent account payments have failed or your spending limit needs to
   be increased. Please check the 'Billing & plans' section in your settings."*
   This is infrastructure/billing, not a code failure; hosted CI is not green.
+
+## OPS-39 — Offline lab quality-of-life pass (2026-11-14)
+
+### What changed
+
+- **A long shard no longer looks frozen.** The self-play harness flushes each
+  `finished N/M rounds` line; the runner reads the shard log every two seconds
+  and publishes `progress` in the manifest. The app sums done shards plus live
+  running progress (`playedGames`), so the bar, rate, and ETA move within a
+  shard. A resume records `resumed_at`, and the app uses it for the current
+  session's rate instead of counting an overnight pause.
+- **Runs are easier to inspect and control.** `run --dry-run` validates and
+  prints the shard/seed plan without creating anything. `doctor` checks the
+  harness, free disk, active/dead locks, probe bytes, and manifest readability.
+  `stop` signals only a pid whose command line is this lab's runner. `clean`
+  removes only regenerable probe data or dead locks, never a real run. `status`
+  now prints the run folder, active pid, running-shard progress, and failures;
+  `list` distinguishes complete, pending, and failed runs.
+- **The app tracks merges as work.** A merge now has a handle and token, blocks
+  Start/Delete, reports success or failure, and cannot have a late exit callback
+  overwrite a newer action. Runs can be deleted after confirmation, but only
+  when no lock is active. Runner and failed-shard logs open directly.
+- **The detail sheet follows live progress**, shows failed-shard reasons, and no
+  longer calls every unfinished run "paused". Search matches seed and depth as
+  well as run id and mode.
+- **Analyses are more usable.** An analysis can be stopped; its log opens from
+  the screen; a report can be copied as formatted text; and the latest report set
+  is saved under the app data directory and reloaded after relaunch. Unmerged
+  runs previewing only eight shards now say so, and selections larger than the
+  20-input cap warn before truncation.
+- Added focused tests for live progress, resume rate, stale locks, clean scope,
+  dry-run planning, merge tracking, stopping a merge, deletion, saved reports,
+  and analysis stop.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | **Ran 20 tests**, OK |
+| Live progress on a 5,000-game shard | polls showed `progress=580`, `1140`, `1720`, …; final `done 5000 88838` |
+| `lab stop` on a real 20,000-game run | `stop-smoke: stopped (pid 50920)`; runner exit **130**; manifest `pending progress 0`; lock `False` |
+| `lab doctor` after stale-lock cleanup | `RESULT: PASS — 0 failures, 0 warning(s)` |
+| `lab clean --probes` dry run | listed 4 probe items, then `would remove 4 item(s), 0.2 MiB` |
+| `swift test` | **120 tests**, 0 failures |
+| `./scripts/ci/test_engine.sh` | **490 passed**, 0 failed |
+| `./scripts/ci/test_bridge.sh` | **133 passed**, 0 failed |
+| `./scripts/ci/local.sh` | **LOCAL CI: PASS — 6 step(s), 0 failed** |
+| `python3 scripts/rules_audit.py` | **RESULT: PASS**, 19 enforced / 2 declared gaps |
+| `python3 scripts/docs_audit.py` | **RESULT: PASS** |
+| `git diff --check` | clean |
+
+### Limits
+
+- No game-rule or search change. The C++ change only flushes the existing
+  progress line; the engine and bridge suites remain at 490 and 133.
+- The live-progress evidence is a 5,000-game shard, not a five-million-game
+  run. Progress is advisory; a shard is still marked done only after its exit
+  code, log count, and CSV completeness all agree.
+- Delete is intentionally destructive after the confirmation dialog and has no
+  undo. It refuses while a lock exists; `lab clean` is the only bulk deletion
+  path and never selects a real run.
+- The app's latest-analysis cache stores the last report set only; it does not
+  archive every analysis.
+- The Lab screen and its new controls were compile- and model-tested, not
+  visually inspected in a running window.
+- Hosted CI remains billing-blocked; see the CI note appended after the push.

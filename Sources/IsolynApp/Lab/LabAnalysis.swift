@@ -79,11 +79,14 @@ final class LabAnalysisService {
     private(set) var reports: [LabAnalysisReport] = []
     private(set) var message: String?
     private(set) var lastError: String?
+    private(set) var lastLogURL: URL?
+    private(set) var savedAt: Date?
 
     let root: URL?
     let dataRoot: URL
     private let launcher: LabLaunching
     private var handle: LabProcessHandle?
+    private var activeToken: UUID?
     private var lastInputs: [String] = []
     private var lastStarted: Date?
     /// Listing a run directory per row per redraw is wasted work. The cache is
@@ -104,11 +107,51 @@ final class LabAnalysisService {
         self.launcher = launcher
         self.root = root
         self.dataRoot = dataRoot ?? LabPaths.dataDirectory()
+        loadSavedReport()
+    }
+
+    /// Reports survive relaunching the app. The cache is the same JSON emitted
+    /// by `evaluate --json`; it never replaces the source CSVs.
+    private var savedReportURL: URL {
+        dataRoot
+            .appendingPathComponent("analyses", isDirectory: true)
+            .appendingPathComponent("latest.json")
+    }
+
+    private func loadSavedReport() {
+        guard let data = try? Data(contentsOf: savedReportURL) else { return }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        guard let cached = try? decoder.decode([LabAnalysisReport].self, from: data), !cached.isEmpty else {
+            return
+        }
+        reports = cached
+        savedAt = (try? FileManager.default.attributesOfItem(atPath: savedReportURL.path))?[.modificationDate] as? Date
+        message = "Loaded the last saved analysis."
     }
 
     /// A finished run's `merged.csv` if it has one, otherwise up to eight of its
     /// shard CSVs. Unmerged shards are legitimate separate analyses — each file
-    /// carries its own game ids.
+    /// carries its own game ids. `shardCount` lets the UI say when a run is
+    /// larger than the preview, instead of silently analyzing a subset.
+    func shardCount(for runID: String) -> Int {
+        guard LabPaths.isSafeRunID(runID) else { return 0 }
+        let shards = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
+            .appendingPathComponent("shards", isDirectory: true)
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: shards,
+            includingPropertiesForKeys: nil
+        )) ?? []
+        let count = files.filter { $0.pathExtension == "csv" }.count
+        return count
+    }
+
+    func isInputPreviewLimited(for runID: String) -> Bool {
+        let merged = LabPaths.runDirectory(dataRoot: dataRoot, runID: runID)
+            .appendingPathComponent("merged.csv")
+        return !FileManager.default.fileExists(atPath: merged.path) && shardCount(for: runID) > 8
+    }
+
     func inputs(for runID: String) -> [URL] {
         let stamp = directoryStamp(for: runID)
         if let hit = inputCache[runID], hit.stamp == stamp {
@@ -169,31 +212,50 @@ final class LabAnalysisService {
             return
         }
 
+        // A UUID prevents two analyses started in the same second from
+        // overwriting one another's log and output.
         let logURL = dataRoot
             .appendingPathComponent("analyses", isDirectory: true)
-            .appendingPathComponent("analysis-\(Int(Date().timeIntervalSince1970)).log")
+            .appendingPathComponent("analysis-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8)).log")
         let arguments = ["evaluate", "--json"]
             + capped.flatMap { ["--input", $0.path] }
 
         lastStarted = Date()
         lastInputs = paths
+        lastLogURL = logURL
+        activeToken = UUID()
+        let token = activeToken
         isRunning = true
         message = "Analyzing \(capped.count) input\(capped.count == 1 ? "" : "s")…"
         lastError = nil
 
         do {
             handle = try launcher.launch(root: root, arguments: arguments, logURL: logURL) { [weak self] code in
-                Task { @MainActor [weak self] in self?.finish(code: code, logURL: logURL) }
+                Task { @MainActor [weak self] in self?.finish(code: code, logURL: logURL, token: token) }
             }
         } catch {
             isRunning = false
+            activeToken = nil
             message = "Could not start the analysis: \(error.localizedDescription)"
         }
     }
 
-    private func finish(code: Int32, logURL: URL) {
+    /// Analysis is read-only, but a mistaken 20-file selection can still take
+    /// minutes. Stopping it must not be confused with a failed analysis.
+    func stop() {
+        guard isRunning else { return }
+        handle?.terminate()
+        handle = nil
+        activeToken = nil
+        isRunning = false
+        message = "Analysis stopped."
+    }
+
+    private func finish(code: Int32, logURL: URL, token: UUID?) {
+        guard token == activeToken else { return }
         isRunning = false
         handle = nil
+        activeToken = nil
         guard code == 0 else {
             lastError = readTail(logURL)
             message = "Analysis failed (exit \(code))."
@@ -207,6 +269,13 @@ final class LabAnalysisService {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         do {
             reports = try decoder.decode([LabAnalysisReport].self, from: data)
+            try? FileManager.default.createDirectory(
+                at: savedReportURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            if (try? data.write(to: savedReportURL, options: .atomic)) != nil {
+                savedAt = Date()
+            }
             message = "\(reports.count) report\(reports.count == 1 ? "" : "s") ready."
         } catch {
             lastError = readTail(logURL)

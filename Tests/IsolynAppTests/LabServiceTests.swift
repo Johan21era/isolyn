@@ -287,6 +287,71 @@ final class LabServiceTests: XCTestCase {
         )
     }
 
+    func test_manifestUsesLiveProgressFromRunningShards() throws {
+        let json = """
+        {
+          "run_id": "1v1-d8x64-n10000-s1",
+          "created_at": "2026-11-14T09:00:00+00:00",
+          "started_at": "2026-11-14T09:00:00+00:00",
+          "config": {"games": 10000, "mode": "1v1", "depth": 8, "determinizations": 64, "seed": 1},
+          "shards": [
+            {"index": 0, "games": 5000, "status": "done", "rows": 1000},
+            {"index": 1, "games": 5000, "status": "running", "progress": 2500}
+          ]
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let manifest = try decoder.decode(LabManifest.self, from: Data(json.utf8))
+
+        XCTAssertEqual(manifest.doneGames, 5000, "finished shards stay exact")
+        XCTAssertEqual(manifest.playedGames, 7500, "running progress is included in the UI count")
+        XCTAssertEqual(manifest.fraction, 0.75, accuracy: 0.0001)
+        XCTAssertNotNil(manifest.gamesPerSecond())
+    }
+
+    func test_manifestReportsFailedShardReasons() throws {
+        let json = """
+        {
+          "run_id": "1v1-d8x64-n10-s1",
+          "created_at": "2026-11-14T09:00:00+00:00",
+          "config": {"games": 10, "mode": "1v1", "depth": 8, "determinizations": 64, "seed": 1},
+          "shards": [
+            {"index": 0, "games": 5, "status": "failed", "reason": "harness exit 1"},
+            {"index": 1, "games": 5, "status": "pending"}
+          ]
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let manifest = try decoder.decode(LabManifest.self, from: Data(json.utf8))
+        XCTAssertEqual(manifest.failedShardReasons.count, 1)
+        XCTAssertEqual(manifest.failedShardReasons[0].reason, "harness exit 1")
+    }
+
+    func test_resumedRunUsesTheCurrentSessionForRate() throws {
+        let started = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3_600))
+        let resumed = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-20))
+        let json = """
+        {
+          "run_id": "1v1-d2x4-n2000-s1",
+          "created_at": "\(started)",
+          "started_at": "\(started)",
+          "resumed_at": "\(resumed)",
+          "config": {"games": 2000, "mode": "1v1", "depth": 2, "determinizations": 4, "seed": 1},
+          "shards": [
+            {"index": 0, "games": 1000, "status": "done", "rows": 10},
+            {"index": 1, "games": 1000, "status": "pending"}
+          ]
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let manifest = try decoder.decode(LabManifest.self, from: Data(json.utf8))
+        let rate = try XCTUnwrap(manifest.gamesPerSecond())
+        XCTAssertEqual(rate, 50, accuracy: 5, "the overnight pause must not lower the current-session rate")
+    }
+
     func test_manifestPredictsAFinishTimeFromItsOwnPace() throws {
         let started = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-20))
         let json = """
@@ -312,6 +377,78 @@ final class LabServiceTests: XCTestCase {
         let finish = try XCTUnwrap(manifest.estimatedFinish())
         XCTAssertGreaterThan(finish, Date())
         XCTAssertLessThan(finish.timeIntervalSinceNow, 60)
+    }
+
+    // MARK: - Merge and delete actions
+
+    func test_mergeIsTrackedAndBlocksAConcurrentStart() async throws {
+        let root = try makeRepository()
+        let launcher = FakeLauncher()
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
+        try writeManifest(
+            root: root,
+            id: "1v1-d2x4-n10-s1",
+            started: "2026-11-14T09:00:00+00:00",
+            games: 10, done: 2, total: 2
+        )
+        service.refreshLibrary(force: true)
+
+        service.merge(runID: "1v1-d2x4-n10-s1")
+        XCTAssertTrue(service.isMerging)
+        XCTAssertTrue(service.isBusy)
+        XCTAssertEqual(service.statusTitle, "Combining shards…")
+        XCTAssertEqual(launcher.launches.last?.0.first, "merge")
+
+        service.start(config(games: 5, seed: 2))
+        XCTAssertEqual(launcher.launches.count, 1, "a merge is work too; Start must not race it")
+        XCTAssertEqual(service.message, "Stop the active merge first.")
+
+        launcher.handlers.last?(0)
+        for _ in 0..<40 {
+            await Task.yield()
+            if !service.isMerging { break }
+        }
+        XCTAssertFalse(service.isMerging)
+        XCTAssertFalse(service.isBusy)
+        XCTAssertTrue(service.message?.contains("Combined") == true)
+    }
+
+    func test_stoppingAMergeIgnoresItsLateExitCallback() async throws {
+        let root = try makeRepository()
+        let launcher = FakeLauncher()
+        let service = LabService(launcher: launcher, root: root, dataRoot: root)
+        try writeManifest(
+            root: root,
+            id: "1v1-d2x4-n10-s1",
+            started: "2026-11-14T09:00:00+00:00",
+            games: 10, done: 2, total: 2
+        )
+
+        service.merge(runID: "1v1-d2x4-n10-s1")
+        service.stop()
+        launcher.handlers.last?(143)
+        for _ in 0..<20 { await Task.yield() }
+
+        XCTAssertFalse(service.isMerging)
+        XCTAssertEqual(service.message, "Merge stopped; the shard files were not changed.")
+    }
+
+    func test_deleteRemovesTheRunOnlyWhenIdle() throws {
+        let root = try makeRepository()
+        let service = LabService(launcher: FakeLauncher(), root: root, dataRoot: root)
+        try writeManifest(
+            root: root,
+            id: "1v1-d2x4-n10-s1",
+            started: "2026-11-14T09:00:00+00:00",
+            games: 10, done: 2, total: 2
+        )
+        let directory = LabPaths.runDirectory(dataRoot: root, runID: "1v1-d2x4-n10-s1")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
+
+        service.delete(runID: "1v1-d2x4-n10-s1")
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
+        XCTAssertTrue(service.message?.contains("Deleted") == true)
     }
 
     // MARK: - Real process

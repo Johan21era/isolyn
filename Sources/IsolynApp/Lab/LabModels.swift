@@ -54,9 +54,17 @@ struct LabShard: Decodable, Identifiable {
     let games: Int
     let status: String
     let rows: Int?
+    let progress: Int?
     let reason: String?
 
     var id: Int { index }
+
+    /// Progress is live for a running shard; a completed shard is always full.
+    var playedGames: Int {
+        if status == "done" { return games }
+        guard status == "running" else { return 0 }
+        return min(max(progress ?? 0, 0), games)
+    }
 }
 
 /// One run's manifest. Parsed once: `startedDate` is decoded here rather than
@@ -73,14 +81,16 @@ struct LabManifest: Decodable, Identifiable {
     let runId: String
     let createdAt: String
     let startedAt: String?
+    let resumedAt: String?
     let startedDate: Date?
+    let resumedDate: Date?
     let config: Config
     let shards: [LabShard]
 
     var id: String { runId }
 
     private enum CodingKeys: String, CodingKey {
-        case runId, createdAt, startedAt, config, shards
+        case runId, createdAt, startedAt, resumedAt, config, shards
     }
 
     init(from decoder: Decoder) throws {
@@ -88,9 +98,11 @@ struct LabManifest: Decodable, Identifiable {
         runId = try container.decode(String.self, forKey: .runId)
         createdAt = try container.decode(String.self, forKey: .createdAt)
         startedAt = try container.decodeIfPresent(String.self, forKey: .startedAt)
+        resumedAt = try container.decodeIfPresent(String.self, forKey: .resumedAt)
         config = try container.decode(Config.self, forKey: .config)
         shards = try container.decode([LabShard].self, forKey: .shards)
         startedDate = Self.parse(startedAt) ?? Self.parse(createdAt)
+        resumedDate = Self.parse(resumedAt)
     }
 
     private static func parse(_ value: String?) -> Date? {
@@ -102,9 +114,19 @@ struct LabManifest: Decodable, Identifiable {
     var failedShards: Int { shards.filter { $0.status == "failed" }.count }
     var totalGames: Int { shards.reduce(0) { $0 + $1.games } }
     var doneGames: Int { shards.filter { $0.status == "done" }.reduce(0) { $0 + $1.games } }
+    /// Done games plus the live count published by each running shard. This is
+    /// what keeps a long run from looking frozen between shard boundaries.
+    var playedGames: Int { shards.reduce(0) { $0 + $1.playedGames } }
     var isComplete: Bool { !shards.isEmpty && doneShards == shards.count }
-    var fraction: Double { totalGames > 0 ? Double(doneGames) / Double(totalGames) : 0 }
+    var fraction: Double { totalGames > 0 ? Double(playedGames) / Double(totalGames) : 0 }
     var rowCount: Int { shards.compactMap(\.rows).reduce(0, +) }
+
+    var failedShardReasons: [(index: Int, reason: String)] {
+        shards
+            .filter { $0.status == "failed" }
+            .sorted { $0.index < $1.index }
+            .map { ($0.index, $0.reason ?? "harness exited without a reason") }
+    }
 
     var runConfig: LabRunConfig {
         LabRunConfig(
@@ -118,14 +140,14 @@ struct LabManifest: Decodable, Identifiable {
     }
 
     func gamesPerSecond(now: Date = Date()) -> Double? {
-        guard let startedDate, doneGames > 0 else { return nil }
-        let elapsed = now.timeIntervalSince(startedDate)
-        return elapsed > 1 ? Double(doneGames) / elapsed : nil
+        guard let activeStart = resumedDate ?? startedDate, playedGames > 0 else { return nil }
+        let elapsed = now.timeIntervalSince(activeStart)
+        return elapsed > 1 ? Double(playedGames) / elapsed : nil
     }
 
     func estimatedRemaining(now: Date = Date()) -> TimeInterval? {
         guard let rate = gamesPerSecond(now: now), rate > 0, !isComplete else { return nil }
-        return TimeInterval(totalGames - doneGames) / rate
+        return TimeInterval(totalGames - playedGames) / rate
     }
 
     func estimatedFinish(now: Date = Date()) -> Date? {
@@ -135,7 +157,7 @@ struct LabManifest: Decodable, Identifiable {
 
     /// Short, human line: "0/18 batches · 1v1 · 8 moves".
     var summaryLine: String {
-        "\(doneGames) of \(totalGames) games · \(config.mode) · \(config.depth) moves · \(config.determinizations) worlds"
+        "\(playedGames) of \(totalGames) games · \(config.mode) · \(config.depth) moves · \(config.determinizations) worlds"
     }
 }
 

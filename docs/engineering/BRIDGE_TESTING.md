@@ -19,7 +19,7 @@ copy them as current numbers.
 |---|---|---|
 | Engine suite | `./scripts/ci/test_engine.sh` | 19 executables, **490 checks passed**, 0 failed (2026-11-14) |
 | Bridge suite | `./scripts/ci/test_bridge.sh` | 2 executables, **133 checks passed**, 0 failed (2026-11-14) |
-| Swift package | `swift test` | **112 tests, 0 skipped, 0 failures** (2026-11-14) |
+| Swift package | `swift test` | **120 tests, 0 skipped, 0 failures** (2026-11-14) |
 | AddressSanitizer + UBSan | `./scripts/ci/sanitize.sh address` | 21 executables, **623 checks passed**, 0 findings |
 | ThreadSanitizer | `./scripts/ci/sanitize.sh thread` | 2 executables, **147 checks passed**, 0 findings |
 | Standalone fuzz fallback | `./scripts/ci/fuzz_bridge.sh 30` | 75,000 executions, zero crashes/hangs/sanitizer findings |

@@ -586,8 +586,10 @@ int main(int argc, char** argv) {
         if (summary.outcome == RoundOutcomeKind::InProgress) ++incomplete;
         else ++completed;
         if ((game + 1) % 10 == 0 || game + 1 == options.games) {
+            // Flush each progress line: the launcher publishes shard progress by
+            // reading this log while the process is still writing to it.
             std::cout << "  finished " << (game + 1) << "/" << options.games
-                      << " rounds (" << totalDecisions << " decisions)\n";
+                      << " rounds (" << totalDecisions << " decisions)" << std::endl;
         }
     }
 
