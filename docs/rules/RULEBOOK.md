@@ -97,7 +97,7 @@ code. A change that edits only the code is a bug.
 | ID | Rule | Status | Enforced by | Asserted by |
 |---|---|---|---|---|
 | R-21 | In 2v2, direct description of a hand is forbidden, but three exchanges are legal: asking a partner "how heavy are you" before a close and hearing "light" or "heavy"; agreeing which partner starts a later hand; and declaring "missing" — holding many of a number but not its double — or how many of a number one holds. | BY_HAND | Nothing: this is conduct between the people at the table. | Owner decision (2026-11-14): record the rule, leave the code untouched. |
-| R-22 | In 1v1v1 a player who reaches 151 is out of the set. The two survivors continue that same set as a 1v1, keeping the points they already hold — 151-86-98 leaves 86 and 98 playing on under standard 1v1 rules — and the first of those two to reach 151 loses the set. The last man standing wins it. | GAP | Not implemented: no set structure exists at all. | Elimination and the carried-points duel. |
+| R-22 | In 1v1v1 a player who reaches 151 is out of the set. The two survivors continue that same set as a 1v1, keeping the points they already hold — 151-86-98 leaves 86 and 98 playing on under standard 1v1 rules — and the first of those two to reach 151 loses the set. The last man standing wins it. | ENFORCED | `Sources/IsolynEngineBridge/IsolynBridge.cpp` (`bridge_match_record_round`, `bridge_match_create_next_round`), `Sources/IsolynEngine/MatchController.cpp` (empty-seat skip) | `Tests/IsolynEngineBridgeTests/SmokeTest.cpp :: R-22 1v1v1 elimination: first to 151 is out, survivors continue as a carried-points 1v1` |
 
 ## Known gaps (must shrink, never grow)
 
@@ -115,14 +115,6 @@ and a way to carry it into the score check; no UI or bridge field exists for it.
 `Config::maxVoluntaryDraws` is 1, so the search and the app's own draw action
 allow a single voluntary draw per turn. The rulebook allows any number once the
 first draw of the hand has happened.
-
-### R-22 — The 1v1v1 elimination
-
-A 1v1v1 set does not end when the first player reaches 151; that player is out
-and the other two play on as a 1v1 inside the same set, carrying their existing
-points. Sets now exist, so this is no longer blocked: a 1v1v1 set currently ends
-at 151 with the lowest score taking it, instead of eliminating the threshold-
-crosser and continuing 1v1.
 
 R-21 is no longer a gap: the owner ruled that table talk stays between the
 players, and software does not police or mediate it.

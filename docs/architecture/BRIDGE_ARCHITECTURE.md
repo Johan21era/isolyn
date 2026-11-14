@@ -10,7 +10,7 @@ What the Swift/C++ bridge is, why it's shaped the way it is, and what it deliber
 
 A narrow layer between the SwiftUI app (`Sources/IsolynApp`) and the authoritative C++ engine (`Sources/IsolynEngine`). It exists because nothing wired the two together before this — `Package.swift` said so explicitly ("no Swift/C++ interop is wired up here... future work"), and a repo-wide search turned up zero prior bridge/adapter/interop artifacts of any kind. This is not a refactor of something that existed; it's new.
 
-It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`scripts/ci/test_engine.sh`, 480 checks across 19 executables, re-measured 2026-11-14), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
+It is not a rules engine, not a strategy engine, not UI. `IsolynEngine` already owns all of that, is already thoroughly tested (`scripts/ci/test_engine.sh`, 490 checks across 19 executables, re-measured 2026-11-14), and this bridge does not reimplement any of it. What it adds is exactly three things the engine doesn't provide on its own: a boundary that's safe to call from Swift with untrusted/malformed input, a place for the one piece of concurrency policy the engine has no opinion about (analysis must not block the UI), and a stable, minimal, POD-only surface that doesn't leak C++ internals into Swift.
 
 ## Two facts about the engine that shaped every other decision here
 
@@ -127,15 +127,24 @@ source of truth), and this surface is data plumbing only:
   counts, populated under the same terminal-outcome guard. This is what the
   round-end card turns face up; it is never sent mid-round.
 - `bridge_match_record_round(match, finishedSession)` -- team-combines for 2v2,
-  computes participant scores, applies them to the current SET, derives
-  nextRoundStarterIndex from that round's cachedDecidingPlayer via
+  computes participant scores over the live seats, applies them to the current
+  SET, derives nextRoundStarterIndex from that round's cachedDecidingPlayer via
   RulesEngine::determineNextRoundStarter, and at 151 increments set wins, resets
   the set scores, and reports `nextRoundStartsSet` so the app deals a fresh
-  ritual opening. `matchEnded` now means the GAME reached 3 or 4 set wins, not
-  that one set ended. Fails closed on: round still in progress, session already
-  recorded into this match (no double-apply, ever), or game already ended. Lock
-  ordering when touching both surfaces is SESSION->MATCH everywhere (single
-  global order).
+  ritual opening. In 1v1v1 it instead applies R-22: a player reaching 151 is
+  marked out, the two survivors keep their points, and a second elimination
+  leaves the last survivor as set winner. `matchEnded` now means the GAME
+  reached 3 or 4 set wins, not that one set ended. Fails closed on: round still
+  in progress, session already recorded into this match (no double-apply, ever),
+  game already ended, or a session that still deals tiles to an eliminated seat.
+  Lock ordering when touching both surfaces is SESSION->MATCH everywhere
+  (single global order).
+- `bridge_match_create_next_round(match)` -- the bridge owns next-deal policy:
+  ritual first round after a set, ordinary subsequent round, or R-22's survivor
+  hand. The survivor hand is a real 1v1 deal (7 tiles each, 14-tile boneyard,
+  locked pair, One Domino) mapped onto the two original seats; the eliminated
+  seat stays empty and `MatchController` skips it. Seat identity, so the score
+  strip and 1v1 score rules survive the transition.
 - `bridge_match_close(handle)` -- idempotent like every other close.
 - `bridge_session_private_locked_pair(session, seat)` -- R-17's seat-scoped
   private look. Read-only (no stateVersion change), returns the two locked tiles
@@ -150,7 +159,7 @@ serializes with the session's own command stream.
 
 Verified: SmokeTest match section (record/duplicate-reject/starter/
 accumulation/idempotent close) plus the reveal-on-end assertions -- current
-bridge suite 116/116; ASan+UBSan clean over the new paths; Swift package
+bridge suite 133/133; ASan+UBSan clean over the new paths; Swift package
 currently 112 tests, 0 skipped, 0 failures (re-measured 2026-11-14).
 
 **Closed: AUD-01.** `bridge_match_record_round` now checks that the finished

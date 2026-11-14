@@ -248,6 +248,28 @@ int main() {
         check(controller.state().boneyard().drawableCount() == 0, "the boneyard is genuinely empty");
     }
 
+    section("MatchController: R-22 turn flow skips an eliminated empty seat");
+    {
+        std::vector<std::vector<DominoTile>> hands = {
+            { DominoTile(3, 3), DominoTile(2, 2) },
+            {},
+            { DominoTile(5, 5), DominoTile(1, 1) },
+        };
+        std::vector<DominoTile> boneyard = {
+            DominoTile(0, 0), DominoTile(6, 6), DominoTile(4, 4), DominoTile(1, 2),
+        };
+        GameState state(GameMode::OneVsOneVsOne, hands, boneyard, Chain(), {}, 0);
+        MatchController controller(std::move(state));
+
+        controller.endTurnWithNoPlay();
+        check(controller.currentPlayerIndex() == 2,
+              "the turn passes from seat 0 over the eliminated empty seat 1 to seat 2");
+
+        controller.endTurnWithNoPlay();
+        check(controller.currentPlayerIndex() == 0,
+              "the next pass wraps from seat 2 back to seat 0, never to seat 1");
+    }
+
     section("MatchController: 2v2 team-index mapping now lives on RulesEngine (see RulesEngine.hpp comment)");
     {
         check(RulesEngine::teamIndexForPlayer(0) == 0 && RulesEngine::teamIndexForPlayer(2) == 0,

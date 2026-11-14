@@ -35,6 +35,15 @@ int main() {
         check(twoVsTwo.hasMatchEnded(), "151 has reached the threshold");
     }
 
+    section("ScoreSystem: R-22 applies a survivor round to only the live participants");
+    {
+        ScoreSystem scores(GameMode::OneVsOneVsOne, 3);
+        scores.applyRoundScores({0, 60, 151}); // participant 2 is out
+        scores.applyRoundScoresForParticipants({12}, {1});
+        check(scores.score(0) == 0 && scores.score(1) == 72 && scores.score(2) == 151,
+              "a survivor round credits only participant 1 and leaves the eliminated participant's frozen total alone");
+    }
+
     section("ScoreSystem: winningParticipant is whoever has the strictly lowest score once the match has ended");
     {
         ScoreSystem scores(GameMode::OneVsOneVsOne, 3);

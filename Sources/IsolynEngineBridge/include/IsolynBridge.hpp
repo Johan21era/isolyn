@@ -337,8 +337,15 @@ struct MatchResultDTO {
     int32_t setNumber;                            // the 1-based set the recorded round belonged to
     int32_t setsToWin;                            // 3 for best-of-5, 4 for best-of-7
     int32_t setWinnerParticipantIndex;            // valid only when setEnded; -1 otherwise
-    bool setEnded;                                // true iff this record reached the set's 151 threshold
+    bool setEnded;                                // true iff this set has just been won
     bool nextRoundStartsSet;                      // true iff the next round opens a NEW set (double-six ritual)
+    // R-22. For 1v1v1 these describe which seats are still alive in the
+    // current set; the other modes always report every participant active.
+    int32_t activeParticipantCount;
+    int32_t activePerParticipant[kMaxPlayers];
+    int32_t eliminatedPerParticipant[kMaxPlayers];
+    int32_t lastEliminatedParticipantIndex;       // -1 when nobody went out this round
+    bool nextRoundIsSurvivor;                     // true iff the next round is the carried-points 1v1
 };
 
 // Search configuration for one difficulty tier. This is deliberately a
@@ -371,6 +378,15 @@ MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin);
 // count does not match the match. Lock ordering is session->match, consistent
 // everywhere.
 MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finishedRound);
+
+// Deals the next round using the match's own recorded state: a first-round
+// ritual deal after a set win, a 1v1-style survivor deal for the two live
+// seats after an R-22 elimination, or an ordinary subsequent round. This is
+// the only correct way to continue a match that can enter the survivor
+// phase; callers must not guess the mode of the next deal. Returns
+// kInvalidSessionHandle if the match is over, has no pending next round, or
+// the deal fails.
+SessionHandle bridge_match_create_next_round(MatchHandle match);
 
 // Idempotent (same HandleTable guarantees as the other surfaces): unknown,
 // zero, or already-closed match handles are safe no-ops.

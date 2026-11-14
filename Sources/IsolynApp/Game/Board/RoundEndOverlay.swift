@@ -29,6 +29,7 @@ struct RoundEndOverlay: View {
                             if !viewModel.scoreDeltas.isEmpty {
                                 deltaRow
                             }
+                            eliminationBanner
                             setSummary
                             nextStarterBanner
                             actionButton
@@ -154,6 +155,20 @@ struct RoundEndOverlay: View {
             .multilineTextAlignment(.center)
             .opacity(revealed ? 1 : 0)
             .animation(.easeOut(duration: 0.3).delay(0.32), value: revealed)
+        }
+    }
+
+    @ViewBuilder
+    private var eliminationBanner: some View {
+        if let out = viewModel.lastEliminatedParticipant, !viewModel.lastSetEnded {
+            let score = viewModel.participantScores.indices.contains(out)
+                ? viewModel.participantScores[out] : 0
+            Text("\(participantName(out)) is out at \(score). The two survivors play on as a 1v1.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(IsolynTheme.brass)
+                .multilineTextAlignment(.center)
+                .opacity(revealed ? 1 : 0)
+                .animation(.easeOut(duration: 0.3).delay(0.31), value: revealed)
         }
     }
 

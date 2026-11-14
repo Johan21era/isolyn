@@ -2381,3 +2381,60 @@ turn-transition integration tests.
   the bridge test covers the refusal path, sentinels, and read-only version.
 - R-15 still caps analysis at one voluntary draw per turn; R-22 still ends a
   1v1v1 set at 151 with the lowest score instead of eliminating the crosser.
+
+## OPS-37 — R-22 1v1v1 elimination and the carried-points duel (2026-11-14)
+
+### What changed
+
+- **R-22 is now ENFORCED.** A 1v1v1 player who reaches 151 is marked out of the
+  set. The two survivors carry their existing points into a true 1v1: the next
+  hand deals 7 tiles to each survivor, 14 tiles to the boneyard, and the usual
+  locked pair, One Domino Rule and R-17 private look. The eliminated seat keeps
+  its frozen score, an empty hand, its identity and its place in the score strip.
+- `MatchController` skips an empty seat when advancing turns; search uses the
+  same `nextActivePlayer` rule. `GameState`'s One Domino and private-look checks
+  now count live hands instead of testing for a literal two-player mode, so both
+  rules work in the survivor duel without weakening them in ordinary 1v1v1.
+- Scoring runs over the live participants only. `ScoreSystem` gained
+  `applyRoundScoresForParticipants`; the 1v1 path therefore uses the 1v1
+  winner-takes-the-loser's-total rule, not the 1v1v1 every-above-minimum rule.
+- The second elimination leaves one survivor, who wins the set. The next set
+  resets every seat, every score and the double-six ritual. A match still ends
+  at 3 or 4 set wins.
+- `bridge_match_create_next_round` is now the single next-deal policy. The app
+  no longer guesses whether to deal a first/subsequent round; the bridge knows
+  whether the next hand is a ritual opener, an ordinary round, or the survivor
+  deal.
+- The app marks an eliminated seat `OUT`, keeps its frozen score visible, and
+  the round-end card says who went out and that the survivors play on as a 1v1.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `./scripts/ci/test_engine.sh` | 19 executables, **490 passed**, 0 failed |
+| `./scripts/ci/test_bridge.sh` | 2 executables, **133 passed**, 0 failed (3 consecutive runs) |
+| `./scripts/ci/sanitize.sh address` | **623 passed**, 0 findings |
+| `./scripts/ci/sanitize.sh thread` | **147 passed**, 0 findings |
+| `swift test` | **112 tests**, 0 failures, 0 skipped |
+| `swift build` | **Build complete!**, no warnings |
+| `rules_audit.py` / `docs_audit.py` | **PASS / PASS** (2 declared gaps) |
+
+The R-22 bridge test plays full 1v1v1 sets: it asserts the 151 elimination, the
+frozen eliminated score, two live seats, the 7/7 survivor hands, the 12 drawable
+boneyard tiles (14 with the locked pair), a live starter, the second elimination,
+the last-survivor set winner, one recorded set win, and the reset to a fresh
+three-seat ritual round.
+
+### Limits
+
+- The OUT badge, survivor boneyard and elimination banner were compile-checked,
+  not visually exercised.
+- Search skips the eliminated seat, but the 1v1v1 evaluation still scores the
+  empty seat as a zero-valued hand. That can shade a survivor-phase AI choice; it
+  is not a rules or legality error. No strength claim is made for this phase.
+- The survivor phase deliberately keeps three seat slots. That is what preserves
+  seat identity and the score strip; the cost is that 1v1v1-specific UI (three
+  seats) remains visible during the duel.
+- The old match-orchestration tie assertion was corrected to accept a genuine
+  equal-hand tie (nobody is awarded points), rather than only a zero-value tie.

@@ -6,13 +6,12 @@
 > **VOID** in `PROJECT_OVERDRIVE.md`, `EXPERIMENT_REGISTRY.md` and
 > `BENCHMARK_BASELINE.md`; none of them may be quoted as current.
 
-**Rules version:** `49ffb0ed61241d2402b1849f20672c3bd1d38ecc61db9ee8dae3e83e03d04b53`
+**Rules version:** `4412b49ce8565bcacdf639dbe2c970ddc68b7d8913b9f3791eebb676a3d4009a`
 
 > The normative rule text is unchanged from the 2026-11-14 dictation. This seal
-> reflects the implementation-status corrections (R-17's public reveal removed
-> and its private look now ENFORCED; R-07 and R-18 ENFORCED; R-12's assertion
-> updated); it is not a rule change, and it does not invalidate measurements of
-> the same rule text.
+> reflects the implementation-status corrections (R-07, R-17, R-18 and R-22 now
+> ENFORCED; R-17's public reveal removed; R-12's assertion updated); it is not a
+> rule change, and it does not invalidate measurements of the same rule text.
 
 **Current strength claim: none.** No engine configuration has been measured under
 these rules. The champion label (depth 8, 64 samples, 8 workers) is a label from

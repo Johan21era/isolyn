@@ -138,20 +138,35 @@ DominoTile GameState::drawTile(int playerIndex) {
 }
 
 std::optional<DominoTile> GameState::enforceOneDominoRule() {
-    if (m_mode != GameMode::OneVsOne) return std::nullopt;
     if (m_boneyard.drawableCount() == 0) return std::nullopt;
-    if (m_hands.size() != 2) return std::nullopt;
-    if (m_hands[0].size() != 1 || m_hands[1].size() != 1) return std::nullopt;
+    // R-18 is a two-hand rule. R-22's survivor phase is a 1v1 played in a
+    // three-seat state, where exactly two hands are non-empty; counting
+    // non-empty hands keeps the rule correct there without teaching every
+    // caller a separate mode.
+    std::vector<int> active;
+    active.reserve(m_hands.size());
+    for (int p = 0; p < playerCount(); ++p) {
+        if (!m_hands[static_cast<std::size_t>(p)].empty()) active.push_back(p);
+    }
+    if (active.size() != 2) return std::nullopt;
+    if (m_hands[static_cast<std::size_t>(active[0])].size() != 1 ||
+        m_hands[static_cast<std::size_t>(active[1])].size() != 1) return std::nullopt;
+    if (m_currentPlayerIndex != active[0] && m_currentPlayerIndex != active[1]) return std::nullopt;
     return drawTile(m_currentPlayerIndex);
 }
 
 std::optional<std::array<DominoTile, 2>> GameState::privateLockedPair(int playerIndex) const {
-    // R-17 is a 1v1 rule; 1v1v1 and 2v2 deal the whole set and have no
-    // boneyard, so there is no pair to inspect there.
-    if (m_mode != GameMode::OneVsOne) return std::nullopt;
+    // R-17 is a two-player rule. R-22's survivor phase is exactly that, 1v1,
+    // even though the seat array still has three entries; an eliminated
+    // seat's empty hand is not a third live hand.
     if (playerIndex < 0 || playerIndex >= playerCount()) return std::nullopt;
     if (m_hands[static_cast<std::size_t>(playerIndex)].size() != 1) return std::nullopt;
     if (m_boneyard.drawableCount() != 0) return std::nullopt;
+    int activeCount = 0;
+    for (const auto& hand : m_hands) {
+        if (!hand.empty()) ++activeCount;
+    }
+    if (activeCount != 2) return std::nullopt;
     const std::vector<DominoTile> locked = m_boneyard.lockedTiles();
     if (locked.size() != 2) return std::nullopt;
     return std::array<DominoTile, 2>{locked[0], locked[1]};

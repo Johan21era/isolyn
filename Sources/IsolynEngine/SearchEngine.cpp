@@ -44,6 +44,19 @@ int sideCode(GameState::ChainSide side) {
     return side == GameState::ChainSide::Left ? 0 : 1;
 }
 
+// R-22: in a 1v1v1 survivor round the eliminated seat holds no tiles and
+// must be skipped by search exactly as MatchController skips it in play.
+// Every other mode has no empty mid-round hand, so this is the ordinary
+// +1 rotation there.
+int nextActivePlayer(const GameState& state, int player) {
+    const int playerCount = state.playerCount();
+    for (int step = 1; step <= playerCount; ++step) {
+        const int candidate = (player + step) % playerCount;
+        if (!state.hand(candidate).empty()) return candidate;
+    }
+    return player;
+}
+
 int moveCode(const Move& move) {
     return move.tile.index() * 2 + sideCode(move.side);
 }
@@ -382,7 +395,7 @@ SearchValue searchZeroSum(GameState& state,
 
     std::vector<DominoTile> drawn = resolveForcedDraws(state, player);
     if (!MoveGenerator::hasAnyLegalMove(state, player)) {
-        const int next = (player + 1) % state.playerCount();
+        const int next = nextActivePlayer(state, player);
         state.setCurrentPlayerIndex(next);
         // A pass/draw sequence still flips the side to move, so the
         // alpha-beta window must flip with it. Passing (alpha, beta)
@@ -470,7 +483,7 @@ SearchValue searchZeroSum(GameState& state,
             child.raw = evaluateAll(context.mode, state, context.weights);
             child.score = kTerminalWinScore + relativeScore(child.raw, player, context.mode);
         } else {
-            const int next = (player + 1) % state.playerCount();
+            const int next = nextActivePlayer(state, player);
             state.setCurrentPlayerIndex(next);
             const double childAlpha = context.useAlphaBeta ? -beta : -kInfinity;
             const double childBeta = context.useAlphaBeta ? -alpha : kInfinity;
@@ -528,7 +541,7 @@ RawEvaluation searchMulti(GameState& state,
 
     std::vector<DominoTile> drawn = resolveForcedDraws(state, player);
     if (!MoveGenerator::hasAnyLegalMove(state, player)) {
-        const int next = (player + 1) % state.playerCount();
+        const int next = nextActivePlayer(state, player);
         state.setCurrentPlayerIndex(next);
         RawEvaluation child = searchMulti(state, depthRemaining - 1, context, ply);
         state.setCurrentPlayerIndex(player);
@@ -570,7 +583,7 @@ RawEvaluation searchMulti(GameState& state,
                     child = evaluateAll(context.mode, state, context.weights);
             child[static_cast<std::size_t>(player)] += kTerminalWinScore;
         } else {
-            const int next = (player + 1) % state.playerCount();
+            const int next = nextActivePlayer(state, player);
             state.setCurrentPlayerIndex(next);
             child = searchMulti(state, depthRemaining - 1, context, ply + 1);
             state.setCurrentPlayerIndex(player);
@@ -738,7 +751,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                         candidateScore = kTerminalWinScore + relativeScore(raw, player, mode);
                     }
                 } else {
-                    const int next = (player + 1) % playerCount;
+                    const int next = nextActivePlayer(trial, player);
                     trial.setCurrentPlayerIndex(next);
                     if (mode == GameMode::OneVsOneVsOne) {
                         raw = searchMulti(trial, depth - 1, ctx, 0);

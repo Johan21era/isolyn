@@ -223,8 +223,20 @@ struct MatchStateImpl {
     std::unordered_set<uint64_t> recordedSessions; // session handles already applied
     bool matchEnded = false;                       // the GAME is over
     int winnerParticipantIndex = -1;
+    // R-22: who is still alive in the current set. For 1v1v1 this starts as
+    // all three and shrinks as players cross 151; the other modes never
+    // change it. `scores` keeps eliminated players' frozen totals.
+    bool active[kMaxPlayers] = {};
+    int activeCount = 0;
+    int lastEliminated = -1;
+    bool nextRoundStartsSet = false;
+    bool nextRoundIsSurvivor = false;
+    int nextRoundStarter = -1;
     std::mutex mutex;
-    MatchStateImpl(GameMode m, int sets) : mode(m), scores(m, participantCountForMode(m)), setsToWin(sets) {}
+    MatchStateImpl(GameMode m, int sets) : mode(m), scores(m, participantCountForMode(m)), setsToWin(sets) {
+        activeCount = participantCountForMode(m);
+        for (int p = 0; p < activeCount && p < kMaxPlayers; ++p) active[p] = true;
+    }
 };
 HandleTable<MatchStateImpl>& matchTable() { static HandleTable<MatchStateImpl> t; return t; }
 
@@ -503,6 +515,13 @@ MatchResultDTO failedMatch(BridgeStatus status) noexcept {
     r.setWinnerParticipantIndex = -1;
     r.setEnded = false;
     r.nextRoundStartsSet = false;
+    r.activeParticipantCount = 0;
+    for (int p = 0; p < kMaxPlayers; ++p) {
+        r.activePerParticipant[p] = 0;
+        r.eliminatedPerParticipant[p] = 0;
+    }
+    r.lastEliminatedParticipantIndex = -1;
+    r.nextRoundIsSurvivor = false;
     return r;
 }
 
@@ -552,68 +571,155 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
 
         const GameState& state = sess->controller.state();
         const int players = state.playerCount();
+        const int participantCount = participantCountForMode(m->mode);
 
-        // Participant values: raw per-player hands, team-combined for 2v2.
+        // R-22: an eliminated seat has no hand. Rejecting a session that still
+        // deals to one prevents a pre-elimination session from being applied
+        // to the survivor phase (and keeps the mode guard meaningful).
+        if (m->mode == GameMode::OneVsOneVsOne) {
+            for (int p = 0; p < participantCount; ++p) {
+                if (!m->active[p] && !state.hand(p).empty()) {
+                    return failedMatch(BridgeStatus::InvalidRequest);
+                }
+            }
+        }
+        m->lastEliminated = -1;
+
+        // Participant values over the live seats only. For 2v2 they are the
+        // two combined team values; for 1v1 they are both players; for
+        // 1v1v1's survivor phase they are the two seats still in the set.
         std::vector<int> participantValues;
+        std::vector<int> scoredParticipantIndices;
         if (m->mode == GameMode::TwoVsTwo) {
             auto t0 = RulesEngine::playersOnTeam(0);
             auto t1 = RulesEngine::playersOnTeam(1);
             auto handValue = [&state](int p) {
-                int v = 0;
                 return RulesEngine::handPoints(state.hand(p));
             };
             participantValues.push_back(RulesEngine::combineTeamValue(handValue(t0.first), handValue(t0.second)));
             participantValues.push_back(RulesEngine::combineTeamValue(handValue(t1.first), handValue(t1.second)));
+            scoredParticipantIndices = {0, 1};
+        } else if (m->mode == GameMode::OneVsOneVsOne) {
+            for (int p = 0; p < players; ++p) {
+                if (!m->active[p]) continue;
+                participantValues.push_back(RulesEngine::handPoints(state.hand(p)));
+                scoredParticipantIndices.push_back(p);
+            }
         } else {
             for (int p = 0; p < players; ++p) {
                 participantValues.push_back(RulesEngine::handPoints(state.hand(p)));
+                scoredParticipantIndices.push_back(p);
             }
         }
+        if (participantValues.empty()) return failedMatch(BridgeStatus::InvalidRequest);
 
         const std::vector<int> roundScores = RulesEngine::computeRoundScores(participantValues);
-        m->scores.applyRoundScores(roundScores);
-
-        // Next starter: whoever won by Domino or was credited with the Close --
-        // exactly the decidingPlayerIndex cached when that outcome occurred.
-        int nextStarter = -1;
-        if (sess->cachedDecidingPlayer >= 0 && sess->cachedDecidingPlayer < players) {
-            nextStarter = RulesEngine::determineNextRoundStarter(sess->cachedDecidingPlayer);
-        }
+        m->scores.applyRoundScoresForParticipants(roundScores, scoredParticipantIndices);
 
         const int setNumberForRound = m->setNumber;
-        int finalSetScores[kMaxPlayers] = {};
-        for (int i = 0; i < m->scores.participantCount() && i < kMaxPlayers; ++i) {
-            finalSetScores[i] = m->scores.score(i);
-        }
-
-        // R-07: a set ends at the loss threshold; the lowest score takes it.
-        // Scores reset only when the game continues -- the NEXT set starts at
-        // zero, and the double-six ritual restarts because the caller is told
-        // to create a first-round session (nextRoundStartsSet).
-        const bool setEnded = m->scores.hasMatchEnded();
+        bool setEnded = false;
         int setWinner = -1;
         bool gameEnded = false;
-        if (setEnded) {
-            setWinner = m->scores.winningParticipant();
-            m->setWins[setWinner]++;
-            if (m->setWins[setWinner] >= m->setsToWin) {
-                gameEnded = true;
-                m->matchEnded = true;
-                m->winnerParticipantIndex = setWinner;
-            } else {
-                m->setNumber++;
-                m->scores = ScoreSystem(m->mode, participantCountForMode(m->mode));
+        bool survivorNext = false;
+
+        if (m->mode == GameMode::OneVsOneVsOne) {
+            // R-22: reaching 151 eliminates that player from the set. The
+            // remaining two carry their points into a 1v1; the last survivor
+            // takes the set. This is deliberately NOT ScoreSystem's
+            // lowest-score winner rule.
+            for (int p = 0; p < participantCount; ++p) {
+                if (!m->active[p]) continue;
+                if (RulesEngine::hasReachedMatchLossThreshold(m->mode, m->scores.score(p))) {
+                    m->active[p] = false;
+                    m->activeCount--;
+                    m->lastEliminated = p;
+                }
+            }
+            if (m->activeCount == 1) {
+                setEnded = true;
+                for (int p = 0; p < participantCount; ++p) {
+                    if (m->active[p]) { setWinner = p; break; }
+                }
+                if (setWinner < 0) {
+                    // Defensive: activeCount said one survivor but none was
+                    // found. Fail closed rather than indexing setWins[-1].
+                    return failedMatch(BridgeStatus::InvalidRequest);
+                }
+                m->setWins[setWinner]++;
+                if (m->setWins[setWinner] >= m->setsToWin) {
+                    gameEnded = true;
+                    m->matchEnded = true;
+                    m->winnerParticipantIndex = setWinner;
+                }
+            } else if (m->activeCount == 2) {
+                survivorNext = true;
+            }
+        } else {
+            // R-07: a set ends at the loss threshold; the lowest score takes it.
+            setEnded = m->scores.hasMatchEnded();
+            if (setEnded) {
+                setWinner = m->scores.winningParticipant();
+                m->setWins[setWinner]++;
+                if (m->setWins[setWinner] >= m->setsToWin) {
+                    gameEnded = true;
+                    m->matchEnded = true;
+                    m->winnerParticipantIndex = setWinner;
+                }
             }
         }
+
+        // Next starter: whoever won by Domino or was credited with the Close.
+        // If that player has just been eliminated, the other survivor opens.
+        int nextStarter = -1;
+        if (!setEnded && sess->cachedDecidingPlayer >= 0 && sess->cachedDecidingPlayer < players) {
+            const bool decidingIsActive =
+                m->mode != GameMode::OneVsOneVsOne || m->active[sess->cachedDecidingPlayer];
+            if (decidingIsActive) {
+                nextStarter = RulesEngine::determineNextRoundStarter(sess->cachedDecidingPlayer);
+            } else {
+                for (int p = 0; p < participantCount; ++p) {
+                    if (m->active[p]) { nextStarter = p; break; }
+                }
+            }
+        }
+
+        int finalSetScores[kMaxPlayers] = {};
+        int finalActive[kMaxPlayers] = {};
+        int finalEliminated[kMaxPlayers] = {};
+        for (int i = 0; i < participantCount && i < kMaxPlayers; ++i) {
+            finalSetScores[i] = m->scores.score(i);
+            finalActive[i] = m->active[i] ? 1 : 0;
+            finalEliminated[i] = m->active[i] ? 0 : 1;
+        }
+        const int finalActiveCount = m->activeCount;
+        const int finalLastEliminated = m->lastEliminated;
+
+        // Scores reset only when the game continues -- the NEXT set starts at
+        // zero with every 1v1v1 seat alive again, and the double-six ritual
+        // restarts because the caller is told to create a first-round
+        // session (nextRoundStartsSet).
+        if (setEnded && !gameEnded) {
+            m->setNumber++;
+            m->scores = ScoreSystem(m->mode, participantCount);
+            m->activeCount = participantCount;
+            for (int p = 0; p < participantCount && p < kMaxPlayers; ++p) m->active[p] = true;
+            m->lastEliminated = -1;
+        }
+
+        m->nextRoundStartsSet = setEnded && !gameEnded;
+        m->nextRoundIsSurvivor = survivorNext;
+        m->nextRoundStarter = (setEnded || gameEnded) ? -1 : nextStarter;
 
         m->recordedSessions.insert(finishedRound);
 
         MatchResultDTO r{};
         r.status = BridgeStatus::Ok;
-        r.participantCount = static_cast<int32_t>(participantCountForMode(m->mode));
-        for (int i = 0; i < r.participantCount; ++i) {
+        r.participantCount = static_cast<int32_t>(participantCount);
+        for (int i = 0; i < participantCount; ++i) {
             r.scoresPerParticipant[i] = finalSetScores[i];
             r.setWinsPerParticipant[i] = m->setWins[i];
+            r.activePerParticipant[i] = finalActive[i];
+            r.eliminatedPerParticipant[i] = finalEliminated[i];
         }
         r.setNumber = setNumberForRound;
         r.setsToWin = m->setsToWin;
@@ -621,10 +727,74 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         r.setEnded = setEnded;
         r.matchEnded = m->matchEnded;
         r.winnerParticipantIndex = m->matchEnded ? m->winnerParticipantIndex : -1;
-        r.nextRoundStarterIndex = setEnded ? -1 : nextStarter;
+        r.nextRoundStarterIndex = (setEnded || gameEnded) ? -1 : nextStarter;
         r.nextRoundStartsSet = setEnded && !gameEnded;
+        r.activeParticipantCount = finalActiveCount;
+        r.lastEliminatedParticipantIndex = finalLastEliminated;
+        r.nextRoundIsSurvivor = survivorNext;
         return r;
     } catch (...) { return failedMatch(BridgeStatus::EngineFailure); }
+}
+
+SessionHandle bridge_match_create_next_round(MatchHandle match) {
+    auto m = matchTable().find(match);
+    if (!m) return kInvalidSessionHandle;
+    std::lock_guard<std::mutex> lock(m->mutex);
+    if (m->matchEnded) return kInvalidSessionHandle;
+
+    if (m->nextRoundStartsSet) {
+        const SessionHandle h = bridge_session_create_first_round(fromEngine(m->mode));
+        if (h != kInvalidSessionHandle) m->nextRoundStartsSet = false;
+        return h;
+    }
+
+    if (m->mode == GameMode::OneVsOneVsOne && m->activeCount == 2 && m->nextRoundIsSurvivor) {
+        // R-22's survivor hand: a real 1v1 deal (7 tiles each, 14-tile
+        // boneyard, locked pair, One Domino) laid into the two surviving
+        // original seats. The eliminated seat stays empty and is skipped by
+        // turn flow, so seat identity and the score strip survive intact.
+        EntropySource entropy;
+        try {
+            int seats[2] = {-1, -1};
+            int seatCount = 0;
+            for (int p = 0; p < 3; ++p) {
+                if (m->active[p] && seatCount < 2) seats[seatCount++] = p;
+            }
+            if (seatCount != 2) return kInvalidSessionHandle;
+
+            DealResult dealt = Dealer::deal(GameMode::OneVsOne, entropy);
+            if (dealt.hands.size() != 2) return kInvalidSessionHandle;
+
+            std::vector<std::vector<DominoTile>> hands(3);
+            hands[static_cast<std::size_t>(seats[0])] = std::move(dealt.hands[0]);
+            hands[static_cast<std::size_t>(seats[1])] = std::move(dealt.hands[1]);
+
+            int starter = m->nextRoundStarter;
+            if (starter < 0 || starter >= 3 || !m->active[starter]) starter = seats[0];
+
+            GameState state(GameMode::OneVsOneVsOne, std::move(hands), std::move(dealt.boneyard));
+            state.setCurrentPlayerIndex(starter);
+            auto impl = std::make_unique<EngineSessionImpl>(
+                MatchController(std::move(state)), GameMode::OneVsOneVsOne);
+            const SessionHandle h = sessionTable().insert(std::move(impl));
+            if (h != kInvalidSessionHandle) {
+                m->nextRoundStarter = -1;
+                m->nextRoundIsSurvivor = false;
+            }
+            return h;
+        } catch (...) {
+            return kInvalidSessionHandle;
+        }
+    }
+
+    if (m->nextRoundStarter < 0) return kInvalidSessionHandle;
+    const int starter = m->nextRoundStarter;
+    const SessionHandle h = bridge_session_create_subsequent_round(fromEngine(m->mode), starter);
+    if (h != kInvalidSessionHandle) {
+        m->nextRoundStarter = -1;
+        m->nextRoundIsSurvivor = false;
+    }
+    return h;
 }
 
 void bridge_match_close(MatchHandle match) { matchTable().erase(match); }
