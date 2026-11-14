@@ -1175,3 +1175,27 @@ structural graph, and commit/push the whole tree.
 - **Not done, deliberately:** the `SearchDecision::isDraw` bridge/app wiring —
   the measured +44 Elo is unreachable until a draw is executable end-to-end, and
   that is a cross-language ABI change that deserves its own pass. No tag cut.
+
+## OPS-12a — Correction to OPS-12 (same session, 2026-11-14)
+
+OPS-12 described `graphify-out/graph.html` as "the 3D view" and reported the 3D
+page as rebuilt. **Both statements were wrong**, and are corrected here rather
+than edited in place (this log is append-only).
+
+- `graph.html` is the **2D community export** from `graphify update`. The 3D
+  builder's own docstring says so, and records that the aggregated community view
+  was retired on 2026-10-29.
+- The 3D page is `graphify-out/graph-3d-full.html`, produced by
+  `python3 scripts/build-graph-3d.py`. `graphify update` does **not** rebuild it,
+  and at the time of OPS-12 it was **stale**.
+- **Detected by** `python3 scripts/build-graph-3d.py --check` → printed
+  `STALE /…/graph-3d-full.html`, which is exactly the check the new `AGENTS.md`
+  §6 procedure mandates.
+- **Corrected state:** rebuilt → `ok`; **2,381 nodes / 4,418 links, 2.87 MiB**
+  (3,014,638 bytes), matching `graph.json`. The file is gitignored
+  (`.gitignore:17`), so it is a local artifact and correctly does not appear in
+  any commit; the `--check` output is the receipt.
+
+**Lesson recorded:** "refresh the graphs" is two artifacts, not one. A single
+`graphify update` refreshes 2D only, and saying otherwise is a false claim even
+when the count quoted alongside it is true.
