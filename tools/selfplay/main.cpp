@@ -200,7 +200,7 @@ const char* outcomeName(RoundOutcomeKind outcome) {
 
 int handValueOf(const GameState& state, int player) {
     int total = 0;
-    for (const auto& tile : state.hand(player)) total += tile.value();
+    for (const auto& tile : state.hand(player)) total += tile.pointValue();
     return total;
 }
 

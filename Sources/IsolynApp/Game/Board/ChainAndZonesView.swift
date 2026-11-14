@@ -400,7 +400,7 @@ enum SnakeChainLayout {
     // Canonical board metrics (§16 spacing scale; §7 gap 0–6px) --
     // previously private constants on the view; hoisted so layout math
     // and rendering share one source of truth.
-    static let tileShortAxis: CGFloat = 38
+    static let tileShortAxis: CGFloat = 42
     /// Longest run the table allows, in points (~9 tiles). A real game turns
     /// well before the edge of the room it is played in; without this cap a
     /// desktop-width window lets a whole chain run in one straight line.
@@ -409,7 +409,10 @@ enum SnakeChainLayout {
     /// one continuous bar (a live report: "the left side has almost all of the
     /// dominoes fucked up"); physical dominoes sitting on a table have a clear
     /// edge between them.
-    static let hGap: CGFloat = 10
+    /// Tiles sit close enough to read as one continuous line on the table,
+    /// with just enough daylight that the edges stay legible. 10 read as
+    /// scattered; 4 read as merged.
+    static let hGap: CGFloat = 6
     /// Row pitch leaves room for perpendicular doubles (long axis 76)
     /// to protrude into the inter-row band without touching neighbours.
     static var rowPitch: CGFloat { tileShortAxis * 2 + hGap }

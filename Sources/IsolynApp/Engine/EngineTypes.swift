@@ -96,6 +96,10 @@ struct Tile: Sendable, Equatable, Hashable {
         self.high = high
     }
 
+    /// Points this tile contributes to a scored hand: its pips, except the
+    /// double blank, which is worth ten. Mirrors C++ DominoTile::pointValue().
+    var pointValue: Int { (low == 0 && high == 0) ? 10 : low + high }
+
     func hasFace(_ pip: Int) -> Bool { low == pip || high == pip }
     func otherFace(_ pip: Int) -> Int { low == pip ? high : low }
     /// Canonical dense index in [0, 27] matching C++ DominoTile::index().

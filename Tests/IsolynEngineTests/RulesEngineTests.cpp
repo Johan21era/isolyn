@@ -101,6 +101,19 @@ int main() {
         check(twoVsTwo == std::vector<int>({0, 27}), "2v2: lower combined (26) gets 0, higher (27) is added");
     }
 
+    section("RulesEngine: the double blank is worth ten points");
+    {
+        check(DominoTile(0, 0).value() == 0, "double blank bears zero pips");
+        check(DominoTile(0, 0).pointValue() == 10, "double blank scores 10, not 0");
+        check(DominoTile(0, 5).pointValue() == 5, "blank-five scores its five pips");
+        check(DominoTile(6, 3).pointValue() == 9, "ordinary tiles score their pips");
+        check(DominoTile(6, 6).pointValue() == 12, "double six scores twelve");
+        // The reported bug: going out against a hand holding only 0-0 awarded 0.
+        auto blankDoubleLoses = RulesEngine::computeRoundScores({10, 0});
+        check(blankDoubleLoses == std::vector<int>({10, 0}),
+              "a hand of only the double blank is worth 10 points to the winner");
+    }
+
     section("RulesEngine: hasReachedMatchLossThreshold -- reaches OR exceeds, not strictly exceeds");
     {
         check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 100),

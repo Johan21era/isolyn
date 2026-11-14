@@ -1460,3 +1460,31 @@ behaviour exactly; it is un-retested, not withdrawn.
 
 **Not done.** The probe is still in the build (DEBUG only) until the owner
 confirms the rendering; no rendering claim is made here.
+
+## Round scoring: the double blank is worth ten; tighter tile spacing
+
+**Symptom (owner).** Round ended with the owner holding the double blank; it was
+counted as 0 instead of 10.
+
+**Cause.** Two sums used `DominoTile::value()`, which is pips: the round-end
+reveal in `SnapshotBuilder` (`finalHandValues`, what the summary shows) and
+`bridge_record_round`'s `participantValues` (what `computeRoundScores` awards).
+The double blank has no pips, so it contributed nothing at either step.
+
+**Fix.** `DominoTile::pointValue()` -- pips, or 10 for the double blank -- is now
+the scoring value, used by the reveal, the bridge's round scoring, and the
+self-play harness. Swift `Tile.pointValue` mirrors it; `RoundRevealTests` and the
+bridge reveal-sum check now sum point values rather than raw pips.
+
+**Spacing.** `tileShortAxis` 38 -> 42 and `hGap` 10 -> 6 (row pitch 90): tiles
+sat too far apart to read as one line on the table.
+
+**Evidence (literal).** `./scripts/ci/test_engine.sh`: `TOTAL CHECKS FAILED: 0`,
+including a new section asserting `DominoTile(0,0).pointValue() == 10` and that a
+one-tile double-blank hand scores 10 to the winner. `./scripts/ci/test_bridge.sh`:
+`Runtime failures: none`. `swift test`: `Executed 82 tests, with 0 failures`.
+
+**Not done.** The new spacing has not been rendered or seen; no visual claim is
+made. Leaf evaluation heuristics (`EvaluationEngine` pip sums) deliberately still
+treat 0-0 as 0 pips -- that is a static evaluation weight, not the scoring rule,
+and changing it would alter playing strength with no measurement.

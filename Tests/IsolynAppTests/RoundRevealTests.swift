@@ -47,7 +47,7 @@ final class RoundRevealTests: XCTestCase {
             XCTAssertEqual(final.revealedHands[0], final.ownHand)
             XCTAssertEqual(final.revealedHands[1].count, final.otherHandSizes[1])
             for player in 0..<2 {
-                let total = final.revealedHands[player].reduce(0) { $0 + $1.low + $1.high }
+                let total = final.revealedHands[player].reduce(0) { $0 + $1.pointValue }
                 XCTAssertEqual(total, final.finalHandValues[player],
                                "revealed tiles must sum to the round-end hand value")
             }
