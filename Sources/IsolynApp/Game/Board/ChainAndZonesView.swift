@@ -64,20 +64,6 @@ struct ChainAndZonesView: View {
                 // dominoes and hover targets move together.
                 .offset(x: camera.offsetX, y: camera.offsetY)
             }
-            #if DEBUG
-            // Readout belongs to THIS board, not a shared global: a top-bar
-            // label was written by a different board instance than the one on
-            // screen, which reported numbers that did not match the drawing.
-            VStack {
-                Spacer()
-                Text("\(Int(availableSize.width))×\(Int(availableSize.height)) n\(metrics.placed.count) s\(String(format: "%.2f", metrics.suggestedScale)) r\(Set(metrics.placed.map { Int($0.y) }).count)")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.38))
-                    .padding(.bottom, 2)
-            }
-            .allowsHitTesting(false)
-            #endif
-
             // Hover-chain overlay floats above the board (unchanged system).
             if let chain = hoverController.builtChain, !camera.isDragging {
                 VStack {
@@ -210,6 +196,20 @@ private struct SnakeChainBoard: View {
         let boundsSignature = "\(Int(residualX))|\(Int(residualY))"
 
         ZStack {
+            #if DEBUG
+            // Readout belongs to THIS board, not a shared global: a top-bar
+            // label was written by a different board instance than the one on
+            // screen, which reported numbers that did not match the drawing.
+            VStack {
+                Spacer()
+                Text("\(Int(availableSize.width))×\(Int(availableSize.height)) n\(metrics.placed.count) s\(String(format: "%.2f", metrics.suggestedScale)) r\(Set(metrics.placed.map { Int($0.y) }).count)")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.38))
+                    .padding(.bottom, 2)
+            }
+            .allowsHitTesting(false)
+            #endif
+
             ForEach(Array(metrics.placed.enumerated()), id: \.offset) { index, placed in
                 IsolynDominoTile(
                     displayingLeft: placed.tile.left,
