@@ -260,6 +260,16 @@ private struct SnakeChainBoard: View {
                     .foregroundStyle(IsolynTheme.ivoryMuted)
             }
         }
+        .onAppear {
+            #if DEBUG
+            LayoutProbe.record(availableSize: availableSize,
+                               tileCount: metrics.placed.count,
+                               scale: metrics.suggestedScale,
+                               content: CGSize(width: metrics.contentWidth,
+                                               height: metrics.contentHeight),
+                               placed: metrics.placed.map { ($0.x, $0.y, $0.vertical) })
+            #endif
+        }
         .frame(width: availableSize.width, height: availableSize.height)
         .background(
             InspectionEventMonitor(
