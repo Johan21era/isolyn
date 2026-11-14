@@ -2580,3 +2580,81 @@ weekly fuzz job was skipped. That is the same billing-blocked signature recorded
 for OPS-38, not a test result. No hosted job compiled or tested this commit;
 the local six-step gate above is the only executed evidence. The owner must fix
 GitHub Billing before hosted CI can run.
+
+## OPS-40 — Private Kaggle bridge, stable RNG and portable self-play (2026-11-14)
+
+**Scope:** make the offline lab's cloud path real without weakening the C++ rules
+authority: portable Linux build, deterministic cross-platform seeded randomness,
+private allowlisted Kaggle packaging, a receipt/hash/count verifier shared by the
+worker and local driver, and a local driver that refuses unsafe or incomplete
+sessions. No app behavior change.
+
+### Code and tests
+
+- Added `Sources/IsolynEngine/include/StableRandom.hpp` and replaced
+  implementation-defined `std::shuffle` / `std::uniform_*` use in
+  `Determinizer.cpp`, `SimulationEngine.cpp` and `tools/selfplay/main.cpp`.
+- Added the pinned `StableRandomTests.cpp` fixture (integer stream, permutation
+  and unit interval) and registered it through the existing engine test runner.
+- Made `tools/selfplay/build.sh` platform-aware: Security framework only on
+  Darwin, `-pthread` on both, `ISOLYN_SELFPLAY_OUT` for read-only dataset roots,
+  and an explicit unsupported-platform failure.
+- Added `cloud/run_session.py`, `lab/src/isolyn_lab/cloud_verify.py`,
+  `lab/src/isolyn_lab/cloud.py`, `cloud/README.md` and the `scripts/lab cloud`
+  dispatch. The code snapshot is allowlisted; app, Accelerator, tests, docs,
+  build output and `lab/data` are excluded.
+- Added `lab/tests/test_cloud.py`, `test_cloud_worker.py` and
+  `test_build_script.py`; added the lab suite to `scripts/ci/local.sh` and the
+  hosted CI workflow.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `./scripts/ci/test_engine.sh` | `Executables run: 20`, `TOTAL CHECKS PASSED: 497`, `TOTAL CHECKS FAILED: 0` |
+| `./scripts/ci/test_bridge.sh` | `Executables run: 2`, `TOTAL CHECKS PASSED: 133`, `TOTAL CHECKS FAILED: 0` |
+| `swift test` | `Executed 120 tests, with 0 failures` |
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 40 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| `python3 scripts/rules_audit.py` | `RESULT: PASS — ...; 2 declared hole(s)` |
+| `python3 scripts/docs_audit.py` | `RESULT: PASS — ...` |
+| `./tools/selfplay/build.sh` + `--check` | `built .../selfplay`; `selfplay: linked real engine; ok` |
+| Same-seed self-play smoke | `/tmp/stable-a.csv` and `/tmp/stable-b.csv` byte-identical; SHA-256 `793b442f...f88cb` |
+| `cloud plan` dry run | `cloud-smoke: plan only (dry run; nothing written)`; source `477608be...`, code `b81ce0f73892`, 10,000 games in 4 shards, 1 session |
+| `cloud prepare` | `cloud-smoke: prepared .../dataset`; `dataset files: 66`; snapshot code digest equals plan digest; snapshot files 63 |
+| Prepared-snapshot worker | `snapshot_worker_status=0`; receipt `{'status': 'complete', 'total_games': 1, 'total_rows': 22, 'error': None}` |
+| Repo worker smoke | worker exit 0; receipt `{'status': 'complete', 'total_games': 1, 'total_rows': 24, 'error': None}` |
+| `git diff --check` | clean |
+
+### Safety evidence
+
+- The prepared dataset `snapshot.json` source commit and code digest matched
+  `plan.json` exactly. No `Sources/IsolynApp`, `Accelerator`, `Tests`, `docs` or
+  `lab/data` path appeared in its 63-file manifest.
+- The generated kernel metadata was `is_private=True`, `enable_gpu=False`,
+  `enable_internet=False`, `machine_shape=''`.
+- `push` was exercised only with a fake `kaggle` callable: no external upload,
+  dataset creation, notebook run, token read or public artifact occurred.
+- Hostile cases covered offline: dirty tree, changed allowlisted source,
+  tampered SHA-256, nonzero shard exit, row-total mismatch, path traversal,
+  existing fetched session, missing confirmation, and a kernel failure that must
+  resume as a dataset version.
+
+### Limits, stated plainly
+
+- **No live Kaggle session was run.** The local environment has no Kaggle CLI or
+  account token, so no upload, notebook execution, poll, fetch or assembly of a
+  real 10,000-game session was performed. The first such session remains the
+  acceptance gate.
+- **Actual Linux compilation was not run on this Mac.** The build-script test
+  pins the Linux/Darwin argument sets, and the worker builds successfully from
+  the allowed snapshot on macOS. It does not prove `g++`/libstdc++ compatibility
+  on Kaggle; that is exactly what the first live session must prove.
+- **Hosted CI did not execute.** Push `477608b` triggered run `43655110456`; both
+  jobs finished as failure in about 1 second with `steps: 0`, `runner_name: None`,
+  and the annotation: “The job was not started because recent account payments
+  have failed or your spending limit needs to be increased.” This is the known
+  billing blocker, not a test failure. Local CI is the only executed gate.
+- **No strength claim.** No game-rule or search behavior was intentionally
+  changed; the stable RNG changes seeded sequences but not the rules. No Elo or
+  quality claim is made from the smoke games.
