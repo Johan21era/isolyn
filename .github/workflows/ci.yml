@@ -8,6 +8,11 @@ name: CI
 #
 # The weekly scheduled job additionally re-runs the bridge fuzzer so
 # adversarial-input coverage stays fresh without slowing everyday merges.
+#
+# The documentation gate runs as its own cheap Linux job on every push and PR.
+# It fails on a broken link or docs/ path, a living document without a status
+# header, a document missing from the register, a history file without a
+# provenance banner, or a superseded figure reappearing in a living document.
 
 on:
   push:
@@ -18,6 +23,15 @@ on:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
 
 jobs:
+  docs-gate:
+    name: Documentation gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Documentation consistency (links, paths, status, register, stale figures)
+        run: python3 scripts/docs_audit.py
+
   macos-suite:
     name: macOS build + full test suites
     runs-on: macos-latest
