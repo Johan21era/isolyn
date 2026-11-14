@@ -142,7 +142,7 @@ A session is accepted only when all of the following hold:
   dataset reference and exact config as the plan;
 - every planned shard appears exactly once, with no extra shard and no duplicate;
 - each CSV has the expected header and is a whole number of games with ids
-  `0..games-1`;
+  `0..games-1`, and every row's seed and mode match the planned shard;
 - each shard's game count and row count match the receipt, and the file SHA-256
   matches the receipt;
 - the receipt's totals equal the sum of the shards and the plan's shard total;

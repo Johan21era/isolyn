@@ -94,12 +94,14 @@ def safe_relative_name(name: str, pattern: re.Pattern[str]) -> str:
     return name
 
 
-def inspect_csv(path: Path, expected_games: int) -> dict:
+def inspect_csv(path: Path, expected_games: int, expected_seed: int | None = None,
+                expected_mode: str | None = None) -> dict:
     """Read one self-play CSV without reimplementing any game logic.
 
     Returns rows/games and checks the shape the merger relies on: a real header,
     complete rows, artifact game ids starting at 0, increasing by whole games,
-    and ending at expected_games - 1.
+    and ending at expected_games - 1. When supplied, the seed and mode columns
+    must describe the planned shard on every row.
     """
     if path.is_symlink():
         raise ValueError(f"{path}: refusing a symlink")
@@ -127,6 +129,15 @@ def inspect_csv(path: Path, expected_games: int) -> dict:
                 game = int(row[0])
             except ValueError:
                 raise ValueError(f"{path}: invalid game id {row[0]!r}") from None
+            if expected_seed is not None:
+                try:
+                    seed = int(row[1])
+                except ValueError:
+                    raise ValueError(f"{path}: invalid seed {row[1]!r}") from None
+                if seed != expected_seed:
+                    raise ValueError(f"{path}: row seed {seed} does not match planned {expected_seed}")
+            if expected_mode is not None and row[2] != expected_mode:
+                raise ValueError(f"{path}: row mode {row[2]!r} does not match planned {expected_mode!r}")
             if first_game is None:
                 first_game = game
             if current_game is None or game != current_game:
@@ -185,7 +196,9 @@ def validate_session(
         _require(got.get("exit_code") == 0, "shard did not exit zero")
 
         csv_name = safe_relative_name(got.get("csv"), SHARD_NAME)
-        csv_path = (session_dir / csv_name).resolve()
+        raw_csv = session_dir / csv_name
+        _require(not raw_csv.is_symlink(), f"refusing symlink shard: {csv_name}")
+        csv_path = raw_csv.resolve()
         _require(csv_path.parent == session_dir, "shard path escapes the session folder")
         _require(csv_path.is_file() and not csv_path.is_symlink(), f"missing shard: {csv_name}")
 
@@ -194,14 +207,17 @@ def validate_session(
                  f"{csv_name}: receipt has no SHA-256")
         _require(sha256_file(csv_path) == expected_hash, f"{csv_name}: SHA-256 mismatch")
 
-        inspected = inspect_csv(csv_path, int(want["games"]))
+        inspected = inspect_csv(csv_path, int(want["games"]),
+                                int(want["seed"]), plan["config"]["mode"])
         _require(got.get("rows") == inspected["rows"], f"{csv_name}: row count mismatch")
         _require(got.get("bytes") == csv_path.stat().st_size, f"{csv_name}: byte count mismatch")
 
         log_name = got.get("log")
         if log_name is not None:
             log_name = safe_relative_name(log_name, LOG_NAME)
-            log_path = (session_dir / log_name).resolve()
+            raw_log = session_dir / log_name
+            _require(not raw_log.is_symlink(), f"refusing symlink log: {log_name}")
+            log_path = raw_log.resolve()
             _require(log_path.parent == session_dir, "log path escapes the session folder")
             _require(log_path.is_file() and not log_path.is_symlink(), f"missing log: {log_name}")
             log_hash = got.get("log_sha256")

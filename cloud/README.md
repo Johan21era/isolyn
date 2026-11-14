@@ -28,7 +28,8 @@ engine. The C++ harness remains the only source of game truth.
   read the Kaggle token; the installed `kaggle` CLI uses its normal per-user
   config.
 - `fetch` refuses to overwrite an existing session. It downloads into a
-  temporary directory, validates the receipt/hash/row count, copies only the
+  temporary directory, validates the receipt/hash/row count, rejects symlinked
+  files, checks every row's seed and mode against the plan, copies only the
   declared files, validates again, then renames into place.
 - `assemble` refuses unless every session was verified. It re-verifies before
   writing, rewrites game ids per shard, and replaces the output atomically.

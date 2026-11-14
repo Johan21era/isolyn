@@ -710,9 +710,12 @@ def fetch(ws: Workspace, run_id: str, session_id: str) -> int:
     incoming.mkdir()
     try:
         ws.kaggle_fn(["kernels", "output", entry["kernel_id"], "-p", str(incoming)])
+        incoming_root = incoming.resolve()
         receipts = [p for p in incoming.rglob("session.json") if p.is_file() and not p.is_symlink()]
         _require(len(receipts) == 1,
                  f"Kaggle output must contain exactly one session.json; found {len(receipts)}")
+        _require(incoming_root in receipts[0].resolve().parents,
+                 "downloaded session.json escapes the incoming folder")
         receipt_dir = receipts[0].parent
         receipt = json.loads(receipts[0].read_text(encoding="utf-8"))
         cloud_verify.validate_session(receipt, receipt_dir, plan_data, session)

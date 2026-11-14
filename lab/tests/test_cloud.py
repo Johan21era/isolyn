@@ -202,6 +202,11 @@ class ReceiptTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 cloud_verify.safe_relative_name("../shard-0000.csv", cloud_verify.SHARD_NAME)
 
+            wrong_seed = target / "wrong-seed.csv"
+            wrong_seed.write_text(_csv(1, 99), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                cloud_verify.inspect_csv(wrong_seed, 1, 1, "1v1")
+
     def test_assembly_rewrites_game_ids_and_seeds(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ws, plan_data, session, receipt, target = self._fixture(Path(tmp))

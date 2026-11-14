@@ -152,9 +152,11 @@ def terminate(processes: list[subprocess.Popen]) -> None:
                 pass
 
 
-def collect_shard(output: Path, shard: dict, log_path: Path, returncode: int) -> dict:
+def collect_shard(output: Path, shard: dict, log_path: Path, returncode: int,
+                  config: dict) -> dict:
     csv_path = output / f"shard-{shard['index']:04d}.csv"
-    inspected = inspect_csv(csv_path, int(shard["games"]))
+    inspected = inspect_csv(csv_path, int(shard["games"]),
+                            int(shard["seed"]), str(config["mode"]))
     return {
         "index": shard["index"],
         "seed": shard["seed"],
@@ -299,7 +301,8 @@ def run(root: Path, spec_path: Path, output: Path) -> int:
                     if process.returncode != 0:
                         raise ValueError(f"harness exited {process.returncode}")
                     entry = next(item for item in shards if item["index"] == index)
-                    verified.append(collect_shard(output, entry, log_path, process.returncode))
+                    verified.append(collect_shard(output, entry, log_path,
+                                                  process.returncode, config))
                     completed.add(index)
                 except (OSError, ValueError) as exc:
                     error = f"shard {index}: {exc}"
