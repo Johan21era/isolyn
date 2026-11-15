@@ -231,6 +231,12 @@ enum LabPaths {
 
     static func runsDirectory(dataRoot: URL) -> URL { dataRoot }
 
+    /// Cloud plans and fetched sessions are rebuildable work products, so they
+    /// live beside runs, never inside the staged runtime that run.sh replaces.
+    static func cloudDirectory(dataRoot: URL) -> URL {
+        dataRoot.appendingPathComponent("cloud", isDirectory: true)
+    }
+
     static func runDirectory(dataRoot: URL, runID: String) -> URL {
         dataRoot.appendingPathComponent(runID, isDirectory: true)
     }

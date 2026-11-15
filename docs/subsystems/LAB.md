@@ -1,6 +1,6 @@
 # Offline Lab & Trainer
 
-**Status:** current on 2026-11-14. The C++ self-play generator is real, supports
+**Status:** current on 2026-11-15. The C++ self-play generator is real, supports
 side-alternated head-to-head configurations, and the Python lab has a working
 calibration report. `./scripts/lab run` drives resumable sharded runs, so a
 multi-million-game dataset is one restartable command; the app's Lab screen
@@ -73,11 +73,16 @@ per session, and accepts output only after a receipt/hash/game-count check. The
 C++ engine remains the only rules authority; the worker just builds
 `tools/selfplay` and runs its planned shards.
 
-The worker uses the portable build and the in-tree stable RNG. A clean Git commit
-and SHA-256 code digest are required before packaging, and every receipt carries
-the source commit, code digest, dataset reference and exact configuration.
-`fetch` validates in a temporary directory and refuses overwrite; `assemble`
-re-verifies every session and refuses gaps, overlaps or incomplete receipts.
+The worker uses the portable build and the in-tree stable RNG. A clean source
+state and SHA-256 code digest are required before packaging, and every receipt
+carries the source commit, code digest, dataset reference and exact
+configuration. The app has no Git checkout in Application Support: `run.sh`
+stages an allowlisted source bundle plus `source.json` (commit, clean flag, file
+hashes and code digest), and the driver verifies that immutable record instead
+of invoking Git there. `fetch` validates in a temporary directory and refuses
+overwrite; `assemble` re-verifies every session and refuses gaps, overlaps or
+incomplete receipts; `collect` is the status-guarded fetch/verify/assemble path
+used by the app.
 
 **No live Kaggle session has been run in this checkout.** The local driver and
 worker are covered by offline tests, but the first 10,000-game session is still
@@ -89,10 +94,17 @@ the acceptance gate. Commands, account setup and limits are in
 
 The Lab screen removes the terminal from the loop without changing what a run is.
 
-- `run.sh` stages `scripts/lab`, `lab/src/isolyn_lab`, `lab/configs` and the
-  built `selfplay` binary into `~/Library/Application Support/IsolynV2.0/Lab`.
-  The app resolves that copy first, so it never reads the checkout (a
-  TCC-protected Desktop folder) and a rebuild cannot invalidate a permission.
+- `run.sh` stages `scripts/lab`, `lab/src/isolyn_lab`, `lab/configs`, the
+  built `selfplay` binary, the allowlisted cloud source and `source.json` into
+  `~/Library/Application Support/IsolynV2.0/Lab`. The app resolves that copy
+  first, so it never reads the checkout (a TCC-protected Desktop folder) and a
+  rebuild cannot invalidate a permission. The bundle records a dirty tree
+  rather than hiding it; the driver refuses cloud work until it is clean.
+- The Cloud tab is the one-click external path: it fixes the first run at
+  10,000 games in one 4-shard session, confirms the private upload once, and
+  runs plan → prepare → push through the staged driver. **Collect results**
+  asks Kaggle for status first, then fetches, verifies and assembles only a
+  complete session. The Kaggle token is never read by the app.
 - App runs are written to `~/Library/Application Support/IsolynV2.0/runs`; the
   runner accepts `--runs-dir` (and honours `ISOLYN_RUNS_DIR`) so a single
   invocation can target that store. The CLI default remains `lab/data/runs`.
@@ -178,7 +190,7 @@ by C++ inference. No pickle files cross the boundary.
 
 ## Workflow
 
-From the app, `./scripts/iso` builds, stages and launches; the Lab tab runs the
+From the app, `./run.sh` builds, stages and launches; the Lab tab runs the
 same commands below. From a terminal:
 
 1. Build the C++ harness: `./tools/selfplay/build.sh`.

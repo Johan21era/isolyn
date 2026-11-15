@@ -10,6 +10,7 @@ struct IsolynApp: App {
     // between screens; a per-view service would lose the ability to stop it.
     @State private var labService = LabService()
     @State private var analysisService = LabAnalysisService()
+    @State private var cloudService = LabCloudService()
     @State private var labEstimator = LabEstimator()
 
     public init() {}
@@ -21,6 +22,7 @@ struct IsolynApp: App {
                 .environment(environmentManager)
                 .environment(labService)
                 .environment(analysisService)
+                .environment(cloudService)
                 .environment(labEstimator)
                 .frame(minWidth: IsolynLayout.minWindowWidth,
                        minHeight: IsolynLayout.minWindowHeight)

@@ -208,6 +208,7 @@ final class LabServiceTests: XCTestCase {
             .environment(AppState())
             .environment(model)
             .environment(LabAnalysisService(launcher: launcher, root: root, dataRoot: root))
+            .environment(LabCloudService(launcher: launcher, root: root, dataRoot: root))
             .environment(estimator)
             .frame(width: 1080, height: 720)
 

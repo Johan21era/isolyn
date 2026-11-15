@@ -2841,3 +2841,69 @@ evidence directly.
 - The visual page is generated at run finish/exit, not after every hand while a
   run is active.
 - No game-rule, search or strength change. No strength claim was added.
+
+## OPS-45 — Staged cloud source and the first 10K app path (2026-11-15)
+
+**Scope:** make the first external run reachable from the app without letting
+the driver depend on Git inside Application Support, while keeping the first
+run fixed at 10,000 games in one session.
+
+### Change
+
+- `lab cloud stage-source` copies the existing cloud allowlist into a staged
+  destination and writes `source.json` beside it: schema, source commit, clean
+  flag, exact file list with byte counts and SHA-256 values, code digest and
+  staging time. It records a dirty tree as dirty; it never hides one.
+- `run.sh` now calls that command after copying the Lab runtime. The app's
+  staged `Lab` contains the source and provenance it needs even though there is
+  no `.git` there.
+- `cloud.Workspace` detects `source.json` and uses its commit/clean flag instead
+  of running Git. `plan` and `prepare` verify the current allowlisted files
+  against the recorded digest and file list; a changed bundle is refused. A
+  missing or invalid commit is refused before a plan is written.
+- `cloud collect` adds the app's collection path: ask Kaggle for kernel status,
+  refuse while it is still running, then fetch, verify and assemble only a
+  complete session.
+- Added the Lab **Cloud** tab and `LabCloudService`. The first run is fixed at
+  10,000 games, four 2,500-game shards and one session (1v1, depth 8, 64
+  worlds). The app confirms the private upload once, then runs plan → prepare →
+  push through the staged driver. It can retry a failed push from an already
+  prepared snapshot and can collect, verify and assemble the finished result.
+  The Kaggle token is never read by the app.
+- Cloud plans, logs and downloads live in
+  `~/Library/Application Support/IsolynV2.0/runs/cloud`, outside the runtime
+  `run.sh` replaces. The CLI still defaults to `lab/data/cloud`.
+- Updated `cloud/README.md`, `docs/subsystems/LAB.md`, `AGENTS.md` counts and
+  added staged-source, tamper, dirty-bundle, collect and app command tests. A
+  collect retry reuses an already fetched session instead of attempting an
+  unsafe overwrite.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 54 tests`, `OK` |
+| `swift test` | `Executed 122 tests, with 0 failures (0 unexpected)` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` (lab suite `OK`, 54 tests) |
+| Engine suite | `TOTAL CHECKS PASSED: 497 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Bridge suite | `TOTAL CHECKS PASSED: 133 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Staged integration | `stage-source` wrote 64 allowlisted files; a synthetic clean manifest allowed `cloud plan` and `cloud prepare` from the staged copy; dataset contained 67 files |
+| Dirty staging | `source: a971b810eb1b64055442be9fea53b05c32500b1d code: 5baa2ece4f00 DIRTY — cloud work will be refused` |
+| Clean staging | fixture repo: `clean=True commit_len=40 files=3` |
+| `bash -n run.sh` | `run.sh syntax OK` |
+| Docs audit | `RESULT: PASS — links, paths, status headers, register, banners and figures are consistent` |
+| Rules audit | `RESULT: PASS — every enforced rule names real code and a real assertion; 2 declared hole(s)` |
+
+### Limits
+
+- **No live Kaggle session has been run.** No Kaggle CLI/account token is
+  available in this checkout, so the upload, kernel execution, fetch and live
+  first-run receipt remain unproven. The Swift test uses a fake launcher; the
+  Python worker test uses a fake harness on macOS.
+- Actual Linux/Kaggle compilation remains unverified on this Mac.
+- `./run.sh` itself was syntax-checked but not executed end-to-end because it
+  launches the app; the staging and staged-driver path were exercised directly.
+- The new Cloud screen was compiled and its service was unit-tested, but it was
+  not visually inspected in a running app.
+- The current worktree is dirty, so a bundle staged right now correctly says
+  `DIRTY`; commit the change and run `./run.sh` again before using the Cloud tab.

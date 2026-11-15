@@ -36,6 +36,10 @@ mkdir -p "$LAB/scripts" "$LAB/lab/src" "$LAB/lab/configs" "$LAB/tools/selfplay/b
 cp "$ROOT/scripts/lab" "$LAB/scripts/lab"
 cp -R "$ROOT/lab/src/isolyn_lab" "$LAB/lab/src/isolyn_lab"
 cp -R "$ROOT/lab/configs/." "$LAB/lab/configs/"
+# The cloud driver runs from Application Support, where there is no .git.
+# Stage the allowlisted source and its provenance now, while the clean commit
+# is still visible. A dirty tree is recorded as dirty and the driver refuses it.
+"$ROOT/scripts/lab" cloud stage-source --destination "$LAB"
 if [ -f "$ROOT/tools/selfplay/build/selfplay" ]; then
     cp "$ROOT/tools/selfplay/build/selfplay" "$LAB/tools/selfplay/build/selfplay"
 fi

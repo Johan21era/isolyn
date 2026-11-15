@@ -15,7 +15,7 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _make_workspace(root: Path) -> cloud.Workspace:
+def _make_workspace_files(root: Path) -> None:
     # Minimal allowlisted source tree. The app and lab data are deliberately
     # absent so a snapshot test can prove they cannot be uploaded by accident.
     _write(root / "Sources/IsolynEngine/Engine.cpp", "// engine\n")
@@ -29,6 +29,10 @@ def _make_workspace(root: Path) -> cloud.Workspace:
     _write(root / "cloud/run_session.py", "// worker\n")
     _write(root / "Sources/IsolynApp/Secret.swift", "should not upload\n")
     _write(root / "lab/data/private.csv", "should not upload\n")
+
+
+def _make_workspace(root: Path) -> cloud.Workspace:
+    _make_workspace_files(root)
     return cloud.Workspace(
         root=root,
         data_root=root / "cloud-data",
@@ -79,6 +83,62 @@ class PlanTests(unittest.TestCase):
             root = Path(tmp)
             ws = _make_workspace(root)
             ws.clean_fn = lambda: False
+            with self.assertRaises(SystemExit):
+                cloud.plan(ws, _args())
+
+
+class StagedSourceTests(unittest.TestCase):
+    def _stage(self, root: Path) -> Path:
+        source = root / "checkout"
+        source.mkdir()
+        _make_workspace_files(source)
+        destination = root / "staged"
+        self.assertEqual(cloud.stage_source(source, destination), 0)
+        return destination
+
+    def _mark_clean(self, destination: Path) -> None:
+        path = destination / cloud.SOURCE_FILE
+        value = json.loads(path.read_text(encoding="utf-8"))
+        value["clean"] = True
+        value["source_commit"] = "a" * 40
+        path.write_text(json.dumps(value), encoding="utf-8")
+
+    def test_stage_copies_only_allowlisted_files_and_records_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = self._stage(Path(tmp))
+            bundle = json.loads((destination / cloud.SOURCE_FILE).read_text(encoding="utf-8"))
+            self.assertEqual(bundle["schema"], cloud.SOURCE_SCHEMA)
+            self.assertEqual(bundle["clean"], False)
+            self.assertTrue(bundle["code_sha256"])
+            self.assertFalse((destination / "Sources/IsolynApp/Secret.swift").exists())
+            self.assertFalse((destination / "lab/data/private.csv").exists())
+            self.assertTrue((destination / "Sources/IsolynEngine/Engine.cpp").is_file())
+            self.assertTrue((destination / "cloud/run_session.py").is_file())
+
+    def test_staged_source_plans_without_a_git_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = self._stage(Path(tmp))
+            self._mark_clean(destination)
+            ws = cloud.Workspace(root=destination, data_root=Path(tmp) / "cloud-data")
+            self.assertIsNotNone(ws.source_bundle)
+            result = cloud.plan(ws, _args("--games", "4", "--games-per-shard", "2",
+                                          "--session-games", "4"))
+            self.assertEqual(result["source_commit"], "a" * 40)
+            self.assertEqual(result["session_games"], 4)
+
+    def test_staged_source_tamper_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = self._stage(Path(tmp))
+            self._mark_clean(destination)
+            _write(destination / "lab/src/isolyn_lab/cloud_verify.py", "// changed after stage\n")
+            ws = cloud.Workspace(root=destination, data_root=Path(tmp) / "cloud-data")
+            with self.assertRaises(SystemExit):
+                cloud.plan(ws, _args())
+
+    def test_dirty_staged_source_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = self._stage(Path(tmp))
+            ws = cloud.Workspace(root=destination, data_root=Path(tmp) / "cloud-data")
             with self.assertRaises(SystemExit):
                 cloud.plan(ws, _args())
 
@@ -269,6 +329,64 @@ class FetchTests(unittest.TestCase):
             updated = json.loads((ws.run_dir("plan-test") / "ledger.json").read_text(encoding="utf-8"))
             self.assertIn("fetched_at", updated["sessions"][session["id"]])
             self.assertIn("verified_at", updated["sessions"][session["id"]])
+
+
+class CollectTests(unittest.TestCase):
+    def test_collect_refuses_while_the_kernel_is_running(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws, plan_data, session, receipt, target = ReceiptTests()._fixture(Path(tmp))
+            ledger = {"schema": 1, "sessions": {
+                session["id"]: {"pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"}
+            }}
+            (ws.run_dir("plan-test") / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
+            ws.kaggle_fn = lambda args: "KernelWorkerStatus.RUNNING"
+            with self.assertRaises(SystemExit):
+                cloud.collect(ws, "plan-test", session["id"])
+
+    def _complete_fixture(self, root: Path):
+        ws, plan_data, session, receipt, target = ReceiptTests()._fixture(root)
+        source = root / "remote"
+        shutil.copytree(target, source)
+        shutil.rmtree(target)
+        ledger = {"schema": 1, "sessions": {
+            session["id"]: {"pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"}
+        }}
+        (ws.run_dir("plan-test") / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
+        calls = []
+
+        def kaggle(args):
+            calls.append(args)
+            if args[:2] == ["kernels", "status"]:
+                return "KernelWorkerStatus.COMPLETE"
+            self.assertEqual(args[:2], ["kernels", "output"])
+            incoming = Path(args[args.index("-p") + 1])
+            for item in source.iterdir():
+                shutil.copy2(item, incoming / item.name)
+            return "ok"
+
+        ws.kaggle_fn = kaggle
+        return ws, plan_data, session, calls
+
+    def test_collect_fetches_verifies_and_assembles_a_complete_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws, plan_data, session, calls = self._complete_fixture(Path(tmp))
+            self.assertEqual(cloud.collect(ws, "plan-test", session["id"]), 0)
+            output = ws.run_dir("plan-test") / "assembled.csv"
+            self.assertTrue(output.is_file())
+            self.assertEqual(len(output.read_text(encoding="utf-8").splitlines()), 5)
+            self.assertTrue(any(call[:2] == ["kernels", "output"] for call in calls))
+
+    def test_collect_can_reverify_an_already_fetched_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws, plan_data, session, calls = self._complete_fixture(Path(tmp))
+            target = ws.run_dir("plan-test") / "sessions" / session["id"]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            # Simulate a fetched copy left by an earlier collect that failed
+            # during verification or assembly.
+            shutil.copytree(Path(tmp) / "remote", target)
+            self.assertEqual(cloud.collect(ws, "plan-test", session["id"]), 0)
+            self.assertFalse(any(call[:2] == ["kernels", "output"] for call in calls))
+            self.assertTrue((ws.run_dir("plan-test") / "assembled.csv").is_file())
 
 
 class PushTests(unittest.TestCase):

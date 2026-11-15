@@ -40,6 +40,8 @@ SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{2,49}$")
 SESSION_SCHEMA = 1
 PLAN_SCHEMA = 1
 LEDGER_SCHEMA = 1
+SOURCE_SCHEMA = 1
+SOURCE_FILE = "source.json"
 DATASET_LICENSE = [{"name": "other"}]
 
 
@@ -113,6 +115,98 @@ def _git_clean(root: Path) -> bool:
     return not result.stdout.strip()
 
 
+def _git_state(root: Path) -> tuple[str, bool]:
+    """Read Git provenance without making the staging command fail.
+
+    A staged runtime is normally built from a clean checkout. If the checkout
+    is dirty (or Git is unavailable), the bundle records that fact and the
+    driver refuses to plan or prepare cloud work from it.
+    """
+    try:
+        head = _git_head(root)
+    except (OSError, subprocess.SubprocessError):
+        head = ""
+    try:
+        clean = _git_clean(root)
+    except (OSError, subprocess.SubprocessError):
+        clean = False
+    return head, clean
+
+
+def _load_source_bundle(root: Path) -> dict | None:
+    path = root / SOURCE_FILE
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"could not read staged source bundle {path}: {exc}") from exc
+    _require(value.get("schema") == SOURCE_SCHEMA,
+             f"unsupported source bundle schema in {path}")
+    _require(isinstance(value.get("files"), list),
+             f"source bundle {path} has no file manifest")
+    _require(isinstance(value.get("code_sha256"), str),
+             f"source bundle {path} has no code digest")
+    return value
+
+
+def stage_source(source_root: Path, destination: Path) -> int:
+    """Copy the allowlisted cloud source and write immutable provenance.
+
+    The app cannot run ``git`` against the checkout after staging it in
+    Application Support. This bundle is the build-time record the driver
+    trusts instead: the commit, whether the checkout was clean, the exact file
+    list, and a digest of every allowlisted byte.
+    """
+    source_root = source_root.resolve()
+    destination = destination.resolve()
+    _require(source_root != destination, "source and destination must differ")
+    _require(not destination.is_symlink(), f"refusing symlinked destination: {destination}")
+    files = _allowlisted_files(source_root)
+    head, clean = _git_state(source_root)
+    destination.mkdir(parents=True, exist_ok=True)
+
+    manifest = []
+    for relative, source in files:
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _require(not target.is_symlink(), f"refusing symlink in staged source: {target}")
+        shutil.copy2(source, target)
+        data = target.read_bytes()
+        manifest.append({
+            "path": relative,
+            "bytes": len(data),
+            "sha256": _sha256_bytes(data),
+        })
+
+    digest = _code_digest(manifest)
+    _atomic_json(destination / SOURCE_FILE, {
+        "schema": SOURCE_SCHEMA,
+        "source_commit": head,
+        "clean": clean,
+        "code_sha256": digest,
+        "files": manifest,
+        "staged_at": _now(),
+    })
+    print(f"staged {len(manifest)} allowlisted source files in {destination}")
+    print(f"  source: {head or 'unknown'}  code: {digest[:12]}  "
+          f"{'clean' if clean else 'DIRTY — cloud work will be refused'}")
+    return 0
+
+
+def _require_staged_source(ws: "Workspace", manifest: list[dict], digest: str) -> None:
+    """Refuse a staged bundle that no longer matches its provenance record."""
+    source = ws.source_bundle
+    if source is None:
+        return
+    _require(source.get("clean") is True,
+             "staged source is dirty; rebuild ./run.sh from a clean commit")
+    _require(source.get("code_sha256") == digest,
+             "staged source changed after staging; rebuild ./run.sh")
+    _require(source.get("files") == manifest,
+             "staged source file list changed after staging; rebuild ./run.sh")
+
+
 def _default_kaggle(args: list[str]) -> str:
     result = subprocess.run(["kaggle", *args], capture_output=True, text=True)
     if result.returncode != 0:
@@ -134,8 +228,19 @@ class Workspace:
     ):
         self.root = root.resolve()
         self.data_root = (data_root or CLOUD).resolve()
-        self.head_fn = head_fn or (lambda: _git_head(self.root))
-        self.clean_fn = clean_fn or (lambda: _git_clean(self.root))
+        self.source_bundle = _load_source_bundle(self.root)
+        if head_fn is not None:
+            self.head_fn = head_fn
+        elif self.source_bundle is not None:
+            self.head_fn = lambda: str(self.source_bundle.get("source_commit") or "")
+        else:
+            self.head_fn = lambda: _git_head(self.root)
+        if clean_fn is not None:
+            self.clean_fn = clean_fn
+        elif self.source_bundle is not None:
+            self.clean_fn = lambda: bool(self.source_bundle.get("clean"))
+        else:
+            self.clean_fn = lambda: _git_clean(self.root)
         self.kaggle_fn = kaggle_fn or _default_kaggle
 
     def run_dir(self, run_id: str) -> Path:
@@ -295,9 +400,12 @@ def _default_run_id(args: argparse.Namespace) -> str:
 def plan(ws: Workspace, args: argparse.Namespace) -> dict:
     config = _validate_config(args)
     head = ws.head_fn()
+    _require(len(head) == 40 and all(ch in "0123456789abcdef" for ch in head.lower()),
+             "source commit is missing or invalid; build the staged source from a clean commit")
     _require(ws.clean_fn(), "source tree is dirty; commit or stash before planning cloud work")
     manifest = _code_manifest(ws.root)
     digest = _code_digest(manifest)
+    _require_staged_source(ws, manifest, digest)
     run_id = _run_id(args.run_id or _default_run_id(args))
     owner = args.owner or os.environ.get("KAGGLE_USERNAME", "")
     _require(bool(owner), "--owner or KAGGLE_USERNAME is required")
@@ -328,7 +436,8 @@ def plan(ws: Workspace, args: argparse.Namespace) -> dict:
     if path.exists():
         existing = json.loads(path.read_text(encoding="utf-8"))
         comparable = ("source_commit", "code_sha256", "config", "games",
-                      "games_per_shard", "session_games", "parallel", "max_seconds")
+                      "games_per_shard", "session_games", "parallel", "max_seconds",
+                      "dataset_ref", "kernel_prefix")
         if any(existing.get(key) != result.get(key) for key in comparable):
             raise SystemExit(f"{run_id}: a different cloud plan already exists")
         print(f"{run_id}: plan already exists and matches; nothing written")
@@ -505,7 +614,9 @@ def prepare(ws: Workspace, run_id: str) -> int:
              "current Git commit differs from the plan; create a new plan")
     _require(ws.clean_fn(), "source tree is dirty; commit or stash before preparing")
     current = _code_manifest(ws.root)
-    _require(_code_digest(current) == plan_data["code_sha256"],
+    digest = _code_digest(current)
+    _require_staged_source(ws, current, digest)
+    _require(digest == plan_data["code_sha256"],
              "allowlisted source changed since the plan; create a new plan")
     try:
         dataset = _write_prepared(ws, plan_data)
@@ -735,6 +846,40 @@ def fetch(ws: Workspace, run_id: str, session_id: str) -> int:
     return 0
 
 
+def collect(ws: Workspace, run_id: str, session_id: str) -> int:
+    """Fetch, verify and assemble a session that Kaggle reports complete.
+
+    This is the app's collection step. It deliberately asks the Kaggle CLI for
+    status first; a running kernel is not an error in the upload, so it exits
+    nonzero with a plain "not complete yet" message instead of fetching a
+    partial output folder.
+    """
+    plan_data = _load_plan(ws, run_id)
+    session = _session(plan_data, session_id)
+    ledger = _load_ledger(ws, run_id)
+    entry = ledger["sessions"].get(session_id)
+    _require(entry is not None and entry.get("pushed_at"),
+             f"session {session_id} has not been pushed by this driver")
+    output = ws.kaggle_fn(["kernels", "status", _kernel_id(plan_data, session)])
+    print(output)
+    text = output.lower()
+    complete = re.search(r"\b(complete|success)\b", text) is not None
+    complete = complete and "not complete" not in text
+    _require(complete, f"session {session_id} is not complete yet; try again after Kaggle finishes")
+    target = ws.run_dir(run_id) / "sessions" / session_id
+    if target.exists():
+        # A previous collect may have fetched successfully and then failed
+        # during verification or assembly. The fetched directory is already
+        # the validated copy, so re-check it instead of refusing to overwrite.
+        print(f"{run_id}/{session_id}: using the already fetched session")
+    else:
+        fetch(ws, run_id, session_id)
+    _require(verify(ws, run_id, session_id) == 0,
+             "fetched session failed verification; refusing to assemble")
+    assemble(ws, run_id, None)
+    return 0
+
+
 def verify(ws: Workspace, run_id: str, session_id: str | None) -> int:
     plan_data = _load_plan(ws, run_id)
     ledger = _load_ledger(ws, run_id)
@@ -854,10 +999,13 @@ def doctor(ws: Workspace) -> int:
     try:
         head = ws.head_fn()
         clean = ws.clean_fn()
-        print(f"  PASS  git              {head[:12]} {'clean' if clean else 'DIRTY'}")
+        label = "source bundle" if ws.source_bundle is not None else "git"
+        print(f"  PASS  {label:<15} {head[:12]} {'clean' if clean else 'DIRTY'}")
+        if ws.source_bundle is not None:
+            print(f"        {len(ws.source_bundle.get('files', []))} allowlisted files")
         problems += 0 if clean else 1
     except (OSError, subprocess.SubprocessError) as exc:
-        print(f"  FAIL  git              {exc}")
+        print(f"  FAIL  source            {exc}")
         problems += 1
     if shutil.which("kaggle"):
         print("  PASS  kaggle CLI       found")
@@ -902,11 +1050,17 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser.add_argument("--kernel", default="isolyn-lab")
     plan_parser.add_argument("--dry-run", action="store_true", help="print without writing")
 
-    for name in ("prepare", "status", "fetch", "verify"):
+    for name in ("prepare", "status", "fetch", "verify", "collect"):
         command = sub.add_parser(name)
         command.add_argument("run_id")
         if name != "prepare":
             command.add_argument("--session", help="session id; default is all/next")
+    stage_parser = sub.add_parser(
+        "stage-source",
+        help="copy allowlisted source and record its provenance for the app",
+    )
+    stage_parser.add_argument("--destination", type=Path, required=True)
+    stage_parser.add_argument("--source-root", type=Path, default=ROOT)
     push_parser = sub.add_parser("push")
     push_parser.add_argument("run_id")
     push_parser.add_argument("--session", help="session id; default is next unpushed")
@@ -921,6 +1075,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "stage-source":
+        return stage_source(args.source_root, args.destination)
     ws = Workspace()
     if args.command == "plan":
         plan(ws, args)
@@ -937,6 +1093,9 @@ def main(argv: list[str] | None = None) -> int:
         return fetch(ws, args.run_id, args.session)
     if args.command == "verify":
         return verify(ws, args.run_id, args.session)
+    if args.command == "collect":
+        _require(bool(args.session), "--session is required")
+        return collect(ws, args.run_id, args.session)
     if args.command == "assemble":
         return assemble(ws, args.run_id, args.output)
     return doctor(ws)

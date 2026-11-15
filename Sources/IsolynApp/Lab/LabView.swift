@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The offline lab: runs on one tab, calibration analyses on the other.
+/// The lab: local runs, calibration analyses, and the first cloud run.
 ///
 /// The screen is written for someone who has never heard the word "seed". The
 /// plain label is the one you read; the technical name is the caption under it,
@@ -10,6 +10,7 @@ struct LabView: View {
     enum Tab: String, CaseIterable, Identifiable {
         case runs = "Runs"
         case analyses = "Analyses"
+        case cloud = "Cloud"
         var id: String { rawValue }
     }
 
@@ -27,13 +28,15 @@ struct LabView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
-                .frame(width: 220)
+                .frame(width: 300)
 
                 switch tab {
                 case .runs:
                     LabRunsView()
                 case .analyses:
                     LabAnalysisView()
+                case .cloud:
+                    LabCloudView()
                 }
             }
             .frame(maxWidth: 740, alignment: .leading)

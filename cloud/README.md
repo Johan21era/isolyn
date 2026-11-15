@@ -1,8 +1,9 @@
 # Isolyn cloud bridge
 
-**Status:** the local driver and Kaggle worker are implemented and tested
-offline. A live Kaggle session has **not** been run in this checkout; it requires
-a Kaggle account and API credentials. No token is stored in this repository.
+**Status:** the local driver, staged source bundle, app Cloud tab and Kaggle
+worker are implemented and tested offline. A live Kaggle session has **not** been
+run in this checkout; it requires a Kaggle account and API credentials. No token
+is stored in this repository or read by the app.
 
 The cloud bridge lets Kaggle run the existing C++ self-play harness as a private
 batch worker. It does not run the macOS app, and it does not add a second rules
@@ -12,9 +13,15 @@ engine. The C++ harness remains the only source of game truth.
 
 - A plan is a contiguous list of shard ranges. Shards cannot overlap or go
   missing; assembly re-checks the full coverage.
-- `plan` and `prepare` require a **clean Git commit**. The code snapshot is
-  allowlisted: engine, self-play harness, lab Python and the worker only. The
-  app, Accelerator, tests, build output and `lab/data` cannot be uploaded.
+- `plan` and `prepare` require a **clean source state**. From the checkout that
+  is a clean Git commit; from the app it is the build-time bundle in
+  `~/Library/Application Support/IsolynV2.0/Lab/source.json`, which records the
+  commit, clean state, exact file list and SHA-256 code digest. The app never
+  invokes Git against the checkout after staging. A changed or dirty bundle is
+  refused.
+- The code snapshot is allowlisted: engine, self-play harness, lab Python and
+  the worker only. The app, Accelerator, tests, build output and `lab/data`
+  cannot be uploaded.
 - The planned commit and SHA-256 code digest are recorded in every session spec
   and receipt, and are checked again locally. Before building, the worker also
   verifies every file against the dataset's `snapshot.json`; a tampered snapshot
@@ -44,9 +51,17 @@ engine. The C++ harness remains the only source of game truth.
 
 ## Small first run
 
-Use 10,000 games. Do not start with five million.
+Use 10,000 games in one session. Do not start with five million. The app's
+**Lab → Cloud** tab is the normal path: enter the Kaggle owner, confirm the
+private upload, and the app runs the fixed plan below through prepare and push.
+When Kaggle has finished, **Collect results** runs status, fetch, verify and
+assemble only after the kernel reports complete.
+
+From a terminal, after committing the checkout:
 
 ```bash
+./run.sh   # builds the app and stages the allowlisted source + source.json
+
 ./scripts/lab cloud plan \
   --games 10000 --games-per-shard 2500 --session-games 10000 \
   --parallel 4 --workers 1 --owner <your-kaggle-username>
@@ -57,7 +72,17 @@ Use 10,000 games. Do not start with five million.
 ./scripts/lab cloud fetch cloud-1v1-d8x64-n10000-s1 --session 0000
 ./scripts/lab cloud verify cloud-1v1-d8x64-n10000-s1
 ./scripts/lab cloud assemble cloud-1v1-d8x64-n10000-s1
+# or, after the kernel reports complete, one command for fetch/verify/assemble:
+./scripts/lab cloud collect cloud-1v1-d8x64-n10000-s1 --session 0000
 ```
+
+`run.sh` records the source provenance even when the tree is dirty, but the
+driver refuses to plan or prepare until the bundle says `clean`. Commit and run
+`./run.sh` again after a source change.
+
+The app stores plans, downloaded sessions and logs under
+`~/Library/Application Support/IsolynV2.0/runs/cloud`, outside the staged
+runtime that `run.sh` replaces. The CLI defaults to `lab/data/cloud` instead.
 
 The first push uses `datasets create`; later sessions automatically use
 `datasets version`. If dataset creation succeeded but the kernel push failed,

@@ -17,6 +17,29 @@ protocol LabLaunching {
         logURL: URL,
         onExit: @escaping (Int32) -> Void
     ) throws -> LabProcessHandle
+
+    /// Cloud commands need one extra variable so plans and fetched sessions
+    /// live outside the staged runtime that `run.sh` replaces on every build.
+    func launch(
+        root: URL,
+        arguments: [String],
+        logURL: URL,
+        environment: [String: String],
+        onExit: @escaping (Int32) -> Void
+    ) throws -> LabProcessHandle
+}
+
+extension LabLaunching {
+    /// Existing launchers and test doubles only implement the basic form.
+    func launch(
+        root: URL,
+        arguments: [String],
+        logURL: URL,
+        environment: [String: String],
+        onExit: @escaping (Int32) -> Void
+    ) throws -> LabProcessHandle {
+        try launch(root: root, arguments: arguments, logURL: logURL, onExit: onExit)
+    }
 }
 
 final class ProcessLabLauncher: LabLaunching {
@@ -31,6 +54,16 @@ final class ProcessLabLauncher: LabLaunching {
         root: URL,
         arguments: [String],
         logURL: URL,
+        onExit: @escaping (Int32) -> Void
+    ) throws -> LabProcessHandle {
+        try launch(root: root, arguments: arguments, logURL: logURL, environment: [:], onExit: onExit)
+    }
+
+    func launch(
+        root: URL,
+        arguments: [String],
+        logURL: URL,
+        environment: [String: String],
         onExit: @escaping (Int32) -> Void
     ) throws -> LabProcessHandle {
         let fileManager = FileManager.default
@@ -53,9 +86,12 @@ final class ProcessLabLauncher: LabLaunching {
         process.standardOutput = log
         process.standardError = log
         process.standardInput = FileHandle.nullDevice
-        var environment = ProcessInfo.processInfo.environment
-        environment["PYTHONUNBUFFERED"] = "1"
-        process.environment = environment
+        var processEnvironment = ProcessInfo.processInfo.environment
+        processEnvironment["PYTHONUNBUFFERED"] = "1"
+        for (key, value) in environment {
+            processEnvironment[key] = value
+        }
+        process.environment = processEnvironment
         process.terminationHandler = { finished in
             try? log.close()
             onExit(finished.terminationStatus)
