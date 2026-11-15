@@ -2,11 +2,11 @@
 # Local CI -- the same jobs .github/workflows/ci.yml runs, in the same order,
 # on this machine.
 #
-# GitHub Actions cannot execute on this repository at the moment (the account's
-# billing is in arrears, so jobs fail before a runner is assigned). Until that
-# is resolved, this script is the authoritative runner. It is NOT a substitute
-# for CI when CI is alive: it proves the tree is consistent, not that the hosted
-# workflow is.
+# This is NOT a substitute for CI: it proves the tree is consistent, not that
+# the hosted workflow is. (Hosted runs were blocked for a day by account
+# billing -- the jobs failed before a runner was assigned. Making the
+# repository public moved standard runners onto the free tier and they execute
+# normally again.)
 #
 # Every step's full output is kept in build/ci-local/<name>.log; only the line
 # that decides the verdict is printed, so a receipt can quote it verbatim.
@@ -52,6 +52,10 @@ step rules   "rulebook: every rule names real code and a real assertion" \
 step docs    "documentation gate: links, paths, status, register, figures" \
              "grep RESULT $LOG_DIR/docs.log" \
              python3 scripts/docs_audit.py
+
+step security "security gate: secrets, forbidden files, exposed paths, guards" \
+             "grep RESULT $LOG_DIR/security.log" \
+             python3 scripts/security_audit.py
 
 step labtest "offline lab + cloud verifier tests" \
              "grep -E 'Ran [0-9]+ tests|OK|FAILED' $LOG_DIR/labtest.log | tail -1" \

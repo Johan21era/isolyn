@@ -56,7 +56,13 @@ PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 55 tests
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
 python3 scripts/docs_audit.py      # expect: RESULT: PASS
+python3 scripts/security_audit.py  # expect: RESULT: PASS
 ```
+
+The security gate scans the tree *and* every blob in the history for
+credential-shaped strings, refuses credential-shaped filenames, fails on a
+tracked local absolute path outside `docs/audits/`, and asserts that the
+`RUN_ID_PATTERN` guard still exists and still agrees across its three modules.
 
 The expected counts above are the state at commit `1352063`, updated at OPS-34
 (2026-11-14) for the rulebook rewrite and the Lab suites: engine 432 → 451,

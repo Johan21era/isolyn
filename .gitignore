@@ -25,3 +25,9 @@ tools/selfplay/build/
 Accelerator/build/
 __pycache__/
 *.pyc
+
+# Local machine data that must never be published:
+# a probe run left at the repository root, and graphify's scan cache, which
+# records every scanned file as an absolute path and so carries the account name.
+/1v1-*/
+graphify-out/.graphify_*

@@ -31,13 +31,21 @@ jobs:
     name: Documentation gate
     runs-on: ubuntu-latest
     steps:
+      # Full history on purpose: the security gate scans every blob ever
+      # committed, and a shallow clone (the default) would make that scan
+      # silently vacuous while still reporting PASS.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Rulebook gate (every rule names real code and a real assertion)
         run: python3 scripts/rules_audit.py
 
       - name: Documentation consistency (links, paths, status, register, stale figures)
         run: python3 scripts/docs_audit.py
+
+      - name: Security gate (secrets in tree and history, forbidden files, exposed paths, lost guards)
+        run: python3 scripts/security_audit.py
 
   macos-suite:
     name: macOS build + full test suites
