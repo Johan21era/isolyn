@@ -3006,3 +3006,118 @@ the offline tests could not see.
   notebooks (`johan21era/isolyn-0000-cloud-1v1-d8x64-n10000-s1` and the
   pre-mount-fix versions of `johan21era/isolyn-lab-0000`) ended in
   `KernelWorkerStatus.ERROR` and are not evidence of a successful run.
+
+## OPS-48 — Closeout Initiative (2026-11-15: R-06/R-15 rulebook completion, deep-tier search and full-tree closeout)
+
+**Scope:** OPS-34 (`347a5b8`) through `f10de6c`. This covers the 21 commits landed
+after OPS-34 and the uncommitted R-06/R-15/search/evidence work folded into
+`f10de6c`. The rules version is
+`79ca7387ac7ac5b85b93b4cee3818defaf4a1d3f406c0d6186edbc60261cfd55`.
+
+### Commits analysed
+
+- `e56676e` — reject a round recorded into a mismatched match.
+- `bfadfc4` — play 1v1 to 151, bound the search, and stop publicly revealing the locked pair.
+- `df737b1` — best-of-5/7 sets and the 1v1 One Domino Rule.
+- `32b0daa` — seat-scoped private locked-pair look (R-17).
+- `37d8097` — eliminate at 151 and continue 1v1v1 as a carried-points duel (R-22).
+- `0171ba4` — stream the CSV fold and merge shards linearly.
+- `1c256e7` — make long lab runs observable and safe to operate.
+- `477608b` — add the private Kaggle bridge and stable lab randomness.
+- `4670d09` — harden the Kaggle snapshot boundary.
+- `1996cef` — validate cloud CSV seeds, modes and symlinks.
+- `7b1b4f9` — add plain-language reports for every run.
+- `a971b81` — add the visual run report and raw-file map.
+- `2ed1e9d` — add staged cloud source and the first 10K app path.
+- `e7e77f6` — gate cloud collection on Kaggle status.
+- `7a77f17` — fix the live Kaggle dataset handoff.
+- `fe737b6`, `cd7287e`, `ef25b30`, `57f64da`, `e125228`, `7221f4f` — record the
+  OPS-38/39 hosted-CI billing failures, Kaggle evidence, snapshot hardening and
+  cloud CSV integrity receipts.
+- `f10de6c` — enforce the 101 target across sets, make voluntary draws unlimited,
+  add selective deep-tier search, add the depth/conformance probes, and refresh
+  the rulebook, evidence documents and counts.
+
+Committed volume: 86 files, `+9,964 / -565`; the closeout commit itself is 51
+files, `+64,413 / -41,619` (including the regenerated graph JSON).
+
+### Verification sweep (literal)
+
+| Check | Result |
+|---|---|
+| `./scripts/ci/local.sh` (pre-push, exact engine/bridge code) | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| Engine suite | `TOTAL CHECKS PASSED: 524 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Bridge suite | `TOTAL CHECKS PASSED: 141 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| `swift test` | `Executed 125 tests, with 0 failures (0 unexpected) in 4.467 (4.475) seconds` |
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 55 tests in 1.543s`, `OK` |
+| `python3 scripts/rules_audit.py --strict` | `RESULT: PASS — every enforced rule names real code and a real assertion; 0 declared hole(s)` |
+| `python3 scripts/docs_audit.py` | `RESULT: PASS — links, paths, status headers, register, banners and figures are consistent` |
+| `./tools/selfplay/build.sh` | `built .../tools/selfplay/build/selfplay` |
+| `./scripts/ci/rules_soak.sh` | `Games: 1000000`, `Assertions: 172755683`, `Failures: 0`, `Elapsed: 8303 ms` |
+| `./scripts/ci/depth_probe.sh` | Legendary `24, 24, 24, 24`; Mythical `27, 26, 26, 27` |
+| `git diff --check` | clean (exit 0) |
+
+The post-push local rerun passed rules, docs, lab, Swift build and all 125 Swift
+tests, then the host disconnected while compiling `SearchEngineTests`; it did not
+report a failing check. The engine and bridge code was unchanged from the
+pre-push 524/141 run above.
+
+### Cleanup
+
+First pass removed only ignored, untracked build/cache residue: `build/`,
+`.build/`, `Accelerator/build/`, `tools/selfplay/build/` and
+`graphify-out/cache/`. Folder size fell from **903 MB to 273 MB (≈630 MB
+reclaimed)**. `lab/data/` evidence, `graphify-out/graph.json`, the graph reports,
+the dated graph backup and the 3D page were retained. Interpreter/editor noise
+(`__pycache__`, `*.pyc`, `.DS_Store`) and object/dSYM candidates were checked;
+none remained.
+
+### Documentation updated
+
+- `docs/rules/RULEBOOK.md` and `docs/rules/RULES_VERSION` — R-06/R-15 status and
+  the sealed hash above.
+- `docs/research/STRENGTH_BASELINE.md` — the current fixed-deck depth table,
+  corrected to the OPS-48 run's `27, 26, 26, 27`; the text now says 26–27 plies,
+  not 26–28, and still makes no strength claim.
+- `AGENTS.md` — expected verification counts updated to 524/141/125/55 and the
+  current-state depth range corrected to 26–27.
+- `docs/engineering/BRIDGE_TESTING.md` — Lab count corrected from 47 to 55.
+- `README.md`, `docs/README.md`, `docs/architecture/BRIDGE_ARCHITECTURE.md`,
+  `docs/research/PROJECT_OVERDRIVE.md`, `docs/subsystems/LAB.md` and the
+  rulebook-adjacent evidence docs — current counts, soak/depth evidence and
+  R-06/R-15/R-17/R-22 behaviour.
+- The prior `docs/history/fix-log.md` entries were not rewritten; this is an
+  append-only OPS-48 receipt.
+
+### Graphs refreshed
+
+- `graphify update . --force`: **3,435 nodes / 6,791 edges / 202 communities**.
+- `python3 scripts/build-graph-3d.py`: wrote the 3.57 MiB 3D page.
+- `python3 scripts/build-graph-3d.py --check`: `ok`.
+
+### CI
+
+`gh run list` for `f10de6c` produced run **43704608977** (`completed / failure`).
+Both real jobs executed **0 steps**, had no runner assigned, and finished in about
+two seconds. The check-run annotation is the account-infrastructure cause, not a
+code failure:
+
+> "The job was not started because recent account payments have failed or your
+> spending limit needs to be increased. Please check the 'Billing & plans'
+> section in your settings"
+
+The owner must resolve Billing & plans. The workflow was not weakened to
+manufacture a green check. The authoritative local result is the 7-step pass
+above.
+
+### Not done, deliberately
+
+- No strength claim: the deeper search and 24/26–27-ply depths are clock-bound
+  measurements, not Elo or a measured strength improvement.
+- Mythical's configured 48-ply ceiling was not reached; a hand has at most 28
+  tile-consuming actions.
+- The nightly 100,000,000-game soak configured in CI was not run locally; the
+  completed 1,000,000-game soak is the evidence in this receipt.
+- The live Kaggle 10K session was not re-run or verified in this closeout.
+- The Metal accelerator's existing red compact-GPU parity result was not changed
+  or re-measured here.
