@@ -78,6 +78,13 @@ struct LabTimelineEntry: Identifiable, Equatable {
         let value: String
     }
 
+    /// How one search side finished, as a share of that side's games.
+    struct SideShare: Equatable, Identifiable {
+        let label: String
+        let winRate: Double
+        var id: String { label }
+    }
+
     let id: String
     let date: Date?
     let kind: LabTimelineKind
@@ -89,6 +96,21 @@ struct LabTimelineEntry: Identifiable, Equatable {
     /// A bench is dated by its folder name, which names a day but not a minute.
     /// Showing a fabricated clock time would be worse than showing none.
     var hasTime: Bool = true
+    /// The report's own one-line conclusion, when the run wrote one. This is the
+    /// most valuable field on the page: it says what the test proved, not just
+    /// that it finished.
+    var verdict: String?
+    var domino: Int?
+    var closed: Int?
+    var sides: [SideShare] = []
+
+    var totalOutcomes: Int { (domino ?? 0) + (closed ?? 0) }
+
+    var dominoShare: Double? {
+        let total = totalOutcomes
+        guard total > 0, let domino else { return nil }
+        return Double(domino) / Double(total)
+    }
 
     /// Search matches the id, the plain sentence and every fact value, so a
     /// search for "64" finds the worlds-per-move runs as well as the run names.
@@ -206,6 +228,10 @@ enum LabTimelineStore {
                 ? "Timing probe · depth \(depth) · \(worlds) hidden worlds per move"
                 : "\(mode) · plans \(depth) moves ahead · weighs \(worlds) hidden hands per move"
 
+            // The report is written beside the manifest by the same runner, so a
+            // finished run can say how it ended without the reader opening it.
+            let summary = decode(Summary.self, at: directory.appendingPathComponent("summary.json"))
+
             add(
                 LabTimelineEntry(
                     id: "run:\(runID)",
@@ -215,7 +241,14 @@ enum LabTimelineStore {
                     subtitle: subtitle,
                     facts: facts,
                     status: status,
-                    folder: directory
+                    folder: directory,
+                    verdict: summary?.verdict,
+                    domino: summary?.outcomes?.domino,
+                    closed: summary?.outcomes?.closed,
+                    sides: (summary?.sides ?? []).compactMap { side in
+                        guard let label = side.label, let rate = side.winRate else { return nil }
+                        return LabTimelineEntry.SideShare(label: label, winRate: rate)
+                    }
                 )
             )
         }
@@ -416,6 +449,22 @@ enum LabTimelineStore {
         let gamesPerTier: Int?
         let shards: Int?
         let tiers: [Tier]?
+    }
+
+    private struct Summary: Decodable {
+        struct Outcomes: Decodable {
+            let domino: Int?
+            let closed: Int?
+        }
+
+        struct Side: Decodable {
+            let label: String?
+            let winRate: Double?
+        }
+
+        let verdict: String?
+        let outcomes: Outcomes?
+        let sides: [Side]?
     }
 
     private struct Analysis: Decodable {

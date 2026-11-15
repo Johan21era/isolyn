@@ -3,16 +3,17 @@ import SwiftUI
 
 /// Every test the lab has ever run, newest first, on one page.
 ///
-/// The ordering principle is that a reader should be able to answer "what did
-/// we try, when, and how did it end?" without opening a folder. So each entry
-/// carries four things and nothing more: what kind of test it was, its name, the
-/// settings in plain words, and the numbers that decide whether it worked.
+/// A row answers four questions in a fixed order: what kind of test was this,
+/// what did it do, what did it prove, and how did it end. The proof line comes
+/// from the run's own report, so the page never has to guess at a conclusion —
+/// and a failed or unfinished run simply has no proof line to show.
 struct LabTimelineView: View {
     @Environment(LabService.self) private var lab
 
     @State private var model: LabTimelineModel
     @State private var filter: LabTimelineKind?
     @State private var query = ""
+    @State private var collapsed: Set<Date> = []
 
     init(model: LabTimelineModel? = nil) {
         _model = State(initialValue: model ?? LabTimelineModel())
@@ -54,8 +55,10 @@ struct LabTimelineView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(groups) { group in
                         dayHeader(group)
-                        ForEach(group.entries) { entry in
-                            LabTimelineRow(entry: entry)
+                        if !collapsed.contains(group.day) {
+                            ForEach(group.entries) { entry in
+                                LabTimelineRow(entry: entry)
+                            }
                         }
                     }
                 }
@@ -65,8 +68,8 @@ struct LabTimelineView: View {
         .task {
             refresh()
             // The record changes when a run finishes or a headless command
-            // writes a bench, so re-read on a slow loop rather than on a
-            // notification no other process can send.
+            // writes a bench, so re-read on a slow loop rather than waiting for
+            // a notification no other process can send.
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
                 refresh()
@@ -82,13 +85,17 @@ struct LabTimelineView: View {
 
     private var overview: some View {
         VStack(alignment: .leading, spacing: 15) {
-            HStack(alignment: .top, spacing: 30) {
+            HStack(alignment: .bottom, spacing: 30) {
                 headline("Tests", "\(entries.count)")
                 headline("Finished", "\(entries.filter { $0.status == .finished || $0.status == .recorded }.count)")
                 headline("Failed", "\(entries.filter { $0.status == .failed }.count)", alarm: entries.contains { $0.status == .failed })
                 headline("In flight", "\(entries.filter { $0.status == .running }.count)")
                 headline("Dates", spanLabel)
-                Spacer(minLength: 0)
+
+                Spacer(minLength: 20)
+
+                LabTimelineActivity(entries: entries)
+                    .padding(.bottom, 5)
             }
 
             Divider().overlay(IsolynTheme.ebonyLine.opacity(0.6))
@@ -173,19 +180,40 @@ struct LabTimelineView: View {
     // MARK: Day header
 
     private func dayHeader(_ group: DayGroup) -> some View {
-        HStack(spacing: 12) {
-            Text(dayLabel(group.day))
-                .font(IsolynTheme.caption(9))
-                .tracking(1.9)
-                .foregroundStyle(IsolynTheme.ivoryMuted)
-            Rectangle()
-                .fill(IsolynTheme.ebonyLine.opacity(0.6))
-                .frame(height: 1)
-            Text("\(group.entries.count)")
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(IsolynTheme.ivoryMuted)
+        let isCollapsed = collapsed.contains(group.day)
+        return Button {
+            withAnimation(.easeOut(duration: 0.18)) {
+                if isCollapsed {
+                    collapsed.remove(group.day)
+                } else {
+                    collapsed.insert(group.day)
+                }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 7.5, weight: .bold))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    .frame(width: 10)
+
+                Text(dayLabel(group.day))
+                    .font(IsolynTheme.caption(9))
+                    .tracking(1.9)
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+
+                Rectangle()
+                    .fill(IsolynTheme.ebonyLine.opacity(0.6))
+                    .frame(height: 1)
+
+                Text("\(group.entries.count)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            }
+            .contentShape(Rectangle())
         }
-        .padding(.leading, 20)
+        .buttonStyle(.plain)
+        .padding(.leading, 12)
         .padding(.top, 16)
         .padding(.bottom, 8)
     }
@@ -216,6 +244,72 @@ struct LabTimelineView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 34)
+    }
+}
+
+// MARK: - Activity strip
+
+/// One bar per day across the record, so the shape of the work is visible before
+/// any row is read. Height is relative to the busiest day, never a fixed scale.
+private struct LabTimelineActivity: View {
+    let entries: [LabTimelineEntry]
+
+    private struct Day: Identifiable {
+        let date: Date
+        let count: Int
+        var id: Date { date }
+    }
+
+    /// A fixed two-week window ending today. Sizing the strip to the record's
+    /// own span made a two-day record into two bars, which read as a stray mark
+    /// rather than a shape.
+    private var days: [Day] {
+        let calendar = Calendar.current
+        let end = calendar.startOfDay(for: Date())
+        guard let start = calendar.date(byAdding: .day, value: -13, to: end) else { return [] }
+
+        var cursor = start
+        var result: [Day] = []
+        while cursor <= end, result.count < 62 {
+            let count = entries.reduce(0) { total, entry in
+                guard let date = entry.date, calendar.isDate(date, inSameDayAs: cursor) else { return total }
+                return total + 1
+            }
+            result.append(Day(date: cursor, count: count))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return result
+    }
+
+    var body: some View {
+        let days = days
+        let peak = max(days.map { $0.count }.max() ?? 1, 1)
+        let calendar = Calendar.current
+
+        VStack(spacing: 4) {
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(days) { day in
+                    // Square-root scaling keeps a quiet day visible beside a
+                    // busy one; a linear scale flattened this whole strip to
+                    // nothing when one day held most of the record.
+                    let ratio = day.count == 0 ? 0 : sqrt(Double(day.count) / Double(peak))
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                        .fill(
+                            calendar.isDateInToday(day.date)
+                                ? IsolynTheme.brass
+                                : IsolynTheme.brass.opacity(0.42)
+                        )
+                        .frame(width: 5, height: day.count == 0 ? 2 : max(5, 26 * CGFloat(ratio)))
+                        .help("\(day.count) test\(day.count == 1 ? "" : "s") · \(day.date.formatted(date: .abbreviated, time: .omitted))")
+                }
+            }
+            .frame(height: 26, alignment: .bottom)
+
+            Rectangle()
+                .fill(IsolynTheme.ebonyLine.opacity(0.55))
+                .frame(height: 1)
+        }
     }
 }
 
@@ -261,41 +355,12 @@ private struct LabTimelineRow: View {
                 .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .center, spacing: 9) {
-                    Text(entry.title)
-                        .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(IsolynTheme.ivory)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: 10)
-                    if let date = entry.date, entry.hasTime {
-                        Text(date.formatted(date: .omitted, time: .shortened))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(IsolynTheme.ivoryMuted)
-                    }
-                    LabStatusPill(text: entry.status.label, tone: entry.status.tone)
+                titleRow
+                conclusion
+                if entry.dominoShare != nil {
+                    outcomeRow
                 }
-
-                Text(entry.subtitle)
-                    .font(IsolynTheme.body(12))
-                    .foregroundStyle(IsolynTheme.ivoryMuted)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: 16) {
-                    ForEach(entry.facts, id: \.label) { fact in
-                        HStack(spacing: 5) {
-                            Text(fact.label)
-                                .font(IsolynTheme.caption(9))
-                                .foregroundStyle(IsolynTheme.ivoryMuted)
-                            Text(fact.value)
-                                .font(.system(size: 10.5, design: .monospaced))
-                                .foregroundStyle(IsolynTheme.ivory)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 1)
+                factsRow
             }
         }
         .padding(.vertical, 11)
@@ -312,7 +377,99 @@ private struct LabTimelineRow: View {
         .padding(.bottom, 5)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .help(entry.folder?.path ?? entry.title)
+        .onTapGesture(perform: open)
+        .help(hovering ? "Open the report" : (entry.folder?.path ?? entry.title))
+    }
+
+    private var titleRow: some View {
+        HStack(alignment: .center, spacing: 9) {
+            Text(entry.title)
+                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                .foregroundStyle(IsolynTheme.ivory)
+                .lineLimit(1)
+                .truncationMode(.middle)
+
+            Spacer(minLength: 10)
+
+            if hovering {
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundStyle(IsolynTheme.brass)
+            }
+
+            if let date = entry.date, entry.hasTime {
+                Text(date.formatted(date: .omitted, time: .shortened))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            }
+            LabStatusPill(text: entry.status.label, tone: entry.status.tone)
+        }
+    }
+
+    /// The run's own verdict when it wrote one, otherwise the settings in plain
+    /// words. A veredict is never invented here: an absent one shows settings.
+    private var conclusion: some View {
+        Text(entry.verdict ?? entry.subtitle)
+            .font(IsolynTheme.body(12))
+            .foregroundStyle(IsolynTheme.ivoryMuted)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var outcomeRow: some View {
+        HStack(spacing: 9) {
+            if let share = entry.dominoShare {
+                GeometryReader { proxy in
+                    HStack(spacing: 0) {
+                        Rectangle()
+                            .fill(IsolynTheme.brass.opacity(0.55))
+                            .frame(width: max(2, proxy.size.width * share))
+                        Rectangle()
+                            .fill(IsolynTheme.ebonyLine)
+                    }
+                }
+                .frame(width: 78, height: 3)
+                .clipShape(Capsule())
+
+                Text("\(Int((share * 100).rounded()))% domino")
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            }
+
+            if entry.sides.count == 2 {
+                Text("·")
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+                Text(sideSummary)
+                    .font(.system(size: 9.5, design: .monospaced))
+                    .foregroundStyle(IsolynTheme.ivoryMuted)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 1)
+    }
+
+    private var sideSummary: String {
+        entry.sides
+            .map { "\($0.label) \(Int(($0.winRate * 100).rounded()))%" }
+            .joined(separator: "  ")
+    }
+
+    private var factsRow: some View {
+        HStack(spacing: 16) {
+            ForEach(entry.facts, id: \.label) { fact in
+                HStack(spacing: 5) {
+                    Text(fact.label)
+                        .font(IsolynTheme.caption(9))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+                    Text(fact.value)
+                        .font(.system(size: 10.5, design: .monospaced))
+                        .foregroundStyle(IsolynTheme.ivory)
+                }
+            }
+            Spacer(minLength: 0)
+        }
     }
 
     private var tag: some View {
@@ -334,6 +491,18 @@ private struct LabTimelineRow: View {
         case .paused: return IsolynTheme.ebonyLine
         case .finished, .recorded:
             return entry.kind == .cloud ? IsolynTheme.brass : IsolynTheme.ivoryMuted
+        }
+    }
+
+    /// A finished run wrote a report; everything else reveals its folder (or,
+    /// for an analysis, the log file itself) in Finder.
+    private func open() {
+        guard let folder = entry.folder else { return }
+        let report = folder.appendingPathComponent("report.html")
+        if entry.kind != .analysis, FileManager.default.fileExists(atPath: report.path) {
+            NSWorkspace.shared.open(report)
+        } else {
+            NSWorkspace.shared.activateFileViewerSelecting([folder])
         }
     }
 }

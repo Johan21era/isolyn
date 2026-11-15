@@ -119,7 +119,11 @@ The Lab screen removes the terminal from the loop without changing what a run is
 - The **Timeline** page is the record rather than the control. It reads every
   manifest from both stores (the app's `runs` folder and the checkout's
   `lab/data/runs`), plus cloud receipts, bench ladders and calibration logs,
-  and shows them newest-first, grouped by day, with one row per test. It reads
+  and shows them newest-first, grouped by day, with one row per test. Each row
+  carries the run's own `summary.json` verdict and outcome split, so the page
+  states what a test proved rather than only that it finished; a run with no
+  verdict shows its settings instead of an invented conclusion. Clicking a row
+  opens its `report.html`, or reveals the folder when there is none. It reads
   manifests and small JSON only — never a shard CSV — so it refreshes on a
   five-second loop without touching a run in progress. A bench is dated by its
   folder name, which names a day but not a minute, so it shows no clock time.
