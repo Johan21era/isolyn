@@ -161,6 +161,8 @@ class PrepareTests(unittest.TestCase):
             self.assertTrue(metadata["id"].endswith("/isolyn-code"))
             self.assertEqual(snapshot["source_commit"], "a" * 40)
             self.assertTrue(kernel_metadata["is_private"])
+            self.assertEqual(kernel_metadata["title"].lower().replace(" ", "-"),
+                             "isolyn-lab-0000")
             self.assertFalse(kernel_metadata["enable_gpu"])
             self.assertFalse(kernel_metadata["enable_internet"])
             self.assertNotIn("Sources/IsolynApp/Secret.swift",
@@ -170,6 +172,10 @@ class PrepareTests(unittest.TestCase):
             self.assertTrue((dataset / "cloud" / "run_session.py").is_file())
             self.assertTrue((dataset / "session_specs" / "0000.json").is_file())
             self.assertTrue((kernel / "notebook.ipynb").is_file())
+            notebook = json.loads((kernel / "notebook.ipynb").read_text(encoding="utf-8"))
+            code = "".join(notebook["cells"][1]["source"])
+            self.assertIn("/kaggle/input/datasets", code)
+            self.assertIn("run_session.py", code)
 
     def test_prepare_refuses_a_second_time(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -343,13 +349,13 @@ class CollectTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 cloud.collect(ws, "plan-test", session["id"])
 
-    def _complete_fixture(self, root: Path):
+    def _complete_fixture(self, root: Path, kernel_id: str = "tester/isolyn-lab-0000"):
         ws, plan_data, session, receipt, target = ReceiptTests()._fixture(root)
         source = root / "remote"
         shutil.copytree(target, source)
         shutil.rmtree(target)
         ledger = {"schema": 1, "sessions": {
-            session["id"]: {"pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"}
+            session["id"]: {"pushed_at": "now", "kernel_id": kernel_id}
         }}
         (ws.run_dir("plan-test") / "ledger.json").write_text(json.dumps(ledger), encoding="utf-8")
         calls = []
@@ -375,6 +381,14 @@ class CollectTests(unittest.TestCase):
             self.assertTrue(output.is_file())
             self.assertEqual(len(output.read_text(encoding="utf-8").splitlines()), 5)
             self.assertTrue(any(call[:2] == ["kernels", "output"] for call in calls))
+
+    def test_collect_uses_the_kaggle_assigned_slug(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            assigned = "tester/isolyn-0000-cloud-1v1-d8x64-n10000-s1"
+            ws, plan_data, session, calls = self._complete_fixture(Path(tmp), assigned)
+            self.assertEqual(cloud.collect(ws, "plan-test", session["id"]), 0)
+            status_call = next(call for call in calls if call[:2] == ["kernels", "status"])
+            self.assertEqual(status_call[2], assigned)
 
     def test_collect_can_reverify_an_already_fetched_session(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -406,15 +420,24 @@ class PushTests(unittest.TestCase):
             cloud.plan(ws, _args("--games", "5000", "--games-per-shard", "2500"))
             cloud.prepare(ws, "plan-test")
             calls = []
-            ws.kaggle_fn = lambda args: calls.append(args) or "ok"
+            assigned = "tester/isolyn-0000-cloud-1v1-d8x64-n10000-s1"
+
+            def kaggle(args):
+                calls.append(args)
+                if args[:2] == ["datasets", "status"]:
+                    return "ready"
+                if args[:2] == ["kernels", "push"]:
+                    return f"Kernel version 1 successfully pushed. Please check progress at https://www.kaggle.com/code/{assigned}"
+                return "ok"
+
+            ws.kaggle_fn = kaggle
             self.assertEqual(cloud.push(ws, "plan-test", "0000", "auto", True), 0)
-            self.assertEqual(len(calls), 2)
-            self.assertIn("datasets", calls[0])
-            self.assertIn("create", calls[0])
-            self.assertIn("kernels", calls[1])
+            self.assertEqual([call[:2] for call in calls],
+                             [["datasets", "create"], ["datasets", "status"], ["kernels", "push"]])
             ledger = json.loads((ws.run_dir("plan-test") / "ledger.json").read_text(encoding="utf-8"))
             self.assertIn("0000", ledger["sessions"])
             self.assertIn("pushed_at", ledger["sessions"]["0000"])
+            self.assertEqual(ledger["sessions"]["0000"]["kernel_id"], assigned)
 
     def test_push_refuses_an_unexpected_file_in_the_upload_directories(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -437,6 +460,8 @@ class PushTests(unittest.TestCase):
 
             def kaggle(args):
                 calls.append(args)
+                if args[:2] == ["datasets", "status"]:
+                    return "ready"
                 if args[:2] == ["kernels", "push"]:
                     raise SystemExit("simulated kernel failure")
                 return "ok"
@@ -450,10 +475,13 @@ class PushTests(unittest.TestCase):
             self.assertNotIn("pushed_at", entry)
 
             calls.clear()
-            ws.kaggle_fn = lambda args: calls.append(args) or "ok"
+            ws.kaggle_fn = lambda args: calls.append(args) or (
+                "ready" if args[:2] == ["datasets", "status"] else "ok"
+            )
             self.assertEqual(cloud.push(ws, "plan-test", "0000", "auto", True), 0)
             self.assertEqual(calls[0][:2], ["datasets", "version"])
-            self.assertEqual(calls[1][:2], ["kernels", "push"])
+            self.assertEqual(calls[1][:2], ["datasets", "status"])
+            self.assertEqual(calls[2][:2], ["kernels", "push"])
 
 
 if __name__ == "__main__":

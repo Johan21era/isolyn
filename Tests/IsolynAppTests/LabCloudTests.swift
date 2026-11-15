@@ -151,6 +151,29 @@ final class LabCloudTests: XCTestCase {
         XCTAssertEqual(service.phase, .waiting)
     }
 
+    func test_status_error_is_reported_as_error_and_blocks_collect() async throws {
+        let root = try makeRoot()
+        let launcher = FakeLauncher()
+        let service = LabCloudService(
+            launcher: launcher,
+            root: root,
+            dataRoot: root.appendingPathComponent("cloud-data")
+        )
+        service.owner = "tester"
+        try writePushedRun(root: root, runID: service.runID)
+        service.refresh()
+        launcher.statusOutput = "KernelWorkerStatus.ERROR"
+
+        service.checkStatus()
+        launcher.completeNext()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertEqual(service.remoteStatus, "error")
+        XCTAssertFalse(service.remoteComplete)
+        XCTAssertFalse(service.canCollect)
+        XCTAssertTrue(service.message?.contains("error") == true)
+    }
+
     func test_a_dirty_staged_source_cannot_start_a_cloud_upload() throws {
         let root = try makeRoot(clean: false)
         let launcher = FakeLauncher()

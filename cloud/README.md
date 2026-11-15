@@ -1,9 +1,14 @@
 # Isolyn cloud bridge
 
 **Status:** the local driver, staged source bundle, app Cloud tab and Kaggle
-worker are implemented and tested offline. A live Kaggle session has **not** been
-run in this checkout; it requires a Kaggle account and API credentials. No token
-is stored in this repository or read by the app.
+worker are implemented and tested offline. The first live attempts exposed two
+deployment issues: dataset ingestion was not complete when the notebook started,
+and Kaggle mounted the dataset under `/kaggle/input/datasets/<owner>/<slug>`
+rather than `/kaggle/input/<slug>`. The driver now waits for `ready`, the
+notebook discovers both mount layouts, and the driver records the slug Kaggle
+actually assigns. A corrected 10,000-game attempt is running; a successful live
+receipt is still unproven. No token is stored in this repository or read by the
+app.
 
 The cloud bridge lets Kaggle run the existing C++ self-play harness as a private
 batch worker. It does not run the macOS app, and it does not add a second rules
@@ -33,7 +38,14 @@ engine. The C++ harness remains the only source of game truth.
   Kernels are explicitly private, CPU-only, and have internet disabled.
 - `push` is an external action and refuses to run without `--yes`. It does not
   read the Kaggle token; the installed `kaggle` CLI uses its normal per-user
-  config.
+  config. After a push it records the notebook slug returned by Kaggle, because
+  Kaggle can derive a new notebook's slug from its title rather than metadata.
+- `push` waits for `kaggle datasets status <ref>` to report `ready` before
+  starting the notebook. A create followed immediately by a kernel push can
+  launch without `/kaggle/input`; waiting prevents that failure mode.
+- The generated notebook finds its source root in either the legacy
+  `/kaggle/input/<slug>` mount or Kaggle's current
+  `/kaggle/input/datasets/<owner>/<slug>` layout. It never assumes one path.
 - `fetch` refuses to overwrite an existing session. It downloads into a
   temporary directory, validates the receipt/hash/row count, rejects symlinked
   files, checks every row's seed and mode against the plan, copies only the
@@ -43,8 +55,10 @@ engine. The C++ harness remains the only source of game truth.
 
 ## One-time setup
 
-1. Create a Kaggle account and download its API token to the normal location
-   (`~/.kaggle/kaggle.json`). Never put that file in this repository.
+1. Create a Kaggle account and install its API token in the CLI's normal
+   credential store. Kaggle CLI 2.2.5 accepts `KAGGLE_API_TOKEN` or
+   `~/.kaggle/access_token`; older CLIs use `~/.kaggle/kaggle.json`. Never put a
+   token in this repository.
 2. Install the Kaggle CLI (`pip install kaggle`) and confirm `kaggle --version`.
 3. Set `KAGGLE_USERNAME` or pass `--owner`.
 4. Commit the code you intend to upload. Cloud planning refuses a dirty tree.

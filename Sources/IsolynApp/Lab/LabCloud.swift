@@ -232,6 +232,9 @@ final class LabCloudService {
         if assembled {
             return "The verified CSV is in the cloud run folder, beside its SHA-256 summary."
         }
+        if remoteStatus == "error" {
+            return "Kaggle reports an error. Nothing can be collected; check the notebook log before retrying."
+        }
         if remoteComplete {
             return "Kaggle reports the notebook is complete. Collect will download, verify and assemble it."
         }
@@ -452,12 +455,18 @@ final class LabCloudService {
             refresh()
         case .status:
             let output = readLog() ?? ""
-            remoteComplete = statusSaysComplete(output)
-            remoteStatus = remoteComplete ? "complete" : "running"
+            let status = kaggleStatus(in: output)
+            remoteComplete = status == "complete"
+            remoteStatus = status
             phase = .waiting
-            message = remoteComplete
-                ? "Kaggle reports the notebook is complete. Collect verified results is now available."
-                : "Kaggle is still running the notebook. Nothing was downloaded; check again in a few minutes."
+            switch status {
+            case "complete":
+                message = "Kaggle reports the notebook is complete. Collect verified results is now available."
+            case "error":
+                message = "Kaggle reports an error. Nothing was downloaded; check the notebook log before retrying."
+            default:
+                message = "Kaggle is still running the notebook. Nothing was downloaded; check again in a few minutes."
+            }
             refresh()
         case .collect:
             phase = .finished
@@ -478,11 +487,20 @@ final class LabCloudService {
         return tail.isEmpty ? nil : String(tail)
     }
 
-    private func statusSaysComplete(_ output: String) -> Bool {
+    private func kaggleStatus(in output: String) -> String {
         let lower = output.lowercased()
-        guard !lower.contains("not complete") else { return false }
-        return lower.range(of: "\\b(complete|success)\\b",
-                            options: [.regularExpression, .caseInsensitive]) != nil
+        if lower.contains("kernelworkerstatus.error") || lower.contains("status \"error\"") {
+            return "error"
+        }
+        if !lower.contains("not complete"),
+           lower.range(of: "\\b(complete|success)\\b",
+                       options: [.regularExpression, .caseInsensitive]) != nil {
+            return "complete"
+        }
+        if lower.contains("kernelworkerstatus.running") || lower.contains("kernelworkerstatus.queued") {
+            return "running"
+        }
+        return "unknown"
     }
 
     private func decode<T: Decodable>(_ type: T.Type, at url: URL) -> T? {

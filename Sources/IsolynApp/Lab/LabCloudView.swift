@@ -181,7 +181,9 @@ struct LabCloudView: View {
             if let remoteStatus = cloud.remoteStatus {
                 Text("Kaggle: \(remoteStatus)")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(remoteStatus == "complete" ? IsolynTheme.ivory : IsolynTheme.brass)
+                    .foregroundStyle(remoteStatus == "complete"
+                        ? IsolynTheme.ivory
+                        : remoteStatus == "error" ? Color.red.opacity(0.9) : IsolynTheme.brass)
             }
 
             if let message = cloud.message {

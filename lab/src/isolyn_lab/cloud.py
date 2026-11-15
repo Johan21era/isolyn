@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +43,10 @@ PLAN_SCHEMA = 1
 LEDGER_SCHEMA = 1
 SOURCE_SCHEMA = 1
 SOURCE_FILE = "source.json"
+KERNEL_URL_PATTERN = re.compile(
+    r"https?://(?:www\.)?kaggle\.com/(?:code|kernels)/"
+    r"([A-Za-z0-9][A-Za-z0-9_-]*/[A-Za-z0-9][A-Za-z0-9_-]*)"
+)
 DATASET_LICENSE = [{"name": "other"}]
 
 
@@ -473,7 +478,10 @@ def _dataset_metadata(plan_data: dict) -> dict:
 def _kernel_metadata(plan_data: dict, session: dict) -> dict:
     owner = plan_data["dataset_ref"].split("/", 1)[0]
     kernel_id = f"{owner}/{plan_data['kernel_prefix']}-{session['id']}"
-    title = f"Isolyn {session['id']} {plan_data['run_id']}"
+    # Kaggle derives a new notebook's slug from its title. Keep the title's
+    # slug identical to the planned id; otherwise Kaggle silently creates
+    # `isolyn-0000-...` while the driver records `isolyn-lab-0000`.
+    title = f"Isolyn lab {session['id']}"
     return {
         "id": kernel_id,
         "title": title[:50],
@@ -493,11 +501,23 @@ def _kernel_metadata(plan_data: dict, session: dict) -> dict:
 
 
 def _notebook(plan_data: dict, session: dict) -> dict:
-    dataset_slug = plan_data["dataset_ref"].split("/", 1)[-1]
+    owner, dataset_slug = plan_data["dataset_ref"].split("/", 1)
     source = (
         "import subprocess, sys\n"
         "from pathlib import Path\n"
-        f"root = Path(\"/kaggle/input/{dataset_slug}\")\n"
+        f"_owner = \"{owner}\"\n"
+        f"_slug = \"{dataset_slug}\"\n"
+        "_candidates = (\n"
+        "    Path('/kaggle/input') / _slug,\n"
+        "    Path('/kaggle/input/datasets') / _owner / _slug,\n"
+        ")\n"
+        "_root = next((p for p in _candidates if (p / 'cloud/run_session.py').is_file()), None)\n"
+        "if _root is None:\n"
+        "    _matches = sorted(Path('/kaggle/input').rglob('cloud/run_session.py'))\n"
+        "    _root = _matches[0].parent.parent if _matches else None\n"
+        "if _root is None:\n"
+        "    raise SystemExit('Isolyn code dataset was not mounted under /kaggle/input')\n"
+        "root = _root\n"
         f"spec = root / \"session_specs\" / \"{session['id']}.json\"\n"
         "out = Path(\"/kaggle/working/out\")\n"
         "subprocess.run([\n"
@@ -665,6 +685,40 @@ def _kernel_id(plan_data: dict, session: dict) -> str:
     return f"{owner}/{plan_data['kernel_prefix']}-{session['id']}"
 
 
+def _wait_for_dataset(ws: Workspace, dataset_ref: str, timeout: float = 600.0) -> None:
+    """Wait until Kaggle has finished ingesting a newly created dataset.
+
+    Creating a private dataset and pushing a notebook immediately afterwards
+    can attach no input at all: the notebook then fails on its first path read.
+    ``kaggle datasets status`` reports ``ready`` only after the files exist at
+    ``/kaggle/input``; do not start the GPU-free notebook before that.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        state = (ws.kaggle_fn(["datasets", "status", dataset_ref]) or "").strip()
+        if state.lower() == "ready":
+            return
+        if any(word in state.lower() for word in ("error", "failed")):
+            raise SystemExit(f"dataset {dataset_ref} failed to become ready: {state}")
+        if time.monotonic() >= deadline:
+            raise SystemExit(f"dataset {dataset_ref} was not ready after {timeout:.0f}s: {state or 'no status'}")
+        print(f"waiting for dataset {dataset_ref} ({state or 'no status'})…")
+        time.sleep(5)
+
+
+def _pushed_kernel_id(output: str | None, fallback: str) -> str:
+    """Use the slug Kaggle actually assigned, not the one we hoped for.
+
+    Kaggle's CLI prints the notebook URL after a successful push. New kernels
+    can receive a title-derived slug that differs from metadata's ``id`` (the
+    CLI warns about this), so the URL is the authoritative value to record.
+    """
+    match = KERNEL_URL_PATTERN.search(output or "")
+    if match is None:
+        return fallback
+    return _ref(*match.group(1).split("/", 1))
+
+
 def _dataset_dir(ws: Workspace, run_id: str) -> Path:
     return ws.run_dir(run_id) / "dataset"
 
@@ -765,6 +819,7 @@ def push(
     print("uploading private code dataset…")
     print("  kaggle " + " ".join(dataset_command))
     ws.kaggle_fn(dataset_command)
+    _wait_for_dataset(ws, plan_data["dataset_ref"])
     # Record the dataset before the kernel push. If the kernel fails, the next
     # automatic push must create a new dataset version, not try to create the
     # same private dataset again.
@@ -776,18 +831,23 @@ def push(
     _save_ledger(ws, run_id, ledger)
     print("pushing CPU-only private notebook…")
     print("  kaggle " + " ".join(kernel_command))
-    ws.kaggle_fn(kernel_command)
+    kernel_output = ws.kaggle_fn(kernel_command)
+    actual_kernel_id = _pushed_kernel_id(kernel_output, _kernel_id(plan_data, session))
 
+    ledger["sessions"][session_id]["kernel_id"] = actual_kernel_id
     ledger["sessions"][session_id]["pushed_at"] = _now()
     _save_ledger(ws, run_id, ledger)
-    print(f"{run_id}/{session_id}: pushed; wait for Kaggle to finish before fetching")
+    print(f"{run_id}/{session_id}: pushed as {actual_kernel_id}; wait for Kaggle to finish before fetching")
     return 0
 
 
 def status(ws: Workspace, run_id: str, session_id: str) -> int:
-    plan_data = _load_plan(ws, run_id)
-    session = _session(plan_data, session_id)
-    print(ws.kaggle_fn(["kernels", "status", _kernel_id(plan_data, session)]))
+    _load_plan(ws, run_id)
+    ledger = _load_ledger(ws, run_id)
+    entry = ledger["sessions"].get(session_id)
+    _require(entry is not None and entry.get("pushed_at"),
+             f"session {session_id} has not been pushed by this driver")
+    print(ws.kaggle_fn(["kernels", "status", entry["kernel_id"]]))
     return 0
 
 
@@ -811,8 +871,6 @@ def fetch(ws: Workspace, run_id: str, session_id: str) -> int:
     entry = ledger["sessions"].get(session_id)
     _require(entry is not None and entry.get("pushed_at"),
              f"session {session_id} has not been pushed by this driver")
-    _require(entry.get("kernel_id") == _kernel_id(plan_data, session),
-             f"ledger kernel id for session {session_id} does not match the plan")
     target = ws.run_dir(run_id) / "sessions" / session_id
     _require(not target.exists(), f"refusing to overwrite fetched session {target}")
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -860,7 +918,7 @@ def collect(ws: Workspace, run_id: str, session_id: str) -> int:
     entry = ledger["sessions"].get(session_id)
     _require(entry is not None and entry.get("pushed_at"),
              f"session {session_id} has not been pushed by this driver")
-    output = ws.kaggle_fn(["kernels", "status", _kernel_id(plan_data, session)])
+    output = ws.kaggle_fn(["kernels", "status", entry["kernel_id"]])
     print(output)
     text = output.lower()
     complete = re.search(r"\b(complete|success)\b", text) is not None

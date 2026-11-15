@@ -2948,3 +2948,61 @@ next action depend on Kaggle's actual notebook status.
   the owner checks status and collects it.
 - The new Cloud layout was compiled and unit-tested, not visually inspected in
   a running window by the agent.
+
+## OPS-47 — Fix the live Kaggle handoff (2026-11-15)
+
+**Scope:** the first real 10,000-game upload exposed deployment assumptions that
+the offline tests could not see.
+
+### What the live run found
+
+1. The first notebook was pushed immediately after `datasets create`; it started
+   before `/kaggle/input` existed and failed on
+   `/kaggle/input/isolyn-code/cloud/run_session.py`.
+2. Kaggle created a new notebook with a title-derived slug
+   `johan21era/isolyn-0000-cloud-1v1-d8x64-n10000-s1`, while the driver recorded
+   the planned `johan21era/isolyn-lab-0000`; status then failed with a permission
+   error on the wrong notebook.
+3. Retrying with the old prepared title produced `409 Conflict`: Kaggle requires
+   the title slug to resolve to the metadata id.
+4. The corrected notebook mounted the dataset under
+   `/kaggle/input/datasets/johan21era/isolyn-code`, not the legacy
+   `/kaggle/input/isolyn-code`. A diagnostic cell confirmed the mount tree.
+
+### Change
+
+- `push` waits for `kaggle datasets status <ref>` to report `ready` before it
+  starts the notebook.
+- The generated title is `Isolyn lab <session>`, which resolves to the planned
+  notebook id; prepared metadata now passes Kaggle's title/id check.
+- `push` parses the notebook URL Kaggle returns and stores the slug Kaggle
+  actually assigned; `status`, `fetch`, and `collect` use that ledger value
+  instead of recomputing the planned slug.
+- The generated notebook probes both `/kaggle/input/<slug>` and
+  `/kaggle/input/datasets/<owner>/<slug>`, with a recursive fallback, and raises
+  a clear error if the code dataset is not mounted.
+- The app distinguishes `KernelWorkerStatus.ERROR` from running; error blocks
+  collection and is shown as `Kaggle: error`.
+- The current app run's generated title, notebook and ledger were corrected
+  locally; the 10K notebook was repushed against the ready dataset.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `swift test` | `Executed 124 tests, with 0 failures (0 unexpected)` |
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 55 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| Engine suite | `TOTAL CHECKS PASSED: 497 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Bridge suite | `TOTAL CHECKS PASSED: 133 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Docs audit | `RESULT: PASS — links, paths, status headers, register, banners and figures are consistent` |
+| Rules audit | `RESULT: PASS — every enforced rule names real code and a real assertion; 2 declared hole(s)` |
+
+### Live state at close
+
+- `johan21era/isolyn-lab-0000` version 4 was `KernelWorkerStatus.RUNNING` at the
+  last check.
+- No receipt or CSV has been downloaded or verified yet. The two earlier
+  notebooks (`johan21era/isolyn-0000-cloud-1v1-d8x64-n10000-s1` and the
+  pre-mount-fix versions of `johan21era/isolyn-lab-0000`) ended in
+  `KernelWorkerStatus.ERROR` and are not evidence of a successful run.
