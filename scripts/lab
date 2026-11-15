@@ -9,6 +9,7 @@
 #   ./scripts/lab doctor                   check harness, store, locks and probes
 #   ./scripts/lab clean --probes --yes     reclaim probe data; --stale-locks too
 #   ./scripts/lab merge <run-id>           one CSV from the finished shards
+#   ./scripts/lab report <run-id>          plain-language README for a run
 #   ./scripts/lab evaluate --input X.csv   calibration report on a CSV
 #   ./scripts/lab cloud plan               plan private Kaggle sessions
 #   ./scripts/lab cloud verify <run-id>    re-check downloaded cloud artifacts
@@ -26,6 +27,9 @@ case "$command" in
   run|status|list|stop|doctor|clean|merge)
     exec python3 -m isolyn_lab.runner "$command" "$@"
     ;;
+  report)
+    exec python3 -m isolyn_lab.report "$@"
+    ;;
   evaluate)
     exec python3 -m isolyn_lab.cli evaluate "$@"
     ;;
@@ -36,7 +40,7 @@ case "$command" in
     exec "$ROOT/tools/selfplay/build.sh"
     ;;
   help|--help|-h)
-    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     ;;
   *)
     echo "unknown lab command: $command" >&2

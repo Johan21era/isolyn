@@ -31,6 +31,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import report as run_report
+
 ROOT = Path(__file__).resolve().parents[3]
 SELFPLAY = ROOT / "tools" / "selfplay" / "build" / "selfplay"
 # The app runs this from inside its bundle and keeps run data in Application
@@ -356,6 +358,14 @@ def _refresh_running_progress(manifest: dict, shard_dir: Path) -> bool:
     return changed
 
 
+def _write_human_report(run_dir: Path, manifest: dict) -> None:
+    """Best-effort plain-language report; never let it mask a run result."""
+    try:
+        run_report.generate(run_dir, manifest)
+    except (OSError, ValueError) as exc:
+        print(f"  report: could not write README.md: {exc}", file=sys.stderr)
+
+
 def _execute(args: argparse.Namespace) -> int:
     global _INTERRUPTED
 
@@ -424,6 +434,7 @@ def _execute(args: argparse.Namespace) -> int:
     if not queued:
         print("nothing to do: every shard is already complete")
         _atomic_json(manifest_path, {**manifest, "updated_at": _now()})
+        _write_human_report(run_dir, manifest)
         (run_dir / "run.lock").unlink(missing_ok=True)
         return 0
 
@@ -522,9 +533,12 @@ def _execute(args: argparse.Namespace) -> int:
                 shard["reason"] = "interrupted"
                 shard["progress"] = 0
         _atomic_json(manifest_path, {**manifest, "updated_at": _now()})
+        _write_human_report(run_dir, manifest)
         (run_dir / "run.lock").unlink(missing_ok=True)
 
     print(_progress(manifest, args.games))
+    if (run_dir / "README.md").is_file():
+        print(f"read this first: {run_dir / 'README.md'}")
     remaining = [s for s in manifest["shards"] if s["status"] != "done"]
     if _INTERRUPTED:
         print(f"interrupted; {len(remaining)} shard(s) will be replayed on the next run")

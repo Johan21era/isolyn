@@ -155,6 +155,41 @@ def participant_label(mode: str, participant: int) -> str:
     return f"Player {participant + 1}"
 
 
+def winner_for_game(game: GameRecord) -> int | None:
+    """Return the unique winner using the rulebook's result shape.
+
+    A domino win identifies its winner directly. A closed hand does not: the
+    closer is recorded in ``deciding_player`` but may be the higher hand and
+    therefore the loser (R-03). In 1v1 and 2v2 the winning participant has the
+    higher score; in 1v1v1 the lowest ending hand wins. A tie has no winner.
+    """
+    if game.outcome == "in_progress":
+        return None
+    count = max(0, min(game.participant_count, 4))
+    if count < 2:
+        return None
+    if game.outcome == "domino":
+        winner = participant_for_player(game.mode, game.deciding_player)
+        return winner if 0 <= winner < count else None
+    if game.outcome != "closed":
+        return None
+    if game.mode == "1v1v1":
+        values = list(game.final_hands[:count])
+        if len(values) != count:
+            return None
+        lowest = min(values)
+        winners = [index for index, value in enumerate(values) if value == lowest]
+    else:
+        values = list(game.participant_scores[:count])
+        if len(values) != count:
+            return None
+        highest = max(values)
+        if highest <= 0:
+            return None
+        winners = [index for index, value in enumerate(values) if value == highest]
+    return winners[0] if len(winners) == 1 else None
+
+
 def analyze(games: Iterable[GameRecord]) -> CalibrationReport:
     """Aggregate one pass; a generator is accepted so large files stream."""
     outcomes: Counter[str] = Counter()
@@ -180,7 +215,7 @@ def analyze(games: Iterable[GameRecord]) -> CalibrationReport:
         outcomes[game.outcome] += 1
         if game.outcome == "in_progress":
             continue
-        winner = participant_for_player(game.mode, game.deciding_player)
+        winner = winner_for_game(game)
         for participant in range(game.participant_count):
             initial_pips = initial_value_for_participant(game, participant)
             score = game.participant_scores[participant]

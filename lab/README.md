@@ -25,6 +25,7 @@ lab/
 │   ├── __init__.py
 │   ├── dataset.py              # streaming per-move CSV -> per-game records
 │   ├── calibration.py          # win rates, score deltas, Spearman report
+│   ├── report.py               # generated README, summary.json and games.csv
 │   └── cli.py                  # selfplay guidance + evaluate command
 ├── pyproject.toml              # no runtime deps; optional training extras
 └── README.md
@@ -76,6 +77,7 @@ finish.
 ./scripts/lab doctor
 ./scripts/lab clean --probes --yes
 ./scripts/lab merge 1v1-d8x64-n5000000-s1
+./scripts/lab report 1v1-d8x64-n5000000-s1
 
 # Calibration reports: one or several CSVs in a single run.
 ./scripts/lab evaluate --json \
@@ -94,6 +96,13 @@ and dead locks, probe storage and manifest readability. `stop` signals only a
 pid whose command line is this lab's runner. `clean --probes` removes only
 regenerable warm-up runs; `--stale-locks` removes dead lock files; neither
 touches a real run.
+
+Every finished (or interrupted) `run` also writes `README.md`, `summary.json`
+and, for runs up to 100,000 hands, `games.csv` beside `manifest.json`. The
+README is the plain-language entry point: it states what the run was, what
+happened, which checks passed or warned, what not to conclude, how to reproduce
+it, and where every file lives. `lab report <run-id>` rebuilds the same files
+from the raw shards. The report never edits a raw CSV; it derives a new view.
 
 The read path is now linear. `dataset.iter_games` keeps one game in memory, and
 `calibration.analyze` accepts that iterator instead of requiring a list. The

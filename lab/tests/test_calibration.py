@@ -37,9 +37,25 @@ class CalibrationTests(unittest.TestCase):
             self.assertEqual(report.decisions, 3)
             self.assertEqual(report.outcomes, {"closed": 1, "domino": 1})
             by_participant = {p.participant: p for p in report.participants}
-            self.assertEqual(by_participant[0].wins, 1)
-            self.assertEqual(by_participant[1].wins, 1)
+            # The closed hand's deciding_player is the closer (player 1), but
+            # player 0 has the higher score and is the actual winner (R-03).
+            self.assertEqual(by_participant[0].wins, 2)
+            self.assertEqual(by_participant[1].wins, 0)
             self.assertEqual(by_participant[0].average_initial_pips, 12.5)
+
+    def test_closed_1v1v1_winner_is_lowest_hand_not_closer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "three.csv"
+            path.write_text(
+                HEADER
+                + "0,7,1v1v1,closed,2,3,10,12,20,0,5,12,20,0,0,12,20,0\n",
+                encoding="utf-8",
+            )
+            report = calibration.analyze(dataset.load_games(path))
+            by_participant = {p.participant: p for p in report.participants}
+            self.assertEqual(by_participant[0].wins, 1)
+            self.assertEqual(by_participant[1].wins, 0)
+            self.assertEqual(by_participant[2].wins, 0)
 
     def test_spearman_handles_ties_and_no_variance(self) -> None:
         self.assertIsNone(calibration.spearman([1, 1, 1], [2, 3, 4]))

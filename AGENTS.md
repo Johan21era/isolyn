@@ -52,7 +52,7 @@ continuing. Do not skip a failing step and continue as if it passed.
 ./scripts/ci/test_bridge.sh        # expect: 2 executables, 133 checks, 0 failed
 swift build                        # expect: Build complete!
 swift test                         # expect: 120 tests, 0 skipped, 0 failures
-PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 42 tests, 0 failures
+PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 47 tests, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
 python3 scripts/docs_audit.py      # expect: RESULT: PASS

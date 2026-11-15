@@ -2754,3 +2754,51 @@ and refuses symlinked shard, log and receipt paths.
 - Linux compilation remains unproven on this Mac; the snapshot worker ran on
   macOS.
 - No game-rule or search change; no strength claim.
+
+## OPS-43 — Plain-language reports beside every run (2026-11-15)
+
+**Scope:** make a finished or interrupted self-play run understandable without
+reading a wide CSV. The raw evidence is unchanged; the new files are derived
+views written beside it.
+
+### Change
+
+- Added `lab/src/isolyn_lab/report.py`. It folds completed shard CSVs through
+  `dataset.iter_games` and writes `README.md`, `summary.json` and, for runs up to
+  100,000 hands, `games.csv`.
+- The README gives a verdict, ten-second summary, hand counts, outcomes, a
+  per-participant table, what is good, what needs attention, next actions,
+  reproduction command, file map, glossary and explicit limits. It labels small
+  or shallow runs as smoke tests and incomplete runs as NOT READY.
+- Added `calibration.winner_for_game`: a domino win uses the recorded deciding
+  player, while a closed hand derives the winner from the final summary (1v1/2v2
+  higher score, 1v1v1 lower ending hand). A closed hand's closer can be the
+  loser under R-03; the old calibration path credited the closer. Both the
+  calibration report and the generated run README now use the same helper.
+- `runner` writes the report on normal completion, all-already-done resumes and
+  interrupted/failed runs. `./scripts/lab report <run-id>` rebuilds it manually.
+  The report reads the CSV read-only and removes a partial `games.csv` if a shard
+  cannot be folded.
+- Added `lab/tests/test_report.py`: smoke wording, closed-hand winner, incomplete
+  run and CLI coverage.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 47 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| `python3 scripts/docs_audit.py` | `RESULT: PASS — links, paths, status headers, register, banners and figures are consistent` |
+| `python3 scripts/rules_audit.py` | `RESULT: PASS — every enforced rule names real code and a real assertion; 2 declared hole(s)` |
+| Real one-hand runner check | `/tmp/isolyn-report-auto/auto-report` contains `README.md`, `summary.json`, `games.csv`; runner printed `read this first: .../README.md` and `complete: 1 games`; README verdict `SMOKE TEST` |
+| Raw evidence check | `1v1-d2x2-n5-s987654/shards/shard-0000.csv` SHA-256 was `d3907a8bb928e1348f1044d190ce384628654c5efede1d69eb5a54d50a82d8b6` before and after report generation |
+
+### Limits
+
+- The automatic report is written when the runner finishes or exits; it is not
+  refreshed after every hand while the run is active. A live page remains future
+  work.
+- `games.csv` is intentionally omitted above 100,000 hands unless
+  `--games-csv` is passed; the aggregate README and summary are still written.
+- No game-rule, search or strength change. No claim about playing strength was
+  added.

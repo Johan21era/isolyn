@@ -140,6 +140,16 @@ both are advisory display fields and never substitute for a verified `done`
 shard. Measured pipeline timings live in [`lab/README.md`](../../lab/README.md),
 not duplicated here.
 
+A finished or interrupted run gets generated `README.md` and `summary.json`
+beside `manifest.json`; runs up to 100,000 hands also get `games.csv`. The
+README is the plain-language entry point: verdict, counts, who won, what is
+good, what needs attention, what to do next, how to reproduce, file map and
+glossary. It labels small or shallow batches as smoke tests and incomplete
+batches as NOT READY. The report reads finished shard CSVs only and never edits
+them; `lab report <run-id>` rebuilds it, and a raw CSV malformed enough to
+prevent a tidy fold removes the partial `games.csv` instead of presenting it as
+complete.
+
 Game-level fields (repeated on every move row):
 
 ```text
