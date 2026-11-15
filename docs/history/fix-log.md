@@ -3236,3 +3236,75 @@ credential is ever committed from now on, it must be treated as already leaked.
 
 **Not done, deliberately.** The workflow was not modified, no billing setting was
 touched, and no secrets were rotated, because none were found.
+
+## OPS-51 — Security pass on the public repository (2026-11-15)
+
+**Scope:** nine read-only scans, one new gate, two findings fixed, two GitHub
+settings enabled. No engine, bridge or app behaviour changed.
+
+**Why.** The repository became public in OPS-50. A public repository is readable
+forever, including its history, so "nothing sensitive in it" needed checking
+rather than assuming.
+
+**Scans run (all locally, on commit `03587eb`):**
+
+| Scan | Result |
+|---|---|
+| Credential patterns, every tracked text file | clean |
+| Credential patterns, every blob in all history | clean |
+| Credential-shaped filenames | clean |
+| Dependency surface | 0 Python runtime deps, 0 Swift packages |
+| Command-injection surface | 17 `subprocess` calls, all list-form, no shell |
+| Path traversal | run-id guard identical and applied in all three modules |
+| C/C++ memory safety | no unsafe string or allocation primitives |
+| Local absolute paths | **382 occurrences across 4 files** |
+| GitHub secret scanning | was disabled |
+
+**Findings and fixes.**
+
+1. `1v1-d2x2-n5-s987654/` (a five-hand probe left at the repository root) and
+   graphify's scan cache (`.graphify_incremental.json`, `.graphify_python`,
+   `.graphify_labels.json`, `.graphify_root`) were tracked. Together they
+   published the macOS account name 382 times. All are now untracked, and
+   `.gitignore` carries `/1v1-*/` and `graphify-out/.graphify_*` so neither can
+   return. Tracked files: 287 → 280.
+2. The dated audit receipt `docs/audits/2026-11-13-audit.md` quotes the path it
+   ran at. Dated audits are not rewritten (§5), so the new gate allowlists
+   `docs/audits/` by name and nothing else.
+
+**New gate — `scripts/security_audit.py`.** Stdlib only, read-only, ~9 seconds.
+Nine checks: secret patterns in the tree; the same across all history; forbidden
+filenames; tracked absolute paths; dangerous Python constructs; dangerous C
+constructs; the run-id guard still exists and still agrees across modules;
+dependency surface. Exits non-zero on any finding.
+
+Wired into `.github/workflows/ci.yml` (docs gate), `scripts/ci/local.sh`, and
+§2 of `AGENTS.md`. The CI checkout sets `fetch-depth: 0` deliberately: the
+default one-commit clone would make the history scan find nothing and still
+report PASS.
+
+**The gate caught itself.** Its first CI run went red on its own source: the
+human-readable labels in the dangerous-construct table contained the literal
+forms of what it looks for, so it matched its own data. The regular expressions
+never matched their own text. Labels were changed to describe the construct
+instead of quoting it; the file stays fully scanned rather than being excluded,
+because a gate that skips itself is blind where it matters most.
+
+**GitHub settings enabled.** Secret scanning and push protection are now on
+(`secret_scanning: enabled`, `secret_scanning_push_protection: enabled`).
+Non-provider patterns and validity checks remain disabled; they require GitHub
+Advanced Security.
+
+**Verification.**
+
+- `python3 scripts/security_audit.py` → `RESULT: PASS` (9/9 checks clean).
+- `python3 scripts/docs_audit.py` → PASS. `python3 scripts/rules_audit.py` → PASS.
+- CI run `43773571960` (commit `3b09bca`) → **success**: Documentation gate
+  (rulebook, docs, security) and macOS build + suites, engine `524`, bridge `141`.
+
+**Not done, deliberately.** History was not rewritten, so the 382 old path
+occurrences remain readable in past commits; the trade-off is stated in OPS-50.
+No professional taint analysis or manual review of the bridge pointer handling
+was performed — this is heuristic static analysis. The engine's real security
+property (no decision may observe a concealed tile) still rests on its existing
+tests and soak, not on anything added here.
