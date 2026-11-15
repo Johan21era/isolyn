@@ -19,7 +19,7 @@ void hashMix(std::uint64_t& hash, std::uint64_t value) noexcept {
 
 } // namespace
 
-std::uint64_t GameState::hash() const {
+std::uint64_t GameState::transpositionKey(TranspositionKeyMode mode) const {
     std::uint64_t hash = kFnvOffset;
 
     hashMix(hash, static_cast<std::uint64_t>(m_mode));
@@ -59,13 +59,36 @@ std::uint64_t GameState::hash() const {
     hashMix(hash, static_cast<std::uint64_t>(boneyard.size()));
     for (const auto& tile : boneyard) hashMix(hash, static_cast<std::uint64_t>(tile.index()));
 
-    hashMix(hash, static_cast<std::uint64_t>(m_playHistory.size()));
-    for (const auto& record : m_playHistory) {
-        hashMix(hash, static_cast<std::uint64_t>(record.playerIndex));
-        hashMix(hash, static_cast<std::uint64_t>(record.tile.index()));
+    if (mode == TranspositionKeyMode::FullHistory) {
+        hashMix(hash, static_cast<std::uint64_t>(m_playHistory.size()));
+        for (const auto& record : m_playHistory) {
+            hashMix(hash, static_cast<std::uint64_t>(record.playerIndex));
+            hashMix(hash, static_cast<std::uint64_t>(record.tile.index()));
+        }
+    } else {
+        // Only the two facts RulesEngine::determineCloser reads. A state with
+        // no plays yet and one whose first play is still pending both key as
+        // "no last player", which is correct: neither has a closer.
+        std::uint64_t lastPlayer = 0xFFFFFFFFULL;
+        std::uint64_t lastNonDouble = 0xFFFFFFFFULL;
+        for (auto it = m_playHistory.rbegin(); it != m_playHistory.rend(); ++it) {
+            if (lastPlayer == 0xFFFFFFFFULL) {
+                lastPlayer = static_cast<std::uint64_t>(it->playerIndex);
+            }
+            if (!it->tile.isDouble()) {
+                lastNonDouble = static_cast<std::uint64_t>(it->playerIndex);
+                break;
+            }
+        }
+        hashMix(hash, lastPlayer);
+        hashMix(hash, lastNonDouble);
     }
 
     return hash;
+}
+
+std::uint64_t GameState::hash() const {
+    return transpositionKey(TranspositionKeyMode::FullHistory);
 }
 
 GameState::GameState(GameMode mode,

@@ -99,6 +99,13 @@ public:
         // deep-search profiles (maxDepthPlies >= 24).
         bool useSelectiveSearch = false;
 
+        // Which transposition-table key the search uses. CloserSummary keeps
+        // only the history that RulesEngine::determineCloser reads, so
+        // positions reached by different move orders share one entry.
+        // Off by default: an unmeasured change is an experiment.
+        GameState::TranspositionKeyMode transpositionKeyMode =
+            GameState::TranspositionKeyMode::FullHistory;
+
         // Worker threads used to evaluate determinization samples in
         // parallel. 0 = automatic (hardware concurrency, capped by
         // determinizationCount), 1 = the original single-threaded path.

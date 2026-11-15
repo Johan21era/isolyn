@@ -225,6 +225,8 @@ struct SearchContext {
     int endgameTileLimit = 0;
     bool useAlphaBeta = true;
     bool useSelectiveSearch = false;
+    GameState::TranspositionKeyMode transpositionKeyMode =
+        GameState::TranspositionKeyMode::FullHistory;
     bool hasDeadline = false;
     std::chrono::steady_clock::time_point deadline{};
     const std::atomic<bool>* cancelRequested = nullptr;
@@ -553,7 +555,7 @@ SearchValue searchZeroSum(GameState& state,
         }
     }
 
-    const std::uint64_t key = state.hash();
+    const std::uint64_t key = state.transpositionKey(context.transpositionKeyMode);
     const TTEntry* ttEntry = context.tt->find(key);
     if (ttEntry != nullptr && ttEntry->depth >= depthRemaining) {
         const bool usable = ttEntry->flag == TTFlag::Exact ||
@@ -696,7 +698,7 @@ RawEvaluation searchMulti(GameState& state,
         return child;
     }
 
-    const std::uint64_t key = state.hash();
+    const std::uint64_t key = state.transpositionKey(context.transpositionKeyMode);
     const TTEntry* ttEntry = context.tt->find(key);
     if (ttEntry != nullptr && ttEntry->depth >= depthRemaining) {
         ++context.ttHits;
@@ -795,6 +797,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         ctx.endgameTileLimit = config.endgameTileLimit;
         ctx.useAlphaBeta = config.useAlphaBeta;
         ctx.useSelectiveSearch = config.useSelectiveSearch;
+        ctx.transpositionKeyMode = config.transpositionKeyMode;
         ctx.cancelRequested = cancelRequested;
         ctx.sharedAbort = &stopFlag;
         ctx.weights = config.weights;

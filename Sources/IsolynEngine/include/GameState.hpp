@@ -77,12 +77,32 @@ public:
     // Stable 64-bit hash of every fact that can affect a future search:
     // hands (order-independent), chain sequence/end values, the full
     // boneyard draw order (hidden from players, but not from the search's
-    // sampled world), current player, mode, and play history. This is the
-    // key used by SearchEngine's transposition table. It is deliberately
-    // not incremental yet -- states here are tiny, and a correct hash is
-    // worth more than shaving a few microseconds before parity/strength
-    // measurements exist.
+    // sampled world), current player, mode, and play history. This is
+    // deliberately not incremental yet -- states here are tiny, and a
+    // correct hash is worth more than shaving a few microseconds before
+    // parity/strength measurements exist.
     std::uint64_t hash() const;
+
+    // How much of the move history a transposition key has to remember.
+    //
+    // RulesEngine::determineCloser is the only consumer of playHistory() that
+    // can change a search result, and it asks two questions: who played last,
+    // and -- in 1v1 -- who played the most recent non-double. Every other
+    // record in the vector is invisible to the search, yet the default key
+    // hashes all of them, so two identical positions reached by a different
+    // order of plays key differently and the table almost never hits.
+    //
+    // CloserSummary is exactly as sound as the full key for the search: it
+    // distinguishes every pair of states on which determineCloser can differ.
+    // It is not a cheaper hash of the same thing; it is a different, smaller
+    // key space, and it is only valid because nothing else reads the history.
+    enum class TranspositionKeyMode {
+        FullHistory,   // every record, in order (the original key)
+        CloserSummary, // last player + last non-double player only
+    };
+
+    std::uint64_t transpositionKey(
+        TranspositionKeyMode mode = TranspositionKeyMode::FullHistory) const;
 
     // Removes `tile` from `playerIndex`'s hand and attaches it to the
     // chain at `side` (ignored, and the chain opened instead, if the
