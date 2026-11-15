@@ -2802,3 +2802,42 @@ views written beside it.
   `--games-csv` is passed; the aggregate README and summary are still written.
 - No game-rule, search or strength change. No claim about playing strength was
   added.
+
+## OPS-44 — Visual report and raw-file map (2026-11-15)
+
+**Scope:** make the generated run folder readable in two ways: a self-contained
+visual page for a person, and a map beside the raw CSV for anyone who opens the
+evidence directly.
+
+### Change
+
+- `lab report` now also writes `report.html`, a self-contained offline page with
+  the verdict, headline counts, participant and outcome tables, checks, next
+  steps, reproduction command, file links, glossary and the first 50 hands.
+  It uses inline CSS only; there are no scripts, CDNs or network requests.
+- The same command writes `shards/README.md`, which explains that a raw row is a
+  decision rather than a hand, lists the batches, defines every CSV column in
+  plain language, and gives safe inspection commands.
+- The Markdown README links to the visual page and includes both generated files
+  in its file map. `summary.json` records `report.html` and
+  `shards/README.md` in its file list.
+- Extended the report test to assert the visual page, the raw-file map and the
+  new summary file entries.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 47 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| `python3 scripts/docs_audit.py` | `RESULT: PASS — links, paths, status headers, register, banners and figures are consistent` |
+| Generated folder | `README.md`, `report.html`, `summary.json`, `games.csv`, `shards/README.md`; raw shard hash unchanged |
+| Visual page spot-check | contains the `SMOKE TEST` verdict, `Player 1` / `Player 2` table, checks, first-hands table and `</html>` |
+
+### Limits
+
+- `report.html` shows the first 50 hands; the complete hand table remains
+  `games.csv` when the run is at or below 100,000 hands.
+- The visual page is generated at run finish/exit, not after every hand while a
+  run is active.
+- No game-rule, search or strength change. No strength claim was added.

@@ -97,12 +97,15 @@ pid whose command line is this lab's runner. `clean --probes` removes only
 regenerable warm-up runs; `--stale-locks` removes dead lock files; neither
 touches a real run.
 
-Every finished (or interrupted) `run` also writes `README.md`, `summary.json`
-and, for runs up to 100,000 hands, `games.csv` beside `manifest.json`. The
-README is the plain-language entry point: it states what the run was, what
-happened, which checks passed or warned, what not to conclude, how to reproduce
-it, and where every file lives. `lab report <run-id>` rebuilds the same files
-from the raw shards. The report never edits a raw CSV; it derives a new view.
+Every finished (or interrupted) `run` also writes `README.md`, `report.html`,
+`summary.json`, `shards/README.md` and, for runs up to 100,000 hands,
+`games.csv` beside `manifest.json`. The README is the plain-language entry
+point; `report.html` is the same report as an offline visual page; and
+`shards/README.md` explains the raw CSV shape and every column. They state what
+the run was, what happened, which checks passed or warned, what not to conclude,
+how to reproduce it, and where every file lives. `lab report <run-id>` rebuilds
+the same files from the raw shards. The report never edits a raw CSV; it derives
+a new view.
 
 The read path is now linear. `dataset.iter_games` keeps one game in memory, and
 `calibration.analyze` accepts that iterator instead of requiring a list. The

@@ -5,8 +5,10 @@ completed shards with the same :mod:`dataset` reader used by analysis, then
 writes a small, rebuildable package beside the evidence:
 
     README.md    the "start here" explanation for a person
+    report.html  the same explanation as an offline visual page
     summary.json the same facts for the app or a script
     games.csv    one tidy row per hand, when the run is small enough
+    shards/README.md  a map and plain-language dictionary for the raw CSV
 
 The report is deliberately cautious. A finished smoke batch is called a smoke
 batch, not a strength result; an incomplete batch is not called finished; and
@@ -23,6 +25,7 @@ import os
 import re
 from collections import Counter
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 
 from . import calibration, dataset
@@ -37,6 +40,43 @@ RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 # automatic report keeps the aggregate and lets the owner force the table.
 GAMES_CSV_LIMIT = 100_000
 KNOWN_OUTCOMES = {"domino", "closed", "in_progress"}
+
+# One place to explain the wide raw CSV. The main README is for a person; this
+# is the map for anyone who opens shards/ and wonders what a column means.
+RAW_COLUMNS = [
+    ("game", "Hand number inside this batch (the rulebook calls it a hand or round)."),
+    ("seed", "The batch's base seed; the harness derives each hand's deal from it."),
+    ("mode", "1v1, 1v1v1 or 2v2."),
+    ("config_a_depth", "Search lookahead for side A."),
+    ("config_a_determinizations", "Hidden-world samples for side A."),
+    ("config_b_depth", "Search lookahead for side B."),
+    ("config_b_determinizations", "Hidden-world samples for side B."),
+    ("participant_side0..3", "Which search side (A or B) each participant used in this hand."),
+    ("move", "Decision number inside the hand, starting at 0."),
+    ("player", "The player who made this decision."),
+    ("tile_low", "Low number on the played tile, or -1 for a draw."),
+    ("tile_high", "High number on the played tile, or -1 for a draw."),
+    ("side", "Chain side: 0 = left, 1 = right, -1 = draw."),
+    ("depth_reached", "Deepest fully completed search depth for this decision."),
+    ("nodes", "Search nodes visited for this decision."),
+    ("tt_hits", "Transposition-table hits for this decision."),
+    ("exact_endgame", "1 when the exact endgame solver ran; otherwise 0."),
+    ("eval_total", "The engine's evaluation of the position for this decision."),
+    ("mobility", "Evaluation component: how many plays remained."),
+    ("blocking", "Evaluation component: how much the opponent was blocked."),
+    ("expected_value", "Evaluation component: expected hand value."),
+    ("closing_opportunity", "Evaluation component: chance to close profitably."),
+    ("win_threat", "Evaluation component: immediate winning pressure."),
+    ("pip_control", "Evaluation component: control of pip totals."),
+    ("tempo", "Evaluation component: turn advantage."),
+    ("team_support", "Evaluation component: partner support (2v2)."),
+    ("initial_hand0..3", "Opening pip total for each participant after the deal."),
+    ("final_hand0..3", "Ending pip total for each participant."),
+    ("participant_count", "2 for 1v1/2v2, 3 for 1v1v1."),
+    ("participant_score0..3", "Rulebook score awarded to each participant for this hand."),
+    ("outcome", "domino, closed, or in_progress."),
+    ("deciding_player", "The domino winner or the closer; a closer can still lose (R-03)."),
+]
 
 
 def _now() -> str:
@@ -433,6 +473,8 @@ def _render_readme(
         "",
         f"**Folder:** `{run_dir}`",
         "",
+        "**Visual version:** [report.html](report.html) — opens in a browser with the same report as cards and tables.",
+        "",
         f"**Generated:** {summary['generated_at']} from `manifest.json` and the finished shard CSVs.",
         "",
         "This file is generated. It is safe to delete and rebuild with:",
@@ -595,9 +637,11 @@ def _render_readme(
             "| File or folder | What it is |",
             "|---|---|",
             "| `README.md` | This explanation. Generated; safe to rebuild. |",
+            "| `report.html` | The same report as a visual page; double-click to open it. |",
             "| `summary.json` | The same facts for the app or a script. |",
             "| `games.csv` | One row per hand, when the run is small enough for a tidy table. |",
             "| `manifest.json` | The runner's machine record: batches, seeds, status and row counts. |",
+            "| `shards/README.md` | A raw-file map and a plain-language column dictionary. |",
             "| `shards/` | The raw per-batch CSVs and their logs. This is the evidence. |",
             "| `runner.log` | The runner's progress log. |",
             "",
@@ -640,6 +684,292 @@ def _render_readme(
         ]
     )
     return "\n".join(lines)
+
+
+def _markdown_cell(value: object) -> str:
+    return str(value if value is not None else "—").replace("|", "\\|").replace("\n", " ")
+
+
+def _render_shards_readme(
+    run_dir: Path,
+    shards: list[dict],
+    games_csv: Path | None,
+) -> str:
+    lines = [
+        "# Raw batch files — evidence",
+        "",
+        "These are the original CSV and log files produced by the C++ self-play",
+        "harness. They are the evidence for the run. **Do not edit, sort or clean",
+        "them in place**; that would change the record the verifier and the report",
+        "depend on.",
+        "",
+        "Start with [`../README.md`](../README.md) for the plain-language version,",
+        "or open [`../report.html`](../report.html) in a browser for the visual",
+        "version. The hand-level table is [`../games.csv`](../games.csv) when the",
+        "run is small enough to include it.",
+        "",
+        f"Run: `{run_dir.name}`",
+        "",
+        "## Batches",
+        "",
+        "| Batch | Status | Planned hands | Recorded rows | CSV | Log |",
+        "|---:|---|---:|---:|---|---|",
+    ]
+    if shards:
+        for shard in sorted(shards, key=lambda item: item.get("index", 0)):
+            lines.append(
+                "| {index} | {status} | {games} | {rows} | `{csv}` | `{log}` |".format(
+                    index=_markdown_cell(shard.get("index")),
+                    status=_markdown_cell(shard.get("status")),
+                    games=_markdown_cell(shard.get("games")),
+                    rows=_markdown_cell(shard.get("rows")),
+                    csv=_markdown_cell(shard.get("csv")),
+                    log=_markdown_cell(shard.get("log")),
+                )
+            )
+    else:
+        lines.append("| — | — | — | — | — | — |")
+    lines.extend(
+        [
+            "",
+            "## The shape of a CSV",
+            "",
+            "A batch CSV has **one row per decision**, not one row per hand. Every",
+            "row repeats the hand's final summary (scores, outcome, starting and ending",
+            "pips), so the same hand appears many times. Rows for one hand are",
+            "contiguous and the `game` number increases within the file.",
+            "",
+            "To read a hand, group rows with the same `game` number. To avoid doing",
+            "that by eye, use the generated `../games.csv` or the report.",
+            "",
+            "## Column dictionary",
+            "",
+            "| Column | Plain meaning |",
+            "|---|---|",
+        ]
+    )
+    for column, meaning in RAW_COLUMNS:
+        lines.append(f"| `{_markdown_cell(column)}` | {_markdown_cell(meaning)} |")
+    lines.extend(
+        [
+            "",
+            "## Safe inspection",
+            "",
+            "```bash",
+            "# first rows only",
+            "head -3 shards/shard-0000.csv",
+            "",
+            "# rebuild the friendly report after inspecting",
+            f"./scripts/lab report {run_dir.name} --runs-dir {run_dir.parent}",
+            "```",
+            "",
+            "A malformed or truncated batch is a finding, not permission to edit the",
+            "CSV. Inspect the matching `.log`, then resume or rerun the affected batch.",
+            "",
+            "This file is generated and safe to rebuild; the raw CSV and log files are",
+            "not generated by the report.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _verdict_tone(summary: dict) -> str:
+    if summary["status"] != "complete" or any(
+        check["level"] == "fail" for check in summary["checks"]
+    ):
+        return "bad"
+    if summary["verdict"].startswith("SMOKE TEST") or summary["verdict"].startswith("PRELIMINARY"):
+        return "warn"
+    return "good"
+
+
+def _html_escape(value: object) -> str:
+    return escape(str(value if value is not None else ""), quote=True)
+
+
+def _render_html(
+    summary: dict,
+    run_dir: Path,
+    games_csv: Path | None,
+    hand_rows: list[dict[str, str]],
+) -> str:
+    config = summary["config"]
+    counts = summary["counts"]
+    tone = _verdict_tone(summary)
+    tone_label = "good" if tone == "good" else "needs attention"
+    if tone == "bad":
+        tone_label = "do not use as a result"
+    checks = "".join(
+        f'<li class="check { _html_escape(check["level"]) }">'
+        f'<span class="badge { _html_escape(check["level"]) }">{_html_escape(check["level"])}</span>'
+        f'<div><strong>{_html_escape(check["title"])}</strong>'
+        f'<p>{_html_escape(check["detail"])}</p>'
+        + (f'<p class="action">Next: {_html_escape(check["action"])}</p>' if check.get("action") else "")
+        + "</div></li>"
+        for check in summary["checks"]
+    )
+    participant_rows = "".join(
+        f"<tr><td>{_html_escape(item['label'])}</td><td>{item['games']:,}</td>"
+        f"<td>{item['wins']:,}</td><td>{item['win_rate'] * 100:.1f}%</td>"
+        f"<td>{item['average_points']:.2f}</td>"
+        f"<td>{item['average_initial_pips']:.1f}</td></tr>"
+        for item in summary["participants"]
+    )
+    outcomes = "".join(
+        f"<tr><td>{_html_escape(_outcome_plain(outcome))}</td><td>{count:,}</td>"
+        f"<td>{_html_escape(_outcome_meaning(outcome))}</td></tr>"
+        for outcome, count in sorted(summary["outcomes"].items())
+    )
+    actions: list[str] = []
+    for check in summary["checks"]:
+        action = check.get("action")
+        if action and action not in actions:
+            actions.append(action)
+    if not actions:
+        actions = ["Keep the raw CSVs; rebuild this report after another batch."]
+    next_steps = "".join(f"<li>{_html_escape(action)}</li>" for action in actions)
+    hand_table = ""
+    if hand_rows:
+        body = "".join(
+            f"<tr><td>{_html_escape(row.get('batch', ''))}</td>"
+            f"<td>{_html_escape(row.get('hand', ''))}</td>"
+            f"<td>{_html_escape(row.get('what_happened', ''))}</td>"
+            f"<td>{_html_escape(row.get('winner', '')) or '—'}</td>"
+            f"<td>{_html_escape(row.get('decisions', ''))}</td></tr>"
+            for row in hand_rows
+        )
+        hand_table = (
+            "<table><thead><tr><th>Batch</th><th>Hand</th><th>What happened</th>"
+            "<th>Winner</th><th>Decisions</th></tr></thead><tbody>" + body + "</tbody></table>"
+        )
+        if counts["games_observed"] > len(hand_rows):
+            hand_table += (
+                f'<p class="note">Showing the first {len(hand_rows):,} of '
+                f'{counts["games_observed"]:,} hands. The complete table is in '
+                '<a href="games.csv">games.csv</a>.</p>'
+            )
+    else:
+        hand_table = (
+            '<p class="note">The per-hand table is not included for this run. '
+            "The aggregate report and raw shards are still complete.</p>"
+        )
+    file_links = [
+        ("README.md", "README.md", "this explanation, in Markdown"),
+        ("summary.json", "summary.json", "machine-readable summary"),
+        ("manifest.json", "manifest.json", "runner state and batch plan"),
+        ("shards/README.md", "shards/README.md", "raw-file map and CSV dictionary"),
+        ("shards/", "shards/", "raw per-batch CSV and logs"),
+        ("runner.log", "runner.log", "runner progress"),
+    ]
+    if games_csv is not None:
+        file_links.insert(2, ("games.csv", "games.csv", "one row per hand"))
+    file_rows = "".join(
+        f'<li><a href="{href}">{label}</a><span>{_html_escape(note)}</span></li>'
+        for label, href, note in file_links
+    )
+    words = "".join(
+        f"<dt>{_html_escape(term)}</dt><dd>{_html_escape(definition)}</dd>"
+        for term, definition in [
+            ("Hand", "One deal. The CSV calls it a game; the rulebook calls it a hand or round."),
+            ("Decision", "One tile play or draw choice. The raw CSV has one row per decision."),
+            ("Depth", "How many moves ahead the search looks. Low depth is fast and weak."),
+            ("Samples / hidden worlds", "How many possible hidden-hand arrangements the search considers."),
+            ("Seed", "The number that makes the deal sequence reproducible."),
+            ("Batch / shard", "A group of hands run by one worker process."),
+            ("Side A / side B", "The two search configurations; the engine alternates the physical seats."),
+            ("Closed hand", "No legal play remained. The lower hand wins; 1v1/2v2 award the loser's total, 1v1v1 gives the lowest hand zero."),
+        ]
+    )
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{_html_escape(summary['run_id'])} — Isolyn lab report</title>
+<style>
+:root {{ --bg:#11100e; --panel:#1b1915; --line:#383228; --ink:#f2eadb; --muted:#b9ad99; --brass:#d0a85c; --good:#83c79a; --warn:#e2b15c; --bad:#e58b8b; }}
+* {{ box-sizing:border-box; }}
+body {{ margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }}
+main {{ max-width:1080px; margin:0 auto; padding:34px 22px 70px; }}
+h1,h2,h3 {{ line-height:1.15; margin:0 0 .45em; }}
+h1 {{ font-size:clamp(1.7rem,4vw,2.8rem); letter-spacing:-.03em; }}
+h2 {{ margin-top:2.2rem; font-size:1.35rem; }}
+h3 {{ margin-top:1.6rem; font-size:1.05rem; color:var(--brass); }}
+p {{ margin:.45em 0; }}
+a {{ color:var(--brass); }}
+.eyebrow {{ color:var(--brass); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; }}
+.sub {{ color:var(--muted); max-width:800px; }}
+.verdict {{ margin:26px 0; padding:22px 24px; border:1px solid var(--line); border-left:6px solid var(--warn); background:var(--panel); border-radius:12px; }}
+.verdict.good {{ border-left-color:var(--good); }} .verdict.warn {{ border-left-color:var(--warn); }} .verdict.bad {{ border-left-color:var(--bad); }}
+.verdict h2 {{ margin:0 0 .35em; font-size:clamp(1.15rem,2.5vw,1.6rem); }}
+.verdict p {{ color:var(--muted); }}
+.grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:12px; margin:18px 0; }}
+.card {{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }}
+.card b {{ display:block; font-size:1.55rem; color:var(--ink); }}
+.card span {{ color:var(--muted); font-size:.8rem; }}
+table {{ width:100%; border-collapse:collapse; margin:12px 0; font-size:.94rem; }}
+th,td {{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }}
+th {{ color:var(--muted); font-size:.76rem; text-transform:uppercase; letter-spacing:.07em; }}
+tr:last-child td {{ border-bottom:0; }}
+.checks {{ list-style:none; padding:0; display:grid; gap:10px; }}
+.check {{ display:flex; gap:12px; padding:13px 15px; background:var(--panel); border:1px solid var(--line); border-radius:9px; }}
+.check p {{ color:var(--muted); margin:.2em 0; }}
+.check .action {{ color:var(--ink); }}
+.badge {{ align-self:flex-start; min-width:48px; text-align:center; border-radius:999px; padding:2px 7px; font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; background:#302b21; color:var(--warn); }}
+.badge.pass {{ background:#173024; color:var(--good); }} .badge.fail {{ background:#3a1d1d; color:var(--bad); }}
+.callout {{ border:1px solid var(--line); border-left:4px solid var(--bad); background:#211616; border-radius:8px; padding:15px 18px; color:var(--muted); }}
+pre {{ overflow:auto; background:#0a0908; border:1px solid var(--line); border-radius:8px; padding:14px; color:#e9dcc5; font-size:.85rem; }}
+.files {{ list-style:none; padding:0; }}
+.files li {{ display:flex; gap:10px; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); }}
+.files span {{ color:var(--muted); text-align:right; }}
+.note {{ color:var(--muted); font-size:.88rem; }}
+footer {{ margin-top:38px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:.8rem; }}
+@media (max-width:650px) {{ .files li {{ display:block; }} .files span {{ display:block; text-align:left; }} th,td {{ padding:7px 5px; }} }}
+</style>
+</head>
+<body><main>
+<p class="eyebrow">Isolyn lab · self-play report</p>
+<h1>{_html_escape(summary['run_id'])}</h1>
+<p class="sub">{_html_escape(summary['description'])}</p>
+<section class="verdict {tone}">
+  <div class="eyebrow">Verdict · {_html_escape(tone_label)}</div>
+  <h2>{_html_escape(summary['verdict'])}</h2>
+  <p>{_html_escape(summary['meaning'])}</p>
+  <p class="note">Generated {_html_escape(summary['generated_at'])} from the raw batch CSVs.</p>
+</section>
+<div class="grid">
+  <div class="card"><b>{counts['games_observed']:,}</b><span>hands recorded</span></div>
+  <div class="card"><b>{counts['games_finished']:,}</b><span>hands finished</span></div>
+  <div class="card"><b>{counts['incomplete']:,}</b><span>unfinished</span></div>
+  <div class="card"><b>{counts['decisions']:,}</b><span>decisions</span></div>
+  <div class="card"><b>{counts['average_decisions']:.1f}</b><span>avg decisions / hand</span></div>
+  <div class="card"><b>{counts['batches_done']}/{counts['batches_total']}</b><span>batches done</span></div>
+</div>
+<h2>What happened</h2>
+  <p><strong>Mode:</strong> {_html_escape(_mode_plain(config.get('mode', '?')))} · <strong>Search:</strong> depth {_html_escape(config.get('depth'))} / {_html_escape(config.get('determinizations'))} samples / {_html_escape(config.get('workers'))} {'worker' if config.get('workers') == 1 else 'workers'} · <strong>Seed:</strong> {_html_escape(config.get('seed'))}</p>
+<h3>Participants</h3>
+<table><thead><tr><th>Participant</th><th>Hands</th><th>Wins</th><th>Win rate</th><th>Avg points</th><th>Avg starting pips</th></tr></thead><tbody>{participant_rows}</tbody></table>
+<h3>Results</h3>
+<table><thead><tr><th>Result</th><th>Hands</th><th>Plain meaning</th></tr></thead><tbody>{outcomes}</tbody></table>
+<h2>Checks</h2>
+<ul class="checks">{checks}</ul>
+<h2>What to do next</h2>
+<ol>{next_steps}</ol>
+<h2>First hands</h2>
+{hand_table}
+<h2>How to reproduce</h2>
+<p class="note">A new run id prevents this folder from being overwritten.</p>
+<pre><code>{_html_escape(summary['reproduce_command'])}</code></pre>
+<h2>What not to conclude</h2>
+<div class="callout">{_html_escape(summary['caution'])}</div>
+<h2>Where everything is</h2>
+<ul class="files">{file_rows}</ul>
+<h2>Words used here</h2>
+<dl>{words}</dl>
+<footer>Generated by <code>lab report</code>. Raw CSV files are evidence and are never edited by this report. <a href="README.md">Markdown version</a>.</footer>
+</main></body></html>
+"""
 
 
 def generate(
@@ -923,20 +1253,40 @@ def generate(
         "reproduce_command": _reproduce_command(manifest, run_dir),
         "files": {
             "readme": "README.md",
+            "html": "report.html",
             "summary": "summary.json",
             "games_csv": games_csv.name if games_csv else None,
             "manifest": "manifest.json",
             "shards": "shards/",
+            "shards_readme": "shards/README.md",
             "runner_log": "runner.log",
         },
     }
 
+    hand_rows: list[dict[str, str]] = []
+    if games_csv is not None:
+        try:
+            with games_csv.open(newline="", encoding="utf-8") as handle:
+                for index, row in enumerate(csv.DictReader(handle)):
+                    if index >= 50:
+                        break
+                    hand_rows.append(dict(row))
+        except (OSError, csv.Error):
+            hand_rows = []
+
+    (run_dir / "shards").mkdir(exist_ok=True)
+    shards_readme = _render_shards_readme(run_dir, shards, games_csv)
     readme = _render_readme(summary, run_dir, games_csv)
+    html = _render_html(summary, run_dir, games_csv, hand_rows)
+    _atomic_text(run_dir / "shards" / "README.md", shards_readme)
     _atomic_json(run_dir / "summary.json", summary)
     _atomic_text(run_dir / "README.md", readme)
+    _atomic_text(run_dir / "report.html", html)
     return {
         "readme": run_dir / "README.md",
+        "html": run_dir / "report.html",
         "summary": run_dir / "summary.json",
+        "shards_readme": run_dir / "shards" / "README.md",
         "games_csv": games_csv,
     }
 
@@ -944,7 +1294,7 @@ def generate(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="lab report",
-        description="Write a plain-language README, summary and games table for one run.",
+        description="Write a plain-language README, visual report, summary and games table for one run.",
     )
     parser.add_argument("run_id")
     parser.add_argument("--runs-dir", type=Path, help="directory containing run folders")
@@ -972,7 +1322,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"could not write report: {exc}", file=sys.stderr)
         return 2
     print(f"wrote {paths['readme']}")
+    print(f"wrote {paths['html']}")
     print(f"wrote {paths['summary']}")
+    print(f"wrote {paths['shards_readme']}")
     if paths["games_csv"] is not None:
         print(f"wrote {paths['games_csv']}")
     else:
