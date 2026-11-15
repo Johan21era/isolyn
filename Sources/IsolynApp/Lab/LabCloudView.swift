@@ -109,23 +109,7 @@ struct LabCloudView: View {
             }
 
             HStack(spacing: 14) {
-                Button {
-                    confirmUpload = true
-                } label: {
-                    Text(cloud.isBusy ? "Working…" : "Start 10,000-game Kaggle run")
-                }
-                .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 280))
-                .disabled(cloud.isBusy || cloud.owner.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                if cloud.hasPushed && !cloud.assembled {
-                    Button {
-                        cloud.collect()
-                    } label: {
-                        Text(cloud.phase == .collecting ? "Collecting…" : "Collect results")
-                    }
-                    .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 180))
-                    .disabled(!cloud.canCollect)
-                }
+                primaryAction
                 Spacer()
             }
 
@@ -135,6 +119,39 @@ struct LabCloudView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .labCard()
+    }
+
+    @ViewBuilder
+    private var primaryAction: some View {
+        if cloud.assembled {
+            Text("Collected and verified")
+                .font(IsolynTheme.body(13))
+                .foregroundStyle(IsolynTheme.ivoryMuted)
+        } else if !cloud.hasPushed {
+            Button {
+                confirmUpload = true
+            } label: {
+                Text(cloud.isBusy ? "Working…" : "Start 10,000-game Kaggle run")
+            }
+            .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 280))
+            .disabled(cloud.isBusy || cloud.owner.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } else if cloud.remoteComplete {
+            Button {
+                cloud.collect()
+            } label: {
+                Text(cloud.phase == .collecting ? "Collecting…" : "Collect verified results")
+            }
+            .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 280))
+            .disabled(!cloud.canCollect)
+        } else {
+            Button {
+                cloud.checkStatus()
+            } label: {
+                Text(cloud.phase == .checkingStatus ? "Checking Kaggle…" : "Check Kaggle status")
+            }
+            .buttonStyle(PrimaryCapsuleButtonStyle(minWidth: 280))
+            .disabled(cloud.isBusy)
+        }
     }
 
     private var statusCard: some View {
@@ -160,6 +177,12 @@ struct LabCloudView: View {
             Text(cloud.planSummary)
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(IsolynTheme.ivoryMuted)
+
+            if let remoteStatus = cloud.remoteStatus {
+                Text("Kaggle: \(remoteStatus)")
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(remoteStatus == "complete" ? IsolynTheme.ivory : IsolynTheme.brass)
+            }
 
             if let message = cloud.message {
                 Text(message)
@@ -194,7 +217,7 @@ struct LabCloudView: View {
         switch cloud.phase {
         case .finished: return IsolynTheme.ivory
         case .failed: return Color(red: 0.82, green: 0.40, blue: 0.32)
-        case .waiting, .planning, .preparing, .uploading, .collecting: return IsolynTheme.brass
+        case .waiting, .planning, .preparing, .uploading, .checkingStatus, .collecting: return IsolynTheme.brass
         case .idle, .stopped: return IsolynTheme.ivoryMuted
         }
     }

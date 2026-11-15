@@ -66,6 +66,7 @@ final class LabCloudService {
         case planning
         case preparing
         case uploading
+        case checkingStatus
         case waiting
         case collecting
         case finished
@@ -74,7 +75,7 @@ final class LabCloudService {
 
         var isBusy: Bool {
             switch self {
-            case .planning, .preparing, .uploading, .collecting: return true
+            case .planning, .preparing, .uploading, .checkingStatus, .collecting: return true
             case .idle, .waiting, .finished, .stopped, .failed: return false
             }
         }
@@ -84,6 +85,7 @@ final class LabCloudService {
         case plan
         case prepare
         case push
+        case status
         case collect
 
         var title: String {
@@ -91,6 +93,7 @@ final class LabCloudService {
             case .plan: return "Planning"
             case .prepare: return "Preparing the private snapshot"
             case .push: return "Uploading to Kaggle"
+            case .status: return "Checking Kaggle status"
             case .collect: return "Fetching and verifying"
             }
         }
@@ -100,6 +103,7 @@ final class LabCloudService {
             case .plan: return "cloud-plan.log"
             case .prepare: return "cloud-prepare.log"
             case .push: return "cloud-push.log"
+            case .status: return "cloud-status.log"
             case .collect: return "cloud-collect.log"
             }
         }
@@ -120,6 +124,8 @@ final class LabCloudService {
     private(set) var plan: LabCloudPlan?
     private(set) var ledger: LabCloudLedger?
     private(set) var assembled = false
+    private(set) var remoteComplete = false
+    private(set) var remoteStatus: String?
     private(set) var message: String?
     private(set) var logTail: String?
     private(set) var lastLogURL: URL?
@@ -164,7 +170,7 @@ final class LabCloudService {
     }
 
     var canCollect: Bool {
-        !isBusy && hasPushed && !assembled
+        !isBusy && hasPushed && remoteComplete && !assembled
     }
 
     var hasPushed: Bool {
@@ -201,6 +207,7 @@ final class LabCloudService {
         case .planning: return "Planning the 10,000-game run…"
         case .preparing: return "Preparing the private snapshot…"
         case .uploading: return "Uploading the private snapshot…"
+        case .checkingStatus: return "Checking Kaggle status…"
         case .waiting: return hasPushed ? "Uploaded — waiting for Kaggle" : "Nothing uploaded"
         case .collecting: return "Fetching and verifying the result…"
         case .finished: return "Verified and assembled"
@@ -225,11 +232,11 @@ final class LabCloudService {
         if assembled {
             return "The verified CSV is in the cloud run folder, beside its SHA-256 summary."
         }
-        if hasVerified {
-            return "The downloaded session is verified. Press Collect to fetch and assemble anything still outstanding."
+        if remoteComplete {
+            return "Kaggle reports the notebook is complete. Collect will download, verify and assemble it."
         }
         if hasPushed {
-            return "Kaggle has the notebook. Come back after it finishes and press Collect results."
+            return "Kaggle has the notebook. Check its status first; Collect appears only when it is complete."
         }
         return "Nothing is uploaded until you confirm the private upload."
     }
@@ -270,7 +277,7 @@ final class LabCloudService {
 
         if hasPushed {
             phase = .waiting
-            message = "This calibration run is already uploaded. Press Collect results when Kaggle finishes."
+            message = "This calibration run is already uploaded. Use Check Kaggle status; Collect appears when it is complete."
             return
         }
         if isPrepared, planMatchesSource {
@@ -290,11 +297,35 @@ final class LabCloudService {
         launch(.plan, root: root)
     }
 
+    /// Ask Kaggle whether the notebook is still running. This is deliberately a
+    /// separate action from collecting: an unfinished kernel is normal, not a
+    /// failure, and its status is what makes the Collect button appear.
+    func checkStatus() {
+        guard !isBusy else { return }
+        guard hasPushed else {
+            message = "Upload the calibration run before checking its status."
+            return
+        }
+        guard !assembled else {
+            message = "This run is already assembled."
+            return
+        }
+        guard let root else { return }
+        message = nil
+        logTail = nil
+        phase = .checkingStatus
+        launch(.status, root: root)
+    }
+
     /// Fetch, verify, and assemble only after Kaggle reports completion.
     func collect() {
         guard !isBusy else { return }
         guard hasPushed else {
             message = "Upload the calibration run before collecting it."
+            return
+        }
+        guard remoteComplete else {
+            message = "Check Kaggle status first; Collect appears after the notebook is complete."
             return
         }
         guard !assembled else {
@@ -361,6 +392,8 @@ final class LabCloudService {
             // `--yes` is the app's explicit confirmation gate. The code never
             // gets here without the owner pressing the upload button first.
             return ["cloud", "push", runID, "--session", "0000", "--yes"]
+        case .status:
+            return ["cloud", "status", runID, "--session", "0000"]
         case .collect:
             return ["cloud", "collect", runID, "--session", "0000"]
         }
@@ -413,7 +446,18 @@ final class LabCloudService {
             if let root { launch(.push, root: root) }
         case .push:
             phase = .waiting
-            message = "Uploaded privately. Kaggle is running the CPU-only notebook; press Collect results when it finishes."
+            remoteComplete = false
+            remoteStatus = nil
+            message = "Uploaded privately. Press Check Kaggle status to see whether the notebook is finished."
+            refresh()
+        case .status:
+            let output = readLog() ?? ""
+            remoteComplete = statusSaysComplete(output)
+            remoteStatus = remoteComplete ? "complete" : "running"
+            phase = .waiting
+            message = remoteComplete
+                ? "Kaggle reports the notebook is complete. Collect verified results is now available."
+                : "Kaggle is still running the notebook. Nothing was downloaded; check again in a few minutes."
             refresh()
         case .collect:
             phase = .finished
@@ -422,11 +466,23 @@ final class LabCloudService {
         }
     }
 
-    private func readLogTail() -> String? {
+    private func readLog() -> String? {
         guard let url = lastLogURL,
               let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return text.isEmpty ? nil : text
+    }
+
+    private func readLogTail() -> String? {
+        guard let text = readLog() else { return nil }
         let tail = text.suffix(1_200)
         return tail.isEmpty ? nil : String(tail)
+    }
+
+    private func statusSaysComplete(_ output: String) -> Bool {
+        let lower = output.lowercased()
+        guard !lower.contains("not complete") else { return false }
+        return lower.range(of: "\\b(complete|success)\\b",
+                            options: [.regularExpression, .caseInsensitive]) != nil
     }
 
     private func decode<T: Decodable>(_ type: T.Type, at url: URL) -> T? {

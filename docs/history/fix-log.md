@@ -2907,3 +2907,44 @@ run fixed at 10,000 games in one session.
   not visually inspected in a running app.
 - The current worktree is dirty, so a bundle staged right now correctly says
   `DIRTY`; commit the change and run `./run.sh` again before using the Cloud tab.
+
+## OPS-46 — Make the cloud next action unambiguous (2026-11-15)
+
+**Scope:** remove the two competing Cloud-tab buttons after upload and make the
+next action depend on Kaggle's actual notebook status.
+
+### Change
+
+- The Cloud tab now shows exactly one primary action for the run state:
+  - before upload: **Start 10,000-game Kaggle run**;
+  - after upload and before a status check: **Check Kaggle status**;
+  - after a complete status: **Collect verified results**;
+  - after collection: no action, just "Collected and verified".
+- `LabCloudService` gained a separate status step. A status check is no longer
+  treated as a failed collection: a running kernel returns to the waiting state
+  with a plain message and no download.
+- `Collect` is gated on that status result. The visible status line reads
+  `Kaggle: running` or `Kaggle: complete`.
+- Added a Swift test that proves Collect is unavailable before the status check
+  and appears only after a complete status.
+- Updated `cloud/README.md`, `docs/subsystems/LAB.md` and the AGENTS counts.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `swift test` | `Executed 123 tests, with 0 failures (0 unexpected)` |
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 54 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| Engine suite | `TOTAL CHECKS PASSED: 497 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Bridge suite | `TOTAL CHECKS PASSED: 133 TOTAL CHECKS FAILED: 0 Compile failures: none Runtime failures: none` |
+| Docs audit | `RESULT: PASS — links, paths, status headers, register, banners and figures are consistent` |
+| Rules audit | `RESULT: PASS — every enforced rule names real code and a real assertion; 2 declared hole(s)` |
+
+### Limits
+
+- The live Kaggle notebook was uploaded by the owner; this change only alters
+  the local action sequence. The live kernel result is still unverified until
+  the owner checks status and collects it.
+- The new Cloud layout was compiled and unit-tested, not visually inspected in
+  a running window by the agent.

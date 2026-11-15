@@ -51,7 +51,7 @@ continuing. Do not skip a failing step and continue as if it passed.
 ./scripts/ci/test_engine.sh        # expect: 20 executables, 497 checks, 0 failed
 ./scripts/ci/test_bridge.sh        # expect: 2 executables, 133 checks, 0 failed
 swift build                        # expect: Build complete!
-swift test                         # expect: 122 tests, 0 skipped, 0 failures
+swift test                         # expect: 123 tests, 0 skipped, 0 failures
 PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 54 tests, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
@@ -66,7 +66,7 @@ R-17's private look took engine 471 → 480 and bridge 110 → 116; R-22's
 elimination took engine 480 → 490 and bridge 116 → 133; the stable-RNG fixture
 and portable build gate took engine 490 → 497 (20 executables); Swift stayed at
 112 until the Lab quality-of-life pass added eight tests (112 → 120); the Cloud
-tab added two Swift tests and seven Python source/collection tests (120 → 122
+tab added three Swift tests and seven Python source/collection tests (120 → 123
 Swift, 47 → 54 Python).
 If your run differs, the difference is a finding: explain it, do not quietly
 update the numbers.

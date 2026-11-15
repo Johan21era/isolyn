@@ -54,8 +54,9 @@ engine. The C++ harness remains the only source of game truth.
 Use 10,000 games in one session. Do not start with five million. The app's
 **Lab → Cloud** tab is the normal path: enter the Kaggle owner, confirm the
 private upload, and the app runs the fixed plan below through prepare and push.
-When Kaggle has finished, **Collect results** runs status, fetch, verify and
-assemble only after the kernel reports complete.
+Afterward, **Check Kaggle status** is the only action. **Collect verified
+results** appears only when that check reports the notebook complete; it then
+fetches, verifies and assembles the session.
 
 From a terminal, after committing the checkout:
 

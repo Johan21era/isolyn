@@ -12,6 +12,7 @@ final class LabCloudTests: XCTestCase {
     final class FakeLauncher: LabLaunching {
         private(set) var launches: [([String], URL, [String: String])] = []
         private(set) var handlers: [(Int32) -> Void] = []
+        var statusOutput = "KernelWorkerStatus.COMPLETE"
 
         func launch(
             root: URL,
@@ -36,6 +37,9 @@ final class LabCloudTests: XCTestCase {
             onExit: @escaping (Int32) -> Void
         ) throws -> LabProcessHandle {
             launches.append((arguments, logURL, environment))
+            if arguments.contains("status") {
+                try? statusOutput.write(to: logURL, atomically: true, encoding: .utf8)
+            }
             handlers.append(onExit)
             return FakeHandle()
         }
@@ -61,6 +65,29 @@ final class LabCloudTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: source)
         try data.write(to: root.appendingPathComponent("source.json"))
         return root
+    }
+
+    private func writePushedRun(root: URL, runID: String) throws {
+        let run = root.appendingPathComponent("cloud-data/cloud/\(runID)")
+        try FileManager.default.createDirectory(at: run, withIntermediateDirectories: true)
+        let plan: [String: Any] = [
+            "schema": 1,
+            "run_id": runID,
+            "games": 10_000,
+            "session_games": 10_000,
+            "source_commit": String(repeating: "a", count: 40),
+            "code_sha256": String(repeating: "b", count: 64),
+            "dataset_ref": "tester/isolyn-code",
+            "kernel_prefix": "isolyn-lab",
+            "shards": [["index": 0, "games": 10_000]],
+            "sessions": [["id": "0000", "games": 10_000]],
+        ]
+        let ledger: [String: Any] = [
+            "schema": 1,
+            "sessions": ["0000": ["pushed_at": "now", "kernel_id": "tester/isolyn-lab-0000"]],
+        ]
+        try JSONSerialization.data(withJSONObject: plan).write(to: run.appendingPathComponent("plan.json"))
+        try JSONSerialization.data(withJSONObject: ledger).write(to: run.appendingPathComponent("ledger.json"))
     }
 
     func test_start_plans_prepares_and_uploads_the_fixed_10000_game_session() async throws {
@@ -94,6 +121,33 @@ final class LabCloudTests: XCTestCase {
         XCTAssertTrue(launcher.launches[2].0.contains("--yes"))
         launcher.completeNext()
         try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(service.phase, .waiting)
+    }
+
+    func test_status_check_only_reveals_collect_after_kaggle_is_complete() async throws {
+        let root = try makeRoot()
+        let launcher = FakeLauncher()
+        let service = LabCloudService(
+            launcher: launcher,
+            root: root,
+            dataRoot: root.appendingPathComponent("cloud-data")
+        )
+        service.owner = "tester"
+        try writePushedRun(root: root, runID: service.runID)
+        service.refresh()
+
+        XCTAssertTrue(service.hasPushed)
+        XCTAssertFalse(service.canCollect, "Collect must not be available before a status check")
+
+        service.checkStatus()
+        XCTAssertEqual(launcher.launches.count, 1)
+        XCTAssertEqual(Array(launcher.launches[0].0.prefix(2)), ["cloud", "status"])
+        launcher.completeNext()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        XCTAssertTrue(service.remoteComplete)
+        XCTAssertEqual(service.remoteStatus, "complete")
+        XCTAssertTrue(service.canCollect)
         XCTAssertEqual(service.phase, .waiting)
     }
 

@@ -102,9 +102,10 @@ The Lab screen removes the terminal from the loop without changing what a run is
   rather than hiding it; the driver refuses cloud work until it is clean.
 - The Cloud tab is the one-click external path: it fixes the first run at
   10,000 games in one 4-shard session, confirms the private upload once, and
-  runs plan → prepare → push through the staged driver. **Collect results**
-  asks Kaggle for status first, then fetches, verifies and assembles only a
-  complete session. The Kaggle token is never read by the app.
+  runs plan → prepare → push through the staged driver. **Check Kaggle status**
+  is the only action after upload; **Collect verified results** appears only
+  once that check reports the notebook complete, then fetches, verifies and
+  assembles it. The Kaggle token is never read by the app.
 - App runs are written to `~/Library/Application Support/IsolynV2.0/runs`; the
   runner accepts `--runs-dir` (and honours `ISOLYN_RUNS_DIR`) so a single
   invocation can target that store. The CLI default remains `lab/data/runs`.
