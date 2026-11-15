@@ -127,7 +127,7 @@ Transitions occur only on successful commands; every mutation sends `expectedSta
 | 400–900 | 3 | 16 | solid basics |
 | 900–1600 | 4 | 24 | ≈ current defaults |
 | 1600–2300 | 5 | 40 | competitive |
-| 2300–3000 | 8 | 64 | elite; **implemented as depth 8**, measured −53.2 Elo vs 100–400 |
+| 2300–3000 | 8 | 64 | master; **implemented as depth 8**, measured −53.2 Elo vs 100–400 |
 
 Acceptance: monotonic win-rate ladder (each tier beats the previous ≥55%), correlation-vs-hand-quality declining with strength (STRATEGY_NOTES' stated signal of good calibration).
 

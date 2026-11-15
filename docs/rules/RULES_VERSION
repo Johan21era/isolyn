@@ -1,7 +1,7 @@
 Rules version 1 — dictated by the owner, 2026-11-14.
-sha256: 4412b49ce8565bcacdf639dbe2c970ddc68b7d8913b9f3791eebb676a3d4009a
+sha256: 79ca7387ac7ac5b85b93b4cee3818defaf4a1d3f406c0d6186edbc60261cfd55
 Note: the normative rule text is unchanged from the dictation. This seal reflects
-the 2026-11-14 implementation-status corrections (R-07, R-17, R-18 and R-22 now
-ENFORCED; R-17's public reveal removed; R-12's assertion pointed at the
-set-restart test). Do not treat a seal change as a rule change or as a reason to
-discard measurements of the same rule text.
+the 2026-11-15 implementation-status corrections (R-06 and R-15 now ENFORCED,
+and the earlier R-07, R-17, R-18 and R-22 corrections). Do not treat a seal
+change as a rule change or as a reason to discard measurements of the same rule
+text.

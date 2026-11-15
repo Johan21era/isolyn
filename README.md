@@ -43,7 +43,7 @@ The full index of every project document is [`docs/README.md`](docs/README.md). 
 Prototype, 52.6% complete by the independent 2026-11-14 audit, measured before
 that day's Phase 1–2 corrections (the earlier 57.5% self-assessment is
 superseded). Rules, bridge, search, self-play and AI match play are green and
-tested (497 engine, 133 bridge checks, 120 Swift tests with 0 skipped). **No current strength claim exists:** the 2026-11-14 rulebook
+tested (524 engine, 141 bridge checks, 125 Swift tests with 0 skipped). **No current strength claim exists:** the 2026-11-14 rulebook
 change voided the old ladder, and the five difficulty bands have not been
 re-measured under the current rules (see `docs/research/STRENGTH_BASELINE.md`).
 The Metal accelerator is not wired into search, and its compact parity suite

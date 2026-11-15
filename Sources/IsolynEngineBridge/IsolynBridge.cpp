@@ -219,6 +219,7 @@ struct MatchStateImpl {
     ScoreSystem scores;                            // the CURRENT set only
     int setWins[kMaxPlayers] = {};                 // completed sets per participant
     int setsToWin = 3;                             // best-of-5; 4 selects best-of-7
+    int targetScore = 151;                         // R-06: 101 or 151 in 1v1
     int setNumber = 1;                             // 1-based, current set
     std::unordered_set<uint64_t> recordedSessions; // session handles already applied
     bool matchEnded = false;                       // the GAME is over
@@ -233,7 +234,8 @@ struct MatchStateImpl {
     bool nextRoundIsSurvivor = false;
     int nextRoundStarter = -1;
     std::mutex mutex;
-    MatchStateImpl(GameMode m, int sets) : mode(m), scores(m, participantCountForMode(m)), setsToWin(sets) {
+    MatchStateImpl(GameMode m, int sets, int target = RulesEngine::kOneVsOneMatchLossThreshold)
+        : mode(m), scores(m, participantCountForMode(m), target), setsToWin(sets), targetScore(target) {
         activeCount = participantCountForMode(m);
         for (int p = 0; p < activeCount && p < kMaxPlayers; ++p) active[p] = true;
     }
@@ -532,11 +534,21 @@ MatchHandle bridge_match_begin(GameModeDTO mode) {
 }
 
 MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin) {
+    return bridge_match_begin_with_format_and_target(
+        mode, setsToWin, RulesEngine::kOneVsOneMatchLossThreshold);
+}
+
+MatchHandle bridge_match_begin_with_format_and_target(
+    GameModeDTO mode, int32_t setsToWin, int32_t targetScore) {
     if (!isValidMode(mode)) return kInvalidMatchHandle;
     if (setsToWin != 3 && setsToWin != 4) return kInvalidMatchHandle;
+    if (targetScore != RulesEngine::kOneVsOneMatchLossThreshold &&
+        targetScore != RulesEngine::kOneVsOneShortMatchLossThreshold) return kInvalidMatchHandle;
+    if (mode != GameModeDTO::OneVsOne &&
+        targetScore != RulesEngine::kOneVsOneMatchLossThreshold) return kInvalidMatchHandle;
     try {
         const GameMode engineMode = toEngine(mode);
-        auto impl = std::make_unique<MatchStateImpl>(engineMode, setsToWin);
+        auto impl = std::make_unique<MatchStateImpl>(engineMode, setsToWin, targetScore);
         return matchTable().insert(std::move(impl));
     } catch (...) { return kInvalidMatchHandle; }
 }
@@ -700,7 +712,11 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         // session (nextRoundStartsSet).
         if (setEnded && !gameEnded) {
             m->setNumber++;
-            m->scores = ScoreSystem(m->mode, participantCount);
+            // R-06: the pre-game race target covers every set, so the fresh
+            // set's tracker must carry the same 101/151 choice -- constructing
+            // a default ScoreSystem here silently reverted a 101 match to 151
+            // after its first set.
+            m->scores = ScoreSystem(m->mode, participantCount, m->targetScore);
             m->activeCount = participantCount;
             for (int p = 0; p < participantCount && p < kMaxPlayers; ++p) m->active[p] = true;
             m->lastEliminated = -1;
@@ -874,7 +890,14 @@ AnalysisResultDTO bridge_analysis_run_with_budget(AnalysisHandle snapshot, int32
         // branch is gated on this being > 0. Analysis must search the same
         // action set the player can actually take, or its "best move" is a
         // recommendation for a different game.
-        config.maxVoluntaryDraws = 1;
+        // R-15: the rulebook allows unlimited voluntary draws in a turn. The
+        // search bound is larger than the whole double-six set, so it is
+        // effectively unlimited; the analysis deadline keeps the tree bounded.
+        config.maxVoluntaryDraws = SearchEngine::kUnlimitedVoluntaryDraws;
+        // The two deep tiers use PVS/LMR; every shallower tier keeps the
+        // existing full-width alpha-beta path. The experiment is opt-in and
+        // its depth effect is measured separately.
+        config.useSelectiveSearch = maxDepthPlies >= 24;
         std::mt19937_64 rng(rngSeed);
 
         // Pass atomic flag directly. No new abstraction layers.

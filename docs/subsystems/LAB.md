@@ -6,9 +6,11 @@ calibration report. `./scripts/lab run` drives resumable sharded runs, so a
 multi-million-game dataset is one restartable command; the app's Lab screen
 drives the same runner through a staged copy outside the checkout. Measured on
 the owner's Mac at symmetric depth 8 / 64 samples with eight batches: about
-22.7 games/s, so 5,000,000 games is roughly 61 hours. There is still no trainer
-or exported weight set, and no Elo claim against external engines. Strength
-claims, if any, live only in `docs/research/STRENGTH_BASELINE.md`.
+22.7 games/s, so 5,000,000 games is roughly 61 hours. The separate 2026-11-15
+compact transposition-table measurement is recorded in
+[`SEARCH_PERFORMANCE.md`](../research/SEARCH_PERFORMANCE.md). There is still no
+trainer or exported weight set, and no Elo claim against external engines.
+Strength claims, if any, live only in `docs/research/STRENGTH_BASELINE.md`.
 
 ## Purpose
 
@@ -242,7 +244,7 @@ which currently records none.
 | 4/24 vs 5/40 | 600 | 44.3% | −39.5 | [−67.5, −11.6] | **yes** |
 
 These rows must not be cited as evidence for the current difficulty ladder. The
-five `DifficultyModel` bands are ordered by construction, but their separation
+seven app-facing `DifficultyModel` bands are ordered by construction, but their separation
 has not been measured under the 2026-11-14 rules, and the data behind this table
 is absent from the repository.
 
@@ -250,7 +252,7 @@ The depth increase was measured separately rather than assumed. In 1,000-game
 1v1 matches: 2/8 vs 6/8 was -18.8 Elo ([-40.3, +2.8]), 6/8 vs 6/64 was -8.3
 ([-29.9, +13.2]), and 6/64 vs 8/64 was -14.6 ([-36.1, +6.9]). The combined
 bottom-vs-top result is the clear one; the individual factors are small enough
-that only their combination currently clears zero. The elite tier is therefore
+that only their combination currently clears zero. The master tier is therefore
 8/64, but it is roughly 2.6x the median node count of depth 6 and is not a
 free upgrade.
 

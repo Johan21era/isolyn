@@ -15,9 +15,9 @@
 #include <mutex>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <thread>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -26,7 +26,10 @@ namespace isolyn {
 namespace {
 
 constexpr double kInfinity = std::numeric_limits<double>::infinity();
-constexpr std::size_t kMaxTTEntries = 250000;
+// A search needs a small cache, not a 250k-node hash map. The master tier
+// records only a few thousand hits across millions of nodes, so a fixed,
+// four-way table keeps the useful entries while bounding memory per lane.
+constexpr std::size_t kTTWays = 4;
 constexpr int kMaxHistoryPlayers = 4;
 constexpr int kMaxWorkers = 16;
 constexpr int kMoveCodeCount = DominoTile::kTileCount * 2;
@@ -123,20 +126,105 @@ int totalHandTiles(const GameState& state) {
     return total;
 }
 
-enum class TTFlag { Exact, LowerBound, UpperBound };
+enum class TTFlag : std::uint8_t { Exact, LowerBound, UpperBound };
 
+// Compact entry with one generation stamp instead of an explicit empty key.
+// A generation bump invalidates every entry without walking the storage, which
+// matters because the table is reused across moves rather than allocated and
+// zero-filled for every decision.
 struct TTEntry {
-    int depth = -1;
+    std::uint64_t key = 0;
     double score = 0.0;
-    RawEvaluation raw;
-    int bestCode = -1;
+    std::array<double, 4> values{};
+    std::uint16_t generation = 0;
+    std::int16_t depth = -1;
+    std::int16_t bestCode = -1;
     TTFlag flag = TTFlag::Exact;
 };
+
+std::uint64_t mixTTKey(std::uint64_t key) noexcept {
+    key ^= key >> 33;
+    key *= 0xff51afd7ed558ccdULL;
+    key ^= key >> 33;
+    return key;
+}
+
+class TranspositionTable {
+public:
+    explicit TranspositionTable(std::size_t bucketCount)
+        : m_bucketCount(bucketCount),
+          m_bucketMask(bucketCount - 1),
+          m_entries(bucketCount * kTTWays) {}
+
+    std::size_t bucketCount() const noexcept { return m_bucketCount; }
+
+    void beginSearch() noexcept {
+        ++m_generation;
+        if (m_generation == 0) {
+            for (TTEntry& entry : m_entries) entry.generation = 0;
+            m_generation = 1;
+        }
+    }
+
+    TTEntry* find(std::uint64_t key) noexcept {
+        const std::size_t first = bucketFor(key);
+        for (std::size_t way = 0; way < kTTWays; ++way) {
+            TTEntry& entry = m_entries[first + way];
+            if (entry.generation != m_generation) return nullptr;
+            if (entry.key == key) return &entry;
+        }
+        return nullptr;
+    }
+
+    void store(std::uint64_t key,
+               int depth,
+               double score,
+               const RawEvaluation& raw,
+               int bestCode,
+               TTFlag flag) noexcept {
+        const std::size_t first = bucketFor(key);
+        TTEntry* victim = nullptr;
+        for (std::size_t way = 0; way < kTTWays; ++way) {
+            TTEntry& entry = m_entries[first + way];
+            if (entry.generation != m_generation || entry.key == key) {
+                victim = &entry;
+                break;
+            }
+            if (victim == nullptr || entry.depth < victim->depth) victim = &entry;
+        }
+        victim->key = key;
+        victim->depth = static_cast<std::int16_t>(depth);
+        victim->score = score;
+        victim->values = raw.values;
+        victim->bestCode = static_cast<std::int16_t>(bestCode);
+        victim->flag = flag;
+        victim->generation = m_generation;
+    }
+
+private:
+    std::size_t bucketFor(std::uint64_t key) const noexcept {
+        return static_cast<std::size_t>(mixTTKey(key) & m_bucketMask) * kTTWays;
+    }
+
+    std::size_t m_bucketCount;
+    std::size_t m_bucketMask;
+    std::vector<TTEntry> m_entries;
+    std::uint16_t m_generation = 0;
+};
+
+// Shallow tiers visit far fewer positions, so a full-size table would be
+// mostly unused cache pollution. Grow the table with the configured depth and
+// cap it at the master tier's proven size.
+std::size_t ttBucketsForDepth(int maxDepthPlies) noexcept {
+    const int depth = std::clamp(maxDepthPlies, 2, 5);
+    return static_cast<std::size_t>(1) << (depth + 9);
+}
 
 struct SearchContext {
     GameMode mode = GameMode::OneVsOne;
     int endgameTileLimit = 0;
     bool useAlphaBeta = true;
+    bool useSelectiveSearch = false;
     bool hasDeadline = false;
     std::chrono::steady_clock::time_point deadline{};
     const std::atomic<bool>* cancelRequested = nullptr;
@@ -151,10 +239,25 @@ struct SearchContext {
 
     EvaluationWeights weights{};
     int maxVoluntaryDraws = 0;
-    std::unordered_map<std::uint64_t, TTEntry> tt;
+    TranspositionTable* tt = nullptr;
+    bool tableStarted = false;
     std::array<std::array<int, 2>, kKillerSlots> killers{};
     std::array<std::array<int, kMoveCodeCount>, kMaxHistoryPlayers> history{};
 };
+
+void startTableIfNeeded(SearchContext& context, TranspositionTable& table) {
+    if (context.tableStarted) return;
+    context.tt = &table;
+    context.tt->beginSearch();
+    context.tableStarted = true;
+}
+
+RawEvaluation rawFromEntry(const TTEntry& entry, int playerCount) {
+    RawEvaluation raw;
+    raw.values = entry.values;
+    raw.count = static_cast<std::uint8_t>(playerCount);
+    return raw;
+}
 
 struct SearchValue {
     double score = 0.0;
@@ -216,6 +319,17 @@ public:
 
     int size() const { return m_size; }
 
+    // Tables are owned by the pool and allocated only for lanes a search
+    // actually uses. A thread_local table would reserve its full storage in
+    // every pool thread even when the process runs one search lane.
+    TranspositionTable& tableFor(int lane, std::size_t buckets) {
+        auto& table = m_tables[static_cast<std::size_t>(lane)];
+        if (!table || table->bucketCount() < buckets) {
+            table = std::make_unique<TranspositionTable>(buckets);
+        }
+        return *table;
+    }
+
     // Runs `task` on every worker and returns once all have finished.
     void run(const std::function<void(int)>& task) {
         if (m_size == 1) {
@@ -255,6 +369,7 @@ private:
 
     int m_size = 1;
     std::vector<std::thread> m_threads;
+    std::array<std::unique_ptr<TranspositionTable>, kMaxWorkers> m_tables{};
     std::mutex m_mutex;
     std::condition_variable m_start;
     std::condition_variable m_done;
@@ -403,8 +518,7 @@ SearchValue searchZeroSum(GameState& state,
         // opposite perspectives.
         const double childAlpha = context.useAlphaBeta ? -beta : -kInfinity;
         const double childBeta = context.useAlphaBeta ? -alpha : kInfinity;
-        SearchValue child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply,
-                                          context.maxVoluntaryDraws);
+        SearchValue child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply, 0);
         state.setCurrentPlayerIndex(player);
         undoDraws(state, player, drawn);
         if (context.aborted || child.raw.empty()) return {};
@@ -425,8 +539,12 @@ SearchValue searchZeroSum(GameState& state,
         // and the tree grows as 2^depth -- measured, and rejected as
         // unaffordable. The conservative model is kept and stated.
         const DominoTile drawnTile = state.drawTile(player);
+        // One draw for this decision. A second draw is a new live decision
+        // (the same player remains to move), so planning a chain of draws in
+        // one tree only multiplies nodes and burns horizon without changing the
+        // legal action space. The session itself is still unlimited.
         const SearchValue afterDraw =
-            searchZeroSum(state, depthRemaining - 1, alpha, beta, context, ply, drawsLeft - 1);
+            searchZeroSum(state, depthRemaining - 1, alpha, beta, context, ply, 0);
         state.undoDrawTile(player, drawnTile);
         if (!context.aborted && !afterDraw.raw.empty()) {
             drawScore = afterDraw.score;
@@ -436,17 +554,14 @@ SearchValue searchZeroSum(GameState& state,
     }
 
     const std::uint64_t key = state.hash();
-    auto ttIt = context.tt.find(key);
-    if (ttIt != context.tt.end() &&
-        ttIt->second.depth >= depthRemaining &&
-        ttIt->second.raw.size() == static_cast<std::size_t>(state.playerCount())) {
-        const TTEntry& entry = ttIt->second;
-        const bool usable = entry.flag == TTFlag::Exact ||
-                            (entry.flag == TTFlag::LowerBound && entry.score >= beta) ||
-                            (entry.flag == TTFlag::UpperBound && entry.score <= alpha);
+    const TTEntry* ttEntry = context.tt->find(key);
+    if (ttEntry != nullptr && ttEntry->depth >= depthRemaining) {
+        const bool usable = ttEntry->flag == TTFlag::Exact ||
+                            (ttEntry->flag == TTFlag::LowerBound && ttEntry->score >= beta) ||
+                            (ttEntry->flag == TTFlag::UpperBound && ttEntry->score <= alpha);
         if (usable) {
             ++context.ttHits;
-            SearchValue hit{entry.score, entry.raw};
+            SearchValue hit{ttEntry->score, rawFromEntry(*ttEntry, state.playerCount())};
             undoDraws(state, player, drawn);
             return hit;
         }
@@ -456,7 +571,7 @@ SearchValue searchZeroSum(GameState& state,
     const std::size_t candidateCount =
         MoveGenerator::generateInto(state, player, candidates);
     assert(candidateCount > 0);
-    const int ttBest = ttIt != context.tt.end() ? ttIt->second.bestCode : -1;
+    const int ttBest = ttEntry != nullptr ? ttEntry->bestCode : -1;
     orderMoves(candidates.data(), candidateCount, context, player, ply, ttBest);
 
     double bestScore = -kInfinity;
@@ -464,6 +579,7 @@ SearchValue searchZeroSum(GameState& state,
     int bestCode = -1;
     bool cutoff = false;
     const double originalAlpha = alpha;
+    const bool narrowWindow = context.useSelectiveSearch && (beta - alpha <= 1.0);
 
     // A voluntary draw competes with every placement as a real action.
     if (hasDrawOption) {
@@ -471,6 +587,7 @@ SearchValue searchZeroSum(GameState& state,
         bestRaw = drawRaw;
     }
 
+    bool firstPlacement = true;
     for (std::size_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex) {
         const Move& move = candidates[candidateIndex];
         if (tick(context)) break;
@@ -478,24 +595,52 @@ SearchValue searchZeroSum(GameState& state,
         auto applied = MoveExecutor::apply(state, player, move);
         const bool emptied = state.hand(player).empty();
 
-        SearchValue child;
-        if (emptied) {
-            child.raw = evaluateAll(context.mode, state, context.weights);
-            child.score = kTerminalWinScore + relativeScore(child.raw, player, context.mode);
-        } else {
+        // PVS/LMR are opt-in for the deep tiers. The first placement gets a
+        // full window; later quiet placements get a null-window probe, and a
+        // move that beats alpha is re-searched at full depth. A reduced probe
+        // is only a scout -- it never becomes the returned score unless a full
+        // search confirms it. The default path remains the old full-width loop.
+        const bool selective = context.useSelectiveSearch && context.useAlphaBeta && !emptied;
+        const bool laterPlacement = !firstPlacement;
+        const bool canReduce = selective && laterPlacement &&
+                               depthRemaining >= 5 && candidateIndex >= 1;
+        const bool nullWindow = selective && laterPlacement &&
+                                alpha > -kInfinity / 2.0;
+        const int childDepth = depthRemaining - 1 - (canReduce ? 4 : 0);
+        const double windowAlpha = nullWindow ? -alpha - 1.0 : -beta;
+        const double windowBeta = -alpha;
+
+        auto searchChild = [&](int depth, double childAlpha, double childBeta) -> SearchValue {
+            if (emptied) {
+                SearchValue value;
+                value.raw = evaluateAll(context.mode, state, context.weights);
+                value.score = kTerminalWinScore + relativeScore(value.raw, player, context.mode);
+                return value;
+            }
             const int next = nextActivePlayer(state, player);
             state.setCurrentPlayerIndex(next);
-            const double childAlpha = context.useAlphaBeta ? -beta : -kInfinity;
-            const double childBeta = context.useAlphaBeta ? -alpha : kInfinity;
-            child = searchZeroSum(state, depthRemaining - 1, childAlpha, childBeta, context, ply + 1,
-                                  context.maxVoluntaryDraws);
+            const double a = context.useAlphaBeta ? childAlpha : -kInfinity;
+            const double b = context.useAlphaBeta ? childBeta : kInfinity;
+            SearchValue value = searchZeroSum(state, depth, a, b, context, ply + 1, 0);
             state.setCurrentPlayerIndex(player);
-        }
+            return value;
+        };
+
+        SearchValue child = searchChild(childDepth, windowAlpha, windowBeta);
         MoveExecutor::undo(state, applied);
 
         if (context.aborted || child.raw.empty()) break;
 
-        const double score = emptied ? child.score : -child.score;
+        double score = emptied ? child.score : -child.score;
+        if ((canReduce || nullWindow) && !emptied && score > alpha) {
+            auto fullApplied = MoveExecutor::apply(state, player, move);
+            child = searchChild(depthRemaining - 1, -beta, -alpha);
+            MoveExecutor::undo(state, fullApplied);
+            if (context.aborted || child.raw.empty()) break;
+            score = -child.score;
+        }
+
+        firstPlacement = false;
         if (score > bestScore) {
             bestScore = score;
             bestRaw = child.raw;
@@ -512,12 +657,14 @@ SearchValue searchZeroSum(GameState& state,
     undoDraws(state, player, drawn);
     if (context.aborted || bestRaw.empty()) return {};
 
-    if (!bestRaw.empty()) {
+    // A PVS null-window probe only proves a bound; storing it as Exact would
+    // let a later full-window search reuse a score that was never searched at
+    // that width. Keep narrow probes out of the shared table.
+    if (!bestRaw.empty() && !narrowWindow) {
         TTFlag flag = TTFlag::Exact;
         if (cutoff) flag = TTFlag::LowerBound;
         else if (bestScore <= originalAlpha) flag = TTFlag::UpperBound;
-        if (context.tt.size() >= kMaxTTEntries) context.tt.clear();
-        context.tt[key] = TTEntry{depthRemaining, bestScore, bestRaw, bestCode, flag};
+        context.tt->store(key, depthRemaining, bestScore, bestRaw, bestCode, flag);
     }
     return SearchValue{bestScore, bestRaw};
 }
@@ -550,12 +697,10 @@ RawEvaluation searchMulti(GameState& state,
     }
 
     const std::uint64_t key = state.hash();
-    auto ttIt = context.tt.find(key);
-    if (ttIt != context.tt.end() &&
-        ttIt->second.depth >= depthRemaining &&
-        ttIt->second.raw.size() == static_cast<std::size_t>(state.playerCount())) {
+    const TTEntry* ttEntry = context.tt->find(key);
+    if (ttEntry != nullptr && ttEntry->depth >= depthRemaining) {
         ++context.ttHits;
-        RawEvaluation hit = ttIt->second.raw;
+        RawEvaluation hit = rawFromEntry(*ttEntry, state.playerCount());
         undoDraws(state, player, drawn);
         return hit;
     }
@@ -564,7 +709,7 @@ RawEvaluation searchMulti(GameState& state,
     const std::size_t candidateCount =
         MoveGenerator::generateInto(state, player, candidates);
     assert(candidateCount > 0);
-    const int ttBest = ttIt != context.tt.end() ? ttIt->second.bestCode : -1;
+    const int ttBest = ttEntry != nullptr ? ttEntry->bestCode : -1;
     orderMoves(candidates.data(), candidateCount, context, player, ply, ttBest);
 
     double bestCriterion = -kInfinity;
@@ -604,8 +749,7 @@ RawEvaluation searchMulti(GameState& state,
     if (context.aborted || bestRaw.empty()) return {};
 
     if (bestRaw.size() == static_cast<std::size_t>(state.playerCount())) {
-        if (context.tt.size() >= kMaxTTEntries) context.tt.clear();
-        context.tt[key] = TTEntry{depthRemaining, 0.0, bestRaw, bestCode, TTFlag::Exact};
+        context.tt->store(key, depthRemaining, 0.0, bestRaw, bestCode, TTFlag::Exact);
     }
     return bestRaw;
 }
@@ -650,11 +794,11 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         ctx.mode = mode;
         ctx.endgameTileLimit = config.endgameTileLimit;
         ctx.useAlphaBeta = config.useAlphaBeta;
+        ctx.useSelectiveSearch = config.useSelectiveSearch;
         ctx.cancelRequested = cancelRequested;
         ctx.sharedAbort = &stopFlag;
         ctx.weights = config.weights;
         ctx.maxVoluntaryDraws = config.maxVoluntaryDraws;
-        ctx.tt.reserve(1 << 12);
     }
 
     const auto start = std::chrono::steady_clock::now();
@@ -699,7 +843,9 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         };
         std::vector<SampleResult> sampleResults(static_cast<std::size_t>(config.determinizationCount));
 
-        auto evaluateSample = [&](int sampleIndex, SearchContext& ctx) {
+        auto evaluateSample = [&](int sampleIndex, SearchContext& ctx,
+                                  TranspositionTable& table) {
+            startTableIfNeeded(ctx, table);
             SampleResult& result = sampleResults[static_cast<std::size_t>(sampleIndex)];
             result.scores.assign(actionCount, 0.0);
             result.values.assign(actionCount,
@@ -721,8 +867,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                     // Same player to move after a draw, so no sign flip.
                     const DominoTile drawnTile = trial.drawTile(player);
                     const SearchValue afterDraw = searchZeroSum(
-                        trial, depth - 1, -kInfinity, kInfinity, ctx, 0,
-                        config.maxVoluntaryDraws - 1);
+                        trial, depth - 1, -kInfinity, kInfinity, ctx, 0, 0);
                     trial.undoDrawTile(player, drawnTile);
                     const RawEvaluation drawRaw = afterDraw.raw;
                     if (ctx.aborted || drawRaw.size() != static_cast<std::size_t>(playerCount)) {
@@ -759,8 +904,12 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                             candidateScore = raw[static_cast<std::size_t>(player)];
                         }
                     } else {
-                        SearchValue child = searchZeroSum(trial, depth - 1, -kInfinity, kInfinity, ctx, 0,
-                                                          config.maxVoluntaryDraws);
+                        // The draw action is evaluated once, above, as its own
+                        // root candidate. Once a placement has been made, the
+                        // next turn starts from the live snapshot and gets its
+                        // own decision; planning another draw inside this tree
+                        // only spends horizon. Draws remain unlimited live.
+                        SearchValue child = searchZeroSum(trial, depth - 1, -kInfinity, kInfinity, ctx, 0, 0);
                         raw = child.raw;
                         candidateScore = -child.score;
                     }
@@ -781,18 +930,21 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
             }
         };
 
+        const std::size_t tableBuckets = ttBucketsForDepth(config.maxDepthPlies);
         if (!parallel) {
+            TranspositionTable& table = pool.tableFor(0, tableBuckets);
             for (int sample = 0; sample < config.determinizationCount; ++sample) {
                 if (stopFlag.load(std::memory_order_relaxed)) break;
-                evaluateSample(sample, contexts.front());
+                evaluateSample(sample, contexts.front(), table);
             }
         } else {
             pool.run([&](int lane) {
                 if (lane >= laneCount) return;
                 SearchContext& ctx = contexts[static_cast<std::size_t>(lane)];
+                TranspositionTable& table = pool.tableFor(lane, tableBuckets);
                 for (int sample = lane; sample < config.determinizationCount; sample += laneCount) {
                     if (stopFlag.load(std::memory_order_relaxed)) return;
-                    evaluateSample(sample, ctx);
+                    evaluateSample(sample, ctx, table);
                 }
             });
         }

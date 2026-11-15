@@ -48,11 +48,11 @@ continuing. Do not skip a failing step and continue as if it passed.
 
 ```bash
 ./tools/selfplay/build.sh          # engine + harness compile
-./scripts/ci/test_engine.sh        # expect: 20 executables, 497 checks, 0 failed
-./scripts/ci/test_bridge.sh        # expect: 2 executables, 133 checks, 0 failed
+./scripts/ci/test_engine.sh        # expect: 20 executables, 524 checks, 0 failed
+./scripts/ci/test_bridge.sh        # expect: 2 executables, 141 checks, 0 failed
 swift build                        # expect: Build complete!
-swift test                         # expect: 124 tests, 0 skipped, 0 failures
-PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 54 tests, 0 failures
+swift test                         # expect: 125 tests, 0 skipped, 0 failures
+PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 55 tests, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
 python3 scripts/docs_audit.py      # expect: RESULT: PASS
@@ -67,7 +67,9 @@ elimination took engine 480 → 490 and bridge 116 → 133; the stable-RNG fixtu
 and portable build gate took engine 490 → 497 (20 executables); Swift stayed at
 112 until the Lab quality-of-life pass added eight tests (112 → 120); the Cloud
 tab and live-run fixes added four Swift tests and eight Python source/
-collection tests (120 → 124 Swift, 47 → 55 Python).
+collection tests (120 → 124 Swift, 47 → 55 Python); the final R-06/R-15
+closeout took engine 497 → 524 and bridge 133 → 141, and added the 101-target
+Swift regression (124 → 125 Swift).
 If your run differs, the difference is a finding: explain it, do not quietly
 update the numbers.
 
@@ -306,16 +308,18 @@ documented number to match a broken run.
 - Previous champion label — depth 8, 64 determinization samples, 8 workers — is
   unearned under the current rules and has not been re-measured.
 - The voluntary draw action is wired end to end (`AnalysisResultDTO::isDraw`,
-  the app plays a recommended draw). Its old +44.3 Elo figure is superseded: the
-  rulebook now allows unlimited draws per turn while the engine still caps at
-  one (`Config::maxVoluntaryDraws = 1`), so it must be re-measured as part of
-  closing rule gap R-15.
+  the app plays a recommended draw). R-15's live turn has no cap; the search
+  evaluates one draw per decision and re-searches after it, because a draw
+  leaves the same player to move. `SearchEngine::kUnlimitedVoluntaryDraws` is
+  the guard for callers that widen that root decision, not a claim that one
+  tree searches every draw chain. Its old +44.3 Elo figure is superseded and
+  must not be cited.
 - Known dead ends, do not re-litigate: Metal/GPU end-to-end acceleration (slower at
   every batch size), maximin/win-count/trimmed root aggregation, extra determinization
   samples beyond 64 at depth 8.
-- Known backlog: the two declared rule gaps (R-06's 101 option and R-15's
-  analysis draws); transposition-table key and depth-preferred replacement;
-  1v1v1 pruning; production packaging.
+- Known backlog: transposition-table key and depth-preferred replacement;
+  1v1v1 pruning; production packaging. R-06 and R-15 are no longer gaps: the
+  rulebook gate reports 21 enforced, 0 declared gaps, 1 by-hand rule.
 - The private Kaggle batch bridge is implemented locally (portable harness build,
   stable RNG, allowlisted snapshot, worker-side snapshot verification,
   receipt/hash/count verifier, atomic assembly).
@@ -324,4 +328,11 @@ documented number to match a broken run.
   this Mac and must be proven by that session.
 - The 1v1 default is now 151 (R-06), the locked pair is no longer publicly
   revealed (R-17), and 1v1v1 eliminates at 151 before continuing between the
-  survivors (R-22). R-06 remains GAP only for the optional pre-game 101 choice.
+  survivors (R-22). The pre-game 101 choice is wired through the engine,
+  bridge, app state and 1v1 lobby selector.
+- **Do not claim depth 48 as reached.** A hand contains at most 28 tiles, and
+  every placement or voluntary/forced draw consumes one; the tile-consuming
+  action ceiling is 28 (passes add plies but no tiles). The Mythical 48 is a
+  search ceiling/guard, not a normal game depth. Legendary completed its 24-ply
+  ceiling on all four measured 15-second fixed openings; Mythical completed
+  26–27 plies. Those are clock-bound depth measurements, not strength claims.

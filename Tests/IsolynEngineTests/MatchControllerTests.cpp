@@ -304,6 +304,30 @@ int main() {
               "once the chain is open, a voluntary draw is available again");
     }
 
+    section("MatchController: R-15 voluntary draws are not capped by the turn");
+    {
+        std::vector<std::vector<DominoTile>> hands = { { DominoTile(3, 3) },
+                                                       { DominoTile(1, 1) } };
+        std::vector<DominoTile> boneyard = { DominoTile(0, 0), DominoTile(6, 6),
+                                             DominoTile(5, 5), DominoTile(4, 4) };
+        GameState state(GameMode::OneVsOne, hands, boneyard);
+        state.playTile(0, DominoTile(3, 3), GameState::ChainSide::Left);
+        state.setCurrentPlayerIndex(1);
+        MatchController controller(state);
+
+        check(controller.canVoluntaryDraw(), "a draw is legal after the chain is open");
+        controller.voluntaryDraw();
+        check(controller.currentPlayerIndex() == 1,
+              "the first voluntary draw does not pass the turn");
+        check(controller.canVoluntaryDraw(),
+              "a second voluntary draw is still legal in the same turn");
+        controller.voluntaryDraw();
+        check(controller.state().hand(1).size() == 3,
+              "both drawn tiles are in the same player's hand");
+        check(controller.state().boneyard().drawableCount() == 0,
+              "the boneyard, not a one-draw cap, is what ends the draw sequence");
+    }
+
     if (failureCount() == 0) {
         std::cout << "\nMatchController: all checks passed\n";
         return 0;

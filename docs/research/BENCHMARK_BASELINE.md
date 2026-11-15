@@ -53,7 +53,7 @@ A configuration is `depth/determinizations`. These are the six
 | 3/16 | 3 | 16 | tier 900 |
 | 4/24 | 4 | 24 | tier 1600 |
 | 5/40 | 5 | 40 | tier 2300 |
-| 8/64 | 8 | 64 | elite tier (strength 3000) |
+| 8/64 | 8 | 64 | master tier (strength 3000) |
 | seq-20 | 4 | 20 | single-threaded control, app default shape |
 | par-64 | 4 | 64 | 8 workers — current champion |
 
@@ -96,7 +96,7 @@ result was a 400-game sample of a small effect.
 | 8/64 vs 8/64, sequential | 60 | 7.55 s | 955 decisions, ~7.9 ms/move |
 | 8/64 vs 8/64, 8 workers | 60 | 3.18 s | 2.4× wall-clock |
 
-Per-move cost at the elite tier is ~7.9 ms single-threaded. The parallel path
+Per-move cost at the master tier is ~7.9 ms single-threaded. The parallel path
 uses 3.3 effective cores of 8, and performs ~47% more total CPU work than the
 sequential path (per-lane tables hold fewer entries, so fewer hits).
 

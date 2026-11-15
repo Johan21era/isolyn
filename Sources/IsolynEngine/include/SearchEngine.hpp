@@ -65,6 +65,12 @@ enum class RootAggregation {
 
 class SearchEngine {
 public:
+    // The rulebook allows unlimited voluntary draws in a turn. A standard
+    // double-six set can never supply more than 28 tiles; this is a validated
+    // bound for callers that widen the root decision, not a cap on the live
+    // session (which has no numeric limit). The clock remains the real limiter.
+    static constexpr int kUnlimitedVoluntaryDraws = 64;
+
     struct Config {
         // Iterative deepening stops at this depth. The old engine used a
         // single fixed depth; retaining a default of 4 preserves the
@@ -88,6 +94,11 @@ public:
         // alpha-beta path against a full-width baseline.
         bool useAlphaBeta = true;
 
+        // PVS/LMR for deep tiers. Off by default: this is an experiment whose
+        // effect is measured, and the bridge enables it only for the two
+        // deep-search profiles (maxDepthPlies >= 24).
+        bool useSelectiveSearch = false;
+
         // Worker threads used to evaluate determinization samples in
         // parallel. 0 = automatic (hardware concurrency, capped by
         // determinizationCount), 1 = the original single-threaded path.
@@ -107,10 +118,12 @@ public:
         // calibration measurable instead of theoretical.
         EvaluationWeights weights{};
 
-        // Voluntary draws a player may consider per turn. 0 disables the option
-        // entirely, which is the behaviour every measurement before 2026-11-14
-        // was made under. A draw does not consume the turn, so its continuation
-        // keeps the same player to move and must not be negated.
+        // Voluntary draws a player may consider AT THIS DECISION. 0 disables the
+        // option; kUnlimitedVoluntaryDraws is the rulebook-compliant analysis
+        // setting. A draw does not consume the turn, so its continuation keeps
+        // the same player to move and must not be negated. Live play is not
+        // capped: after a draw the same player can choose again, and the
+        // engine re-searches that new decision.
         int maxVoluntaryDraws = 0;
     };
 

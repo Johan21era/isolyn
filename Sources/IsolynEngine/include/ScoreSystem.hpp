@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "GameMode.hpp"
+#include "RulesEngine.hpp"
 
 namespace isolyn {
 
@@ -12,7 +13,8 @@ namespace isolyn {
 // represents one player or a partnership).
 class ScoreSystem {
 public:
-    explicit ScoreSystem(GameMode mode, int participantCount);
+    explicit ScoreSystem(GameMode mode, int participantCount,
+                         int oneVsOneTarget = RulesEngine::kOneVsOneMatchLossThreshold);
 
     // How many participants this tracker holds (players for 1v1/1v1v1, teams
     // for 2v2) -- exposed so callers copying scores out can size correctly
@@ -34,6 +36,8 @@ public:
 
     // Whether any participant has reached or exceeded the mode's
     // match-loss threshold (RulesEngine::hasReachedMatchLossThreshold).
+    // `oneVsOneTarget` is the R-06 pre-game choice (151 by default, 101 in
+    // 1v1 only); the other modes ignore it.
     bool hasMatchEnded() const;
 
     // The winning participant once hasMatchEnded() is true: whoever has
@@ -49,6 +53,7 @@ public:
 
 private:
     GameMode m_mode;
+    int m_oneVsOneTarget;
     std::vector<int> m_scores;
 };
 

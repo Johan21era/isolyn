@@ -145,6 +145,30 @@ int main() {
               "1v1v1: 151 is the locked threshold, not 101 (RULEBOOK R-06)");
     }
 
+    section("R-06: 1v1 race target can be 101; other modes stay 151");
+    {
+        check(!RulesEngine::hasReachedMatchLossThreshold(
+                  isolyn::GameMode::OneVsOne, 100,
+                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+              "1v1 short game: 100 has not reached 101");
+        check(RulesEngine::hasReachedMatchLossThreshold(
+                  isolyn::GameMode::OneVsOne, 101,
+                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+              "1v1 short game: exactly 101 has reached the threshold");
+        check(!RulesEngine::hasReachedMatchLossThreshold(
+                  isolyn::GameMode::OneVsOneVsOne, 101,
+                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+              "1v1v1 ignores the 1v1 short target; 101 is not a loss there");
+        check(!RulesEngine::hasReachedMatchLossThreshold(
+                  isolyn::GameMode::TwoVsTwo, 101,
+                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+              "2v2 ignores the 1v1 short target; 101 is not a loss there");
+        check(RulesEngine::hasReachedMatchLossThreshold(
+                  isolyn::GameMode::OneVsOne, 151,
+                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+              "under the 101 target, a score of 151 is already past the threshold");
+    }
+
     section("RulesEngine: determineNextRoundStarter -- pass-through, documented invariant");
     {
         check(RulesEngine::determineNextRoundStarter(2) == 2,

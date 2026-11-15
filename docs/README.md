@@ -60,6 +60,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
 | `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, session contract, first session | Implemented locally; live run pending | 2026-11-14 |
+| `research/SEARCH_PERFORMANCE.md` | Five-tier self-play throughput and shard RSS for the compact transposition table | Living measurements | 2026-11-15 |
 | `audits/2026-11-14-audit.md` | **Current factual baseline** | Authoritative | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | Prior factual baseline; superseded by the 2026-11-14 audit | Historical snapshot | 2026-11-13 |
 | `audits/2026-11-13-documentation-audit.md` | Why each document exists; contradiction register | Authoritative for doc status | 2026-11-13 |
@@ -79,14 +80,16 @@ Every volatile number has one home. Re-measure before quoting; state the date.
 
 | Claim | Home | Reproduce with |
 |---|---|---|
-| Engine checks (497, 20 exes, 2026-11-14) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
-| Bridge checks (133, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
-| Swift tests (120, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
+| Engine checks (524, 20 exes, 2026-11-15) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_engine.sh` |
+| Bridge checks (141, 2 exes) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/test_bridge.sh` |
+| Swift tests (125, 0 skipped) | `engineering/BRIDGE_TESTING.md` | `swift test` |
+| Whole-game conformance soak (1M games, ≈172.8M assertions) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/rules_soak.sh 1000000` |
 | Offline lab/cloud tests (47, 0 failures) | `engineering/BRIDGE_TESTING.md` | `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` |
 | Sanitizer (623 checks, 0 findings) | `engineering/BRIDGE_TESTING.md` | `./scripts/ci/sanitize.sh address` |
 | Accelerator (94 pass / 6 fail, parity red) | `subsystems/ACCELERATOR.md` | `./Accelerator/build.sh` |
 | LOC by surface | `architecture/PROJECT_INVENTORY.md` | `git ls-files <dir> \| xargs cat \| wc -l` |
 | 1v1 strength ladder | `research/STRENGTH_BASELINE.md` | `PYTHONPATH=lab/src python3 -m isolyn_lab.cli evaluate --input lab/data/<file>` |
+| Search throughput and per-shard RSS | `research/SEARCH_PERFORMANCE.md` | `python3 tools/bench/tiers.py` then `python3 tools/bench/compare.py` |
 | Which rules a strength figure belongs to | `rules/RULES_VERSION` | `python3 scripts/rules_audit.py` |
 | Completion %, defects, priorities | `audits/2026-11-14-audit.md` | the commands in its §3 |
 | Design intent per mode | `architecture/FEATURE_SPECS.md` | — (no implementation yet) |

@@ -48,8 +48,8 @@ does not pay.
 2. Fixed seeds, alternating seats, ≥1,000 games before believing anything.
 3. Report the CI, not just the win rate. A 52% result with a ±20 Elo interval is
    not a result.
-4. Correctness suites run before any strength number is trusted: 497 engine
-   checks, 133 bridge checks, 120 Swift tests (2026-11-14, after the rulebook
+4. Correctness suites run before any strength number is trusted: 524 engine
+   checks, 141 bridge checks, 125 Swift tests (2026-11-15, after the rulebook
    rewrite, the Lab suites and the stable-RNG fixture).
 5. Never overwrite the baseline configuration that produced a published number.
 

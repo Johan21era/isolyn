@@ -112,7 +112,7 @@ Verdicts: **ACCEPTED** (promoted to champion), **REJECTED** (measured, reverted)
 **Consequence for the programme.** The 20 → 64 step (E-004) is the last
 meaningful sampling gain available. Extra compute must go to **depth** or to
 **evaluation quality**, not to more worlds. This also settles the backlog item
-that proposed raising the app's sample counts: the shipped elite tier (8/64) is
+that proposed raising the app's sample counts: the shipped master tier (8/64) is
 already at the sampling operating point, so there is nothing to bank.
 
 ## E-009 — Depth 10 vs depth 8
@@ -405,7 +405,7 @@ compute null (E-011, E-022) was a separate finding, and nothing here re-tests it
   invalid −38.4 measurement is superseded by this valid one, which is the point:
   the number only became meaningful after the action could be executed.
 
-## E-026 — Depth scaling in 1v1: the elite tier is not over-configured (ACCEPTED)
+## E-026 — Depth scaling in 1v1: the master tier is not over-configured (ACCEPTED)
 
 Depth had never been measured against the shipped horizon in 1v1. It was assumed
 settled because *2v2* depth 8 vs 4 was null and an old 10-vs-8 test was negative.
@@ -419,10 +419,10 @@ Both generalisations were wrong.
 - **Reading.** Strength keeps climbing through depth 8 at this sample count. The
   6-vs-5 null is what a ~±12 Elo interval does to a small step: it is not
   evidence of a plateau, and treating it as one would have frozen the engine one
-  ply shallow. The shipped elite tier (8/64) is therefore earned, not over-
+  ply shallow. The shipped master tier (8/64) is therefore earned, not over-
   configured — the earlier "depth 10 vs 8 is worse" result stands as the plateau
   evidence, not "depth 6".
-- **Draw action at the elite horizon.** Depth 8, draws on vs off, two seeds
+- **Draw action at the master horizon.** Depth 8, draws on vs off, two seeds
   pooled over 1,207 rounds: 680 wins, **56.34%, +44.3 Elo [+24.6, +64.2]**
   (seeds 57.0% and 54.8%, draws ~17% of decisions).
 - **The horizon curve is the finding.** The same action measures **+2.5 at depth

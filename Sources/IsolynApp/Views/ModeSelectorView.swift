@@ -16,6 +16,8 @@ struct ModeSelectorView: View {
     /// R-07 pre-game choice: first to 3 sets (best-of-5) or first to 4
     /// (best-of-7). Frozen when the match begins.
     @State private var setsToWin = 3
+    /// R-06 pre-game choice: 151 by default; 101 is a 1v1-only agreement.
+    @State private var targetScore = 151
 
     private let options: [ModeOption] = [
         ModeOption(
@@ -159,6 +161,42 @@ struct ModeSelectorView: View {
                 )
             }
 
+            if selectedID == MatchFormat.oneVOne.rawValue {
+                HStack(spacing: 14) {
+                    Text("Race to")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(IsolynTheme.ivoryMuted)
+
+                    HStack(spacing: 0) {
+                        ForEach([151, 101], id: \.self) { target in
+                            Button {
+                                withAnimation(.easeOut(duration: 0.14)) {
+                                    targetScore = target
+                                }
+                            } label: {
+                                Text(target == 151 ? "151" : "101")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(
+                                        targetScore == target ? IsolynTheme.ivory : IsolynTheme.ivoryMuted
+                                    )
+                                    .frame(width: 76, height: 28)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                            .fill(Color.white.opacity(targetScore == target ? 0.13 : 0))
+                                    )
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(Color.white.opacity(0.055))
+                    )
+                }
+            }
+
             if opponent == .computer {
                 HStack(spacing: 14) {
                     Text("Strength")
@@ -239,8 +277,9 @@ struct ModeSelectorView: View {
 
     private func startMatch() {
         guard let selectedID, let format = MatchFormat(rawValue: selectedID) else { return }
+        let effectiveTarget = format == .oneVOne ? targetScore : 151
         withAnimation(.easeInOut(duration: 0.35)) {
-            appState.screen = .game(format, opponent, aiLevel, setsToWin)
+            appState.screen = .game(format, opponent, aiLevel, setsToWin, effectiveTarget)
         }
     }
 }

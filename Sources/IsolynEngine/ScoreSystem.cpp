@@ -4,8 +4,10 @@
 
 namespace isolyn {
 
-ScoreSystem::ScoreSystem(GameMode mode, int participantCount)
-    : m_mode(mode), m_scores(static_cast<std::size_t>(participantCount), 0) {}
+ScoreSystem::ScoreSystem(GameMode mode, int participantCount, int oneVsOneTarget)
+    : m_mode(mode),
+      m_oneVsOneTarget(oneVsOneTarget),
+      m_scores(static_cast<std::size_t>(participantCount), 0) {}
 
 int ScoreSystem::score(int participantIndex) const {
     assert(participantIndex >= 0 && participantIndex < static_cast<int>(m_scores.size()));
@@ -32,7 +34,7 @@ void ScoreSystem::applyRoundScoresForParticipants(
 
 bool ScoreSystem::hasMatchEnded() const {
     for (int s : m_scores) {
-        if (RulesEngine::hasReachedMatchLossThreshold(m_mode, s)) return true;
+        if (RulesEngine::hasReachedMatchLossThreshold(m_mode, s, m_oneVsOneTarget)) return true;
     }
     return false;
 }

@@ -53,6 +53,8 @@ final class GameViewModel {
     /// The pre-game format choice: first to 3 sets (best-of-5) or first to 4
     /// (best-of-7), frozen for the life of this game.
     let setsToWin: Int
+    /// R-06: the 1v1 race target (101 or 151), frozen for the match.
+    let targetScore: Int
 
     /// Most recent boneyard draw. Kept as the latest-event convenience that
     /// tests and simple callers already use.
@@ -112,13 +114,17 @@ final class GameViewModel {
 
     // MARK: - Init / teardown
 
-    init(mode: MatchFormat, opponent: OpponentMode = .human, aiLevel: AILevel = .club, setsToWin: Int = 3) {
+    init(mode: MatchFormat, opponent: OpponentMode = .human, aiLevel: AILevel = .club,
+         setsToWin: Int = 3, targetScore: Int = 151) {
         self.mode = mode
         self.opponent = opponent
         self.aiLevel = aiLevel
         self.setsToWin = setsToWin
+        self.targetScore = targetScore
         do {
-            let coordinator = try MatchCoordinator(mode: mode, setsToWin: setsToWin)
+            let coordinator = try MatchCoordinator(
+                mode: mode, setsToWin: setsToWin, targetScore: targetScore
+            )
             guard let firstRound = EngineSession.createFirstRound(mode: mode) else {
                 throw BridgeError.engineFailure(diagnostic: "initial deal failed")
             }
@@ -487,7 +493,6 @@ final class GameViewModel {
     /// is reported through AnalysisOutcome.completed == false.
     private enum SearchBudget {
         static let coachMs: Int32 = 1_500
-        static let aiMs: Int32 = 3_000
     }
 
     /// Starts (or cancels) a full two-phase search from the given believer's
@@ -644,7 +649,7 @@ final class GameViewModel {
                     believer: seat,
                     maxDepthPlies: profile.maxDepthPlies,
                     determinizationCount: profile.determinizationCount,
-                    timeLimitMs: SearchBudget.aiMs
+                    timeLimitMs: aiLevel.thinkingTimeMs
                 )
                 aiTask = task
                 let outcome = try await task.result

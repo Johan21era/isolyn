@@ -31,8 +31,11 @@ final class MatchCoordinator {
 
     /// The pre-game format: 3 (best-of-5) or 4 (best-of-7).
     private(set) var setsToWin: Int
+    /// R-06: 151 by default; 101 is available only in 1v1.
+    private(set) var targetScore: Int
 
-    /// True when the last recorded round ended its set at 151.
+    /// True when the last recorded round ended its set at the match's target
+    /// (151, or the 1v1-only 101 choice).
     private(set) var lastSetEnded = false
 
     /// True when the next round must be dealt as a fresh set, which restarts
@@ -69,10 +72,16 @@ final class MatchCoordinator {
     nonisolated(unsafe) private var matchHandle: isolyn.bridge.MatchHandle
     private let mode: MatchFormat
 
-    init(mode: MatchFormat, setsToWin: Int = 3) throws {
+    init(mode: MatchFormat, setsToWin: Int = 3, targetScore: Int = 151) throws {
+        guard targetScore == 151 || (mode == .oneVOne && targetScore == 101) else {
+            throw BridgeError.invalidRequest
+        }
         self.mode = mode
         self.setsToWin = setsToWin
-        let h = isolyn.bridge.bridge_match_begin_with_format(mode.bridgeMode, Int32(setsToWin))
+        self.targetScore = targetScore
+        let h = isolyn.bridge.bridge_match_begin_with_format_and_target(
+            mode.bridgeMode, Int32(setsToWin), Int32(targetScore)
+        )
         guard h != isolyn.bridge.kInvalidMatchHandle else {
             throw BridgeError.invalidRequest // invalid mode/format, or CSPRNG-class failure at begin
         }
@@ -159,8 +168,8 @@ final class MatchCoordinator {
         if !isClosed {
             isolyn.bridge.bridge_match_close(matchHandle)
         }
-        matchHandle = isolyn.bridge.bridge_match_begin_with_format(
-            mode.bridgeMode, Int32(setsToWin)
+        matchHandle = isolyn.bridge.bridge_match_begin_with_format_and_target(
+            mode.bridgeMode, Int32(setsToWin), Int32(targetScore)
         )
         scores = []
         setWins = Array(repeating: 0, count: mode.participantCount)

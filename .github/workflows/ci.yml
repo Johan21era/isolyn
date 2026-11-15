@@ -54,11 +54,16 @@ jobs:
       - name: Offline lab + cloud verifier tests
         run: PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests
 
-      - name: Engine suite (20 executables, 497 checks)
+      - name: Engine suite (20 executables, 524 checks)
         run: ./scripts/ci/test_engine.sh
 
-      - name: Bridge suite (SmokeTest + SoakTest, 133 checks)
+      - name: Bridge suite (SmokeTest + SoakTest, 141 checks)
         run: ./scripts/ci/test_bridge.sh
+
+      - name: Rules conformance soak (100 million complete games, nightly)
+        if: github.event_name == 'schedule'
+        run: ./scripts/ci/rules_soak.sh 100000000
+        timeout-minutes: 60
 
   weekly-fuzz:
     name: Weekly adversarial-input fuzz

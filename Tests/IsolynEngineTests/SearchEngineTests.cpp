@@ -161,6 +161,36 @@ int main() {
         // candidate list, so this is exactly where an out-of-bounds read hid.
         check(MoveValidator::isLegal(state, 0, drawDecision.move),
               "a draw decision still reports a genuinely legal placeholder move");
+
+        // R-15's live action space is unbounded; the search evaluates one draw
+        // at the current decision and re-searches after it, so this bound is a
+        // guard for callers that choose to widen the root decision, not a claim
+        // that every draw chain is searched in one tree.
+        check(SearchEngine::kUnlimitedVoluntaryDraws >= DominoTile::kTileCount,
+              "the analysis draw bound covers the whole double-six set");
+        SearchEngine::Config unlimitedDraws = shipped;
+        unlimitedDraws.maxVoluntaryDraws = SearchEngine::kUnlimitedVoluntaryDraws;
+        auto unlimitedDecision =
+            SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, unlimitedDraws, rng);
+        check(unlimitedDecision.isDraw ||
+                  MoveValidator::isLegal(state, 0, unlimitedDecision.move),
+              "unlimited-draw analysis still returns a legal action");
+
+        // The deep tiers use PVS/LMR. Keep the default full-width path as the
+        // baseline and prove the selective variant still returns a legal action.
+        SearchEngine::Config selective = shipped;
+        selective.maxDepthPlies = 6;
+        selective.determinizationCount = 2;
+        selective.useSelectiveSearch = true;
+        check(!shipped.useSelectiveSearch,
+              "selective search is off by default; the full-width path is the baseline");
+        auto selectiveDecision =
+            SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, selective, rng);
+        check(selectiveDecision.depthReached > 0,
+              "selective deep search completes at least one iterative-deepening depth");
+        check(selectiveDecision.isDraw ||
+                  MoveValidator::isLegal(state, 0, selectiveDecision.move),
+              "selective deep search still returns a legal action");
     }
 
     section("SearchEngine: the opener is never offered a draw -- it must lead with a tile");
@@ -187,6 +217,46 @@ int main() {
         check(!decision.isDraw, "draws are enabled but the opener must lead, so no draw is chosen");
         check(MoveValidator::isLegal(state, 0, decision.move),
               "the opener's reported move is a legal lead");
+    }
+
+    section("SearchEngine: a reused transposition table is invalidated between searches");
+    {
+        std::vector<DominoTile> padding;
+        for (int i = 0; i < DominoTile::kTileCount; ++i) {
+            DominoTile t = DominoTile::fromIndex(i);
+            if (t == DominoTile(4, 6) || t == DominoTile(4, 1) ||
+                t == DominoTile(6, 6) || t == DominoTile(0, 0) ||
+                t == DominoTile(5, 5)) continue;
+            padding.push_back(t);
+        }
+        std::deque<DominoTile> chainTiles(padding.begin(), padding.end());
+        Chain chain = Chain::fromKnownState(chainTiles, 4, 4);
+        GameState state(GameMode::OneVsOne,
+                        { { DominoTile(4, 6), DominoTile(4, 1) },
+                          { DominoTile(6, 6) } },
+                        { DominoTile(0, 0), DominoTile(5, 5) }, chain,
+                        { PlayRecord{1, DominoTile(4, 4)} }, 0);
+        BeliefState belief = ProbabilityEngine::constructFromGameState(state, 0);
+
+        SearchEngine::Config config;
+        config.maxDepthPlies = 4;
+        config.determinizationCount = 8;
+        std::mt19937_64 firstRng(1234);
+        std::mt19937_64 secondRng(1234);
+        const auto first =
+            SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, config, firstRng);
+        const auto second =
+            SearchEngine::chooseBestMove(state, belief, GameMode::OneVsOne, config, secondRng);
+
+        check(second.move.tile == first.move.tile && second.move.side == first.move.side,
+              "a repeated search on the same thread chooses the same move");
+        check(second.depthReached == first.depthReached,
+              "a repeated search reaches the same depth");
+        check(second.nodesVisited == first.nodesVisited &&
+              second.transpositionHits == first.transpositionHits,
+              "stale transposition entries do not change the second search's work");
+        check(second.expectedValuePerPlayer == first.expectedValuePerPlayer,
+              "stale transposition entries do not change the reported values");
     }
 
     if (failureCount() == 0) {

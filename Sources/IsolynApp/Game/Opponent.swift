@@ -12,15 +12,20 @@ enum OpponentMode: String, CaseIterable, Identifiable, Equatable, Sendable {
     var id: String { rawValue }
 }
 
-/// Public strength labels. The actual depth/determinization numbers come from
-/// the C++ DifficultyModel through the bridge -- this enum is presentation
-/// only, so the app cannot drift from the engine's calibrated tier mapping.
+/// Public strength labels, ordered weakest to strongest. The actual
+/// depth/determinization numbers come from the C++ DifficultyModel through the
+/// bridge -- this enum is presentation only, so the app cannot drift from the
+/// engine's calibrated tier mapping.
+///
+/// Order: Casual < Club < Elite < Expert < Master < Legendary < Mythical.
 enum AILevel: Int, CaseIterable, Identifiable, Sendable {
     case casual = 100
     case club = 900
-    case expert = 1600
-    case master = 2300
-    case elite = 3000
+    case elite = 1600
+    case expert = 2300
+    case master = 3000
+    case legendary = 5000
+    case mythical = 10000
 
     var id: Int { rawValue }
 
@@ -28,9 +33,21 @@ enum AILevel: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .casual: return "Casual"
         case .club: return "Club"
+        case .elite: return "Elite"
         case .expert: return "Expert"
         case .master: return "Master"
-        case .elite: return "Elite"
+        case .legendary: return "Legendary"
+        case .mythical: return "Mythical"
+        }
+    }
+
+    /// The deeper tiers need a longer wall-clock budget because their depth is
+    /// a ceiling, not a guaranteed completed depth. These values are product
+    /// latency choices, not strength claims.
+    var thinkingTimeMs: Int32 {
+        switch self {
+        case .legendary, .mythical: return 15_000
+        default: return 3_000
         }
     }
 }

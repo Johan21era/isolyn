@@ -35,6 +35,23 @@ int main() {
         check(twoVsTwo.hasMatchEnded(), "151 has reached the threshold");
     }
 
+    section("ScoreSystem: R-06 1v1 short game ends at 101, other modes stay at 151");
+    {
+        ScoreSystem shortOneVsOne(GameMode::OneVsOne, 2, 101);
+        shortOneVsOne.applyRoundScores({100, 0});
+        check(!shortOneVsOne.hasMatchEnded(), "1v1 short game: 100 is still live");
+        shortOneVsOne.applyRoundScores({1, 0});
+        check(shortOneVsOne.hasMatchEnded(), "1v1 short game: 101 ends the set");
+
+        ScoreSystem shortOneVsOneVsOne(GameMode::OneVsOneVsOne, 3, 101);
+        shortOneVsOneVsOne.applyRoundScores({101, 0, 0});
+        check(!shortOneVsOneVsOne.hasMatchEnded(),
+              "1v1v1 ignores the short target and does not end at 101");
+        shortOneVsOneVsOne.applyRoundScores({50, 0, 0});
+        check(shortOneVsOneVsOne.hasMatchEnded(),
+              "1v1v1 still ends at its locked 151 threshold");
+    }
+
     section("ScoreSystem: R-22 applies a survivor round to only the live participants");
     {
         ScoreSystem scores(GameMode::OneVsOneVsOne, 3);

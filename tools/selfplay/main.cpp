@@ -264,6 +264,7 @@ GameSummary playOneRound(const Options& options,
     configA.workerThreads = options.workers;
     configA.rootAggregation = options.aggregation;
     configA.maxVoluntaryDraws = options.voluntaryDraws;
+    configA.useSelectiveSearch = options.depth >= 24;
     configA.weights = options.weights;
 
     SearchEngine::Config configB;
@@ -274,6 +275,7 @@ GameSummary playOneRound(const Options& options,
     configB.workerThreads = options.opponentWorkers;
     configB.rootAggregation = options.opponentAggregation;
     configB.maxVoluntaryDraws = options.opponentVoluntaryDraws;
+    configB.useSelectiveSearch = options.opponentDepth >= 24;
     configB.weights = options.opponentWeights;
 
     // Alternate which physical side gets the A configuration so a one-sided

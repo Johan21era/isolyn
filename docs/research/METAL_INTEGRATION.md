@@ -72,7 +72,7 @@ The kernel is not the bottleneck. The data path is.
 
 ## What a real search actually needs
 
-Measured over 490 decisions at the elite configuration (depth 8, 64 worlds):
+Measured over 490 decisions at the master configuration (depth 8, 64 worlds):
 
 | Statistic | Value |
 |---|---|

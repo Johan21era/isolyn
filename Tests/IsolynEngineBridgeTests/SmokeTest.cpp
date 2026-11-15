@@ -7,6 +7,7 @@
 // analysis correctness/cancellation, and real cross-thread concurrent
 // access to a single session (command + query + analysis together).
 #include "IsolynBridge.hpp"
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstring>
@@ -455,6 +456,70 @@ int main() {
 
     std::printf("== sets/games: 151 ends a set, scores reset, the next set restarts the ritual ==\n");
     {
+        MatchHandle shortMatch = bridge_match_begin_with_format_and_target(
+            GameModeDTO::OneVsOne, 3, 101);
+        CHECK(shortMatch != kInvalidMatchHandle,
+              "R-06: 1v1 accepts a best-of-5 race to 101");
+        bridge_match_close(shortMatch);
+        CHECK(bridge_match_begin_with_format_and_target(
+                  GameModeDTO::OneVsOne, 3, 100) == kInvalidMatchHandle,
+              "R-06: only 101 and 151 are valid race targets");
+        CHECK(bridge_match_begin_with_format_and_target(
+                  GameModeDTO::TwoVsTwo, 3, 101) == kInvalidMatchHandle,
+              "R-06: the short target is rejected outside 1v1");
+
+        // R-06 regression: the pre-game 101 choice must survive a set reset.
+        // The bridge recreates its ScoreSystem after every completed set; a
+        // default constructor there silently reverted set 2 to 151.
+        MatchHandle shortRace = bridge_match_begin_with_format_and_target(
+            GameModeDTO::OneVsOne, 3, 101);
+        CHECK(shortRace != kInvalidMatchHandle, "R-06: short race match created for the set-reset test");
+        auto driveShort = [](SessionHandle s) -> SnapshotDTO {
+            for (int op = 0; op < 500; ++op) {
+                int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
+                SnapshotDTO snap = bridge_get_snapshot(s, current);
+                if (snap.status != BridgeStatus::Ok) return snap;
+                if (snap.roundOutcome != RoundOutcomeDTO::InProgress) {
+                    return bridge_get_snapshot(s, 0);
+                }
+                if (snap.legalMovesForRequestingPlayer.count > 0) {
+                    bridge_submit_move(s, snap.stateVersion, snap.legalMovesForRequestingPlayer.moves[0]);
+                } else if (snap.boneyardDrawableCount > 0) {
+                    CommandResultDTO r = bridge_resolve_forced_draw(s, snap.stateVersion);
+                    if (r.status != BridgeStatus::Ok) bridge_end_turn_with_no_play(s, snap.stateVersion);
+                } else {
+                    bridge_end_turn_with_no_play(s, snap.stateVersion);
+                }
+            }
+            return bridge_get_snapshot(s, 0);
+        };
+
+        SessionHandle shortSession = bridge_session_create_first_round(GameModeDTO::OneVsOne);
+        bool sawFirstSetEnd = false;
+        bool sawSecondSetEndAt101 = false;
+        for (int round = 0; round < 30 && shortSession != kInvalidSessionHandle; ++round) {
+            SnapshotDTO done = driveShort(shortSession);
+            if (done.roundOutcome == RoundOutcomeDTO::InProgress) break;
+            MatchResultDTO rec = bridge_match_record_round(shortRace, shortSession);
+            if (rec.status != BridgeStatus::Ok) break;
+            if (rec.setNumber == 1 && rec.setEnded) sawFirstSetEnd = true;
+            if (rec.setNumber == 2 && !rec.setEnded) {
+                int high = std::max(rec.scoresPerParticipant[0], rec.scoresPerParticipant[1]);
+                if (high >= 101) break; // old code would still be live here at 151
+            }
+            if (rec.setNumber == 2 && rec.setEnded &&
+                std::max(rec.scoresPerParticipant[0], rec.scoresPerParticipant[1]) >= 101) {
+                sawSecondSetEndAt101 = true;
+                break;
+            }
+            bridge_session_close(shortSession);
+            shortSession = bridge_match_create_next_round(shortRace);
+        }
+        CHECK(sawFirstSetEnd, "R-06: the first short set ended at 101");
+        CHECK(sawSecondSetEndAt101, "R-06: the 101 target is still active in the next set");
+        bridge_session_close(shortSession);
+        bridge_match_close(shortRace);
+
         CHECK(bridge_match_begin_with_format(GameModeDTO::OneVsOne, 5) == kInvalidMatchHandle,
               "a 5-set format is not one of the rulebook's two choices (3 or 4)");
         MatchHandle bestOfSeven = bridge_match_begin_with_format(GameModeDTO::OneVsOne, 4);
@@ -841,9 +906,19 @@ int main() {
         CHECK(club.strength == 900 && club.maxDepthPlies == 3 && club.determinizationCount == 16,
               "club strength maps to 3 plies / 16 determinizations");
 
-        DifficultyProfileDTO elite = bridge_difficulty_profile(99999);
-        CHECK(elite.strength == 3000 && elite.maxDepthPlies == 8 && elite.determinizationCount == 64,
-              "out-of-range strength clamps to the elite profile");
+        DifficultyProfileDTO master = bridge_difficulty_profile(3000);
+        CHECK(master.strength == 3000 && master.maxDepthPlies == 8 && master.determinizationCount == 64,
+              "master strength maps to 8 plies / 64 determinizations");
+
+        DifficultyProfileDTO legendary = bridge_difficulty_profile(5000);
+        CHECK(legendary.strength == 5000 && legendary.maxDepthPlies == 24 &&
+                  legendary.determinizationCount == 80,
+              "legendary strength maps to 24 plies / 80 determinizations");
+
+        DifficultyProfileDTO mythical = bridge_difficulty_profile(99999);
+        CHECK(mythical.strength == 10000 && mythical.maxDepthPlies == 48 &&
+                  mythical.determinizationCount == 160,
+              "out-of-range strength clamps to the mythical profile");
     }
 
     if (g_failures == 0) {

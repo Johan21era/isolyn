@@ -358,7 +358,7 @@ struct DifficultyProfileDTO {
     int32_t determinizationCount;
 };
 
-// Returns the profile for a strength label, clamped to [100, 3000].
+// Returns the profile for a strength label, clamped to [100, 10000].
 DifficultyProfileDTO bridge_difficulty_profile(int32_t strength);
 
 // Creates an empty running-score tracker for the given mode. Returns
@@ -370,6 +370,12 @@ MatchHandle bridge_match_begin(GameModeDTO mode);
 // setsToWin must be 3 (best-of-5) or 4 (best-of-7). Any other value returns
 // kInvalidMatchHandle; the format is fixed for the life of the game.
 MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin);
+
+// R-06 pre-game choice: 1v1 may play every set to 101 instead of 151. Other
+// modes are locked at 151; invalid target/mode combinations return
+// kInvalidMatchHandle. The default begin call uses 151.
+MatchHandle bridge_match_begin_with_format_and_target(
+    GameModeDTO mode, int32_t setsToWin, int32_t targetScore);
 
 // Records ONE completed round into the running score. Fails closed (mutating
 // nothing) with InvalidRequest if the session's round is still InProgress,

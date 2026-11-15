@@ -11,10 +11,51 @@ final class AIOpponentTests: XCTestCase {
         XCTAssertEqual(casual.maxDepthPlies, 2)
         XCTAssertEqual(casual.determinizationCount, 8)
 
+        let club = AIProfile(level: .club)
+        XCTAssertEqual(club.strength, 900)
+        XCTAssertEqual(club.maxDepthPlies, 3)
+        XCTAssertEqual(club.determinizationCount, 16)
+
         let elite = AIProfile(level: .elite)
-        XCTAssertEqual(elite.strength, 3000)
-        XCTAssertEqual(elite.maxDepthPlies, 8)
-        XCTAssertEqual(elite.determinizationCount, 64)
+        XCTAssertEqual(elite.strength, 1600)
+        XCTAssertEqual(elite.maxDepthPlies, 4)
+        XCTAssertEqual(elite.determinizationCount, 24)
+
+        let expert = AIProfile(level: .expert)
+        XCTAssertEqual(expert.strength, 2300)
+        XCTAssertEqual(expert.maxDepthPlies, 5)
+        XCTAssertEqual(expert.determinizationCount, 40)
+
+        let master = AIProfile(level: .master)
+        XCTAssertEqual(master.strength, 3000)
+        XCTAssertEqual(master.maxDepthPlies, 8)
+        XCTAssertEqual(master.determinizationCount, 64)
+
+        let legendary = AIProfile(level: .legendary)
+        XCTAssertEqual(legendary.strength, 5000)
+        XCTAssertEqual(legendary.maxDepthPlies, 24)
+        XCTAssertEqual(legendary.determinizationCount, 80)
+
+        let mythical = AIProfile(level: .mythical)
+        XCTAssertEqual(mythical.strength, 10000)
+        XCTAssertEqual(mythical.maxDepthPlies, 48)
+        XCTAssertEqual(mythical.determinizationCount, 160)
+
+        XCTAssertEqual(
+            AILevel.allCases.map(\.title),
+            ["Casual", "Club", "Elite", "Expert", "Master", "Legendary", "Mythical"],
+            "the menu must present the tiers weakest to strongest"
+        )
+        XCTAssertEqual(
+            AILevel.allCases.map(\.rawValue),
+            [100, 900, 1600, 2300, 3000, 5000, 10000],
+            "the tier labels must follow the monotonic strength ladder"
+        )
+        XCTAssertEqual(
+            AILevel.allCases.map(\.thinkingTimeMs),
+            [3_000, 3_000, 3_000, 3_000, 3_000, 15_000, 15_000],
+            "both deeper tiers get the requested 15-second wall-clock budget"
+        )
     }
 
     func test_computer_seat_mapping_respects_two_v_two_partnerships() {
@@ -26,6 +67,15 @@ final class AIOpponentTests: XCTestCase {
         XCTAssertTrue(MatchFormat.twoVTwo.isComputerSeat(2, for: .computer),
                       "the human's partner must not stall the single-human match")
         XCTAssertTrue(MatchFormat.twoVTwo.isComputerSeat(3, for: .computer))
+    }
+
+    func test_short_race_target_is_accepted_only_for_one_v_one() throws {
+        let short = try MatchCoordinator(mode: .oneVOne, targetScore: 101)
+        XCTAssertEqual(short.targetScore, 101)
+        short.close()
+
+        XCTAssertThrowsError(try MatchCoordinator(mode: .oneVOneVOne, targetScore: 101))
+        XCTAssertThrowsError(try MatchCoordinator(mode: .twoVTwo, targetScore: 101))
     }
 
     func test_computer_plays_its_own_turn_without_human_input() async throws {

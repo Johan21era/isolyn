@@ -22,9 +22,10 @@ struct RootView: View {
                     EntryView()
                 case .modeSelect:
                     ModeSelectorView()
-                case .game(let format, let opponent, let aiLevel, let setsToWin):
+                case .game(let format, let opponent, let aiLevel, let setsToWin, let targetScore):
                     InteractiveGameBoardView(
-                        format: format, opponent: opponent, aiLevel: aiLevel, setsToWin: setsToWin
+                        format: format, opponent: opponent, aiLevel: aiLevel,
+                        setsToWin: setsToWin, targetScore: targetScore
                     )
                 case .lab:
                     LabView()

@@ -28,11 +28,13 @@ struct InteractiveGameBoardView: View {
     @State private var boardFrame: CGRect = .zero
     @State private var boneyardAnchor: CGPoint?
 
-    init(format: MatchFormat, opponent: OpponentMode, aiLevel: AILevel, setsToWin: Int) {
+    init(format: MatchFormat, opponent: OpponentMode, aiLevel: AILevel,
+         setsToWin: Int, targetScore: Int = 151) {
         self.format = format
         self.opponent = opponent
         _viewModel = State(initialValue: GameViewModel(
-            mode: format, opponent: opponent, aiLevel: aiLevel, setsToWin: setsToWin
+            mode: format, opponent: opponent, aiLevel: aiLevel,
+            setsToWin: setsToWin, targetScore: targetScore
         ))
     }
 
