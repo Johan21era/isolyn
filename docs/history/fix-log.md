@@ -3180,3 +3180,59 @@ playing-strength result, and no figure from it is entered in
 
 **Not done, deliberately.** No re-run of the session; no change to code, tests or
 configuration; no edit to earlier fix-log entries (§5 forbids rewriting them).
+
+## OPS-50 — Repository made public to unblock hosted CI (2026-11-15)
+
+**Scope:** repository visibility and CI economics. No source, test or workflow change.
+
+**Symptom.** Every push since 2026-11-14 failed in two or three seconds. Run
+`43769995526` (commit `b460a62`) is the clean example: three jobs, two failed,
+each with `"steps": []`, `startedAt` 22:33:58Z and `completedAt` 22:34:00Z. Zero
+steps executed is infrastructure, not code.
+
+**Root cause, quoted from the check-run annotation:**
+
+> "The job was not started because recent account payments have failed or your
+> spending limit needs to be increased. Please check the 'Billing & plans'
+> section in your settings"
+
+The repository was private, so macOS runners were billed. This is the same
+cause recorded in OPS-48 and could not be fixed from the tree.
+
+**Decision.** The owner asked for the repository to be made public, which moves
+standard-runner minutes onto the free tier. Performed with
+`gh repo edit Johan21era/isolyn --visibility public
+--accept-visibility-change-consequences`; verified back as
+`{"isPrivate":false,"visibility":"PUBLIC"}`.
+
+**Safety check before the flip.** Nothing credential-shaped was exposed:
+
+- `git ls-files` matched no `.env*`, `kaggle.json`, `*.pem`, `*.p12`, `id_rsa`,
+  or credential/secret/token file.
+- `git log --all --diff-filter=A --name-only` matched none of those names either,
+  so nothing was added and later deleted.
+- `git grep` over `HEAD` for `ghp_`, `github_pat_`, `AKIA…`, `sk-…`, `xox[baprs]-`
+  and `BEGIN … PRIVATE KEY` returned nothing.
+- `gh repo view` reported `viewerPermission: ADMIN`.
+
+No history rewrite was needed and none was attempted.
+
+**Result.** `gh run rerun 43769995526 --failed` executed for real:
+
+- Documentation gate — success, 6 steps.
+- macOS build + full test suites — success, 10 steps.
+  - `TOTAL CHECKS PASSED: 524` (engine, 20 executables)
+  - `TOTAL CHECKS PASSED: 141` (bridge)
+  - `Build complete! (55.94s)` and the Swift suites executed.
+- Weekly fuzz — skipped, as scheduled.
+
+Run conclusion `success` at 2026-11-15T22:43:22Z. This is the first genuinely
+green hosted run in this log.
+
+**Consequence worth stating plainly.** The source, the full commit history and
+`lab/data/` now visible to anyone. Publication cannot be undone: search indexes,
+forks and caches may retain copies after any later change of visibility. If a
+credential is ever committed from now on, it must be treated as already leaked.
+
+**Not done, deliberately.** The workflow was not modified, no billing setting was
+touched, and no secrets were rotated, because none were found.
