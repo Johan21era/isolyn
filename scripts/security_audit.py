@@ -56,12 +56,16 @@ FORBIDDEN_NAMES = re.compile(
 # is excused there and nowhere else.
 ABSOLUTE_PATH_ALLOWLIST = ("docs/audits/",)
 
+# Labels are chosen so they cannot match their own pattern: an earlier version
+# used the literal code forms as labels and the scanner promptly reported itself
+# three times. The regular expressions never matched their own source text; the
+# human-readable strings did. Keep it that way.
 DANGEROUS_PYTHON = [
-    ("shell=True", re.compile(r"shell\s*=\s*True")),
+    ("a shell subprocess", re.compile(r"shell\s*=\s*True")),
     ("os.system", re.compile(r"\bos\.system\s*\(")),
     ("os.popen", re.compile(r"\bos\.popen\s*\(")),
-    ("eval()", re.compile(r"(?<![\w.])eval\s*\(")),
-    ("exec()", re.compile(r"(?<![\w.])exec\s*\(")),
+    ("dynamic eval", re.compile(r"(?<![\w.])eval\s*\(")),
+    ("dynamic exec", re.compile(r"(?<![\w.])exec\s*\(")),
     ("pickle.loads", re.compile(r"pickle\.loads?\s*\(")),
     ("yaml.load", re.compile(r"yaml\.load\s*\(")),
     ("tarfile.extractall", re.compile(r"extractall\s*\(")),
