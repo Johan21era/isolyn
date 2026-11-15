@@ -1,11 +1,15 @@
 # Kaggle Bridge — Free Cloud Compute for the Offline Lab
 
-**Status:** implemented locally on 2026-11-14 (tier 3). The driver, worker,
-private-dataset packaging, receipt verifier and assembly path exist and pass the
-offline suite. **No live Kaggle session has been run** in this checkout; that
-needs a Kaggle account and CLI. Platform limits were read from Kaggle's own
-documentation on 2026-11-14; product limits change, so re-check before relying on
-the arithmetic.
+**Status:** implemented on 2026-11-14 (tier 3) and **proven live on
+2026-11-15**. The first 10,000-round session (`cloud-1v1-d8x64-n10000-s1`,
+kernel `johan21era/isolyn-lab-0000`) completed at 01:59 UTC: 4 shards, 10,000
+rounds, 176,591 decisions, 0 incomplete, assembled and hash-verified. Kaggle
+reports `KernelWorkerStatus.COMPLETE`. Source commit `2ed1e9d`; worker platform
+Linux x86_64, 4 cores, Python 3.13.18; 1,847 s wall. The session is a symmetric
+control — both sides depth 8 / 64 determinizations — so it calibrates the
+measurement instrument and proves the portable build; it is not a playing-
+strength result. Platform limits were read from Kaggle's own documentation on
+2026-11-14; product limits change, so re-check before relying on the arithmetic.
 
 ## Why this workload suits Kaggle
 
@@ -90,8 +94,11 @@ worker reusable; Kaggle is one backend behind it, not the abstraction itself.
    Security framework only on Darwin, uses `-pthread` on both platforms, honours
    `ISOLYN_SELFPLAY_OUT`, and refuses an unsupported platform. `EntropySource.cpp`
    already has a `getrandom()` path. A fake-toolchain test pins the Linux and
-   Darwin argument sets. **Actual Linux compilation has not been run on this Mac;
-   the first Kaggle session is its acceptance test.**
+   Darwin argument sets. **Actual Linux compilation is now proven**, not
+   inferred: the worker built the portable harness on Kaggle's x86_64 Linux and
+   ran 10,000 rounds to completion on 2026-11-15. The open receipt records the
+   platform, source commit and code digest, so a future cross-platform
+   divergence stays visible instead of silent.
 2. **The same seed could not reproduce the same deals across platforms.**
    `dealSeeded` (selfplay), `Determinizer`, and `SimulationEngine` now use
    `StableRandom.hpp` instead of implementation-defined `std::shuffle` and

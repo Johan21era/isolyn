@@ -59,7 +59,7 @@ document that contradicts tier 1 is expected and is labelled as such.
 | `research/BENCHMARK_BASELINE.md` | Pre-rulebook ladder and timings — **VOID**, kept for audit only | VOID measurements | 2026-11-14 |
 | `research/EXPERIMENT_REGISTRY.md` | Accepted and rejected experiments, with intervals | Living record | 2026-11-14 |
 | `research/METAL_INTEGRATION.md` | Accelerator audit and integration gates | Living audit | 2026-11-14 |
-| `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, session contract, first session | Implemented locally; live run pending | 2026-11-14 |
+| `research/KAGGLE_BRIDGE.md` | Free cloud compute: limits, arithmetic, session contract, first session | Live: 10,000 rounds, hash-verified | 2026-11-15 |
 | `research/SEARCH_PERFORMANCE.md` | Five-tier self-play throughput and shard RSS for the compact transposition table | Living measurements | 2026-11-15 |
 | `audits/2026-11-14-audit.md` | **Current factual baseline** | Authoritative | 2026-11-14 |
 | `audits/2026-11-13-audit.md` | Prior factual baseline; superseded by the 2026-11-14 audit | Historical snapshot | 2026-11-13 |

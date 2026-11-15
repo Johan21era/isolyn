@@ -86,9 +86,14 @@ overwrite; `assemble` re-verifies every session and refuses gaps, overlaps or
 incomplete receipts; `collect` is the status-guarded fetch/verify/assemble path
 used by the app.
 
-**No live Kaggle session has been run in this checkout.** The local driver and
-worker are covered by offline tests, but the first 10,000-game session is still
-the acceptance gate. Commands, account setup and limits are in
+**The live session has now run.** On 2026-11-15 the first 10,000-round cloud
+session (`cloud-1v1-d8x64-n10000-s1`, kernel `johan21era/isolyn-lab-0000`)
+completed on Kaggle and was fetched and hash-verified: 4 shards, 10,000 rounds,
+176,591 decisions, 0 incomplete, 1,847 s on 4 Linux x86_64 cores, source commit
+`2ed1e9d`. That closes the acceptance gate and proves the portable Linux build.
+It was a symmetric control (both sides depth 8 / 64 determinizations), so it
+measures the instrument rather than the engine. Commands, account setup and
+limits are in
 [`cloud/README.md`](../../cloud/README.md); the design arithmetic is in
 [`docs/research/KAGGLE_BRIDGE.md`](../research/KAGGLE_BRIDGE.md).
 

@@ -320,12 +320,17 @@ documented number to match a broken run.
 - Known backlog: transposition-table key and depth-preferred replacement;
   1v1v1 pruning; production packaging. R-06 and R-15 are no longer gaps: the
   rulebook gate reports 21 enforced, 0 declared gaps, 1 by-hand rule.
-- The private Kaggle batch bridge is implemented locally (portable harness build,
-  stable RNG, allowlisted snapshot, worker-side snapshot verification,
-  receipt/hash/count verifier, atomic assembly).
-  No live Kaggle session has been run from this checkout; the first 10,000-game
-  session is the acceptance gate. Actual Linux compilation remains unverified on
-  this Mac and must be proven by that session.
+- The private Kaggle batch bridge is implemented **and proven live**. The first
+  10,000-round session (`cloud-1v1-d8x64-n10000-s1`, kernel
+  `johan21era/isolyn-lab-0000`) completed on 2026-11-15 at 01:59 UTC: 4 shards,
+  10,000 rounds, 176,591 decisions, 0 incomplete, assembled and hash-verified
+  (`assembled.csv` sha256 `b93e66aa…`, 20,712,340 bytes). Source commit
+  `2ed1e9d`; worker platform Linux x86_64, 4 cores, Python 3.13.18; 1,847 s.
+  The acceptance gate is **passed**, and **Linux compilation is proven** — the
+  worker built and ran the portable harness on Kaggle, which no longer rests on
+  a macOS-only fixture. The run was a symmetric self-play control (both sides
+  depth 8 / 64 determinizations), so it calibrates the measurement instrument;
+  it is **not** a strength claim and must not be quoted as one.
 - The 1v1 default is now 151 (R-06), the locked pair is no longer publicly
   revealed (R-17), and 1v1v1 eliminates at 151 before continuing between the
   survivors (R-22). The pre-game 101 choice is wired through the engine,

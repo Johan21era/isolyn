@@ -3121,3 +3121,62 @@ above.
 - The live Kaggle 10K session was not re-run or verified in this closeout.
 - The Metal accelerator's existing red compact-GPU parity result was not changed
   or re-measured here.
+
+## OPS-49 — Retract the "no live Kaggle session" claim (2026-11-15)
+
+**Scope:** documentation truth correction. No code, no test, no behaviour change.
+
+The tree carried six statements that the cloud bridge had never run. They were
+true when written and are false now: a live session completed on 2026-11-15 and
+its receipt is on disk. This entry is the retraction; the append-only history
+above is left untouched, because those entries record what was true on their day.
+
+**Evidence (the run that makes the claim false):**
+
+- Run `cloud-1v1-d8x64-n10000-s1`, kernel `johan21era/isolyn-lab-0000`.
+  `kaggle kernels status` → `KernelWorkerStatus.COMPLETE` (queried live
+  during this correction).
+- `sessions/0000/session.json`: `status: complete`, `duration_seconds:
+  1847.169`, `platform`: Linux x86_64, 4 cores, Python 3.13.18; four shards of
+  2,500 rounds, each `exit_code: 0`.
+- Shard log: `completed rounds: 2500` / `incomplete rounds: 0` /
+  `decisions: 44223`.
+- `assembled.csv.json`: `games: 10000`, `rows: 176591`, `bytes: 20712340`,
+  `source_commit: 2ed1e9d6c61389308923d7cbac1a1594beadb7ca`.
+- Ledger: dataset uploaded 01:12:32Z, pushed 01:12:34Z, retried 01:34:00Z,
+  fetched 01:59:57Z, verified 01:59:58Z.
+- `git merge-base --is-ancestor 2ed1e9d HEAD` → success: the recorded source
+  commit is in this history, so the run came from this codebase.
+
+**Why the first attempt failed, for the record.** `cloud-collect.log` shows
+`Permission 'kernels.get' was denied` for `johan21era/isolyn-lab-0000` — the
+driver queried a kernel slug Kaggle had not yet assigned. This is the same
+slug-assignment trap the driver now handles; the retry twenty minutes later
+completed. It was a naming race, never a broken pipeline.
+
+**Claims corrected (literal old text → new):**
+
+- `AGENTS.md:326-327` "No live Kaggle session has been run from this checkout …
+  Actual Linux compilation remains unverified" → bridge is proven live, gate
+  passed, Linux compilation proven, and explicitly **not** a strength claim.
+- `docs/README.md:62` status "Implemented locally; live run pending" → "Live:
+  10,000 rounds, hash-verified", date 2026-11-15.
+- `cloud/README.md:3-11` "a successful live receipt is still unproven" → status
+  is proven live with the full receipt and all three deployment issues named.
+- `cloud/README.md:132` "No live Kaggle run has been recorded here yet" → gate
+  passed, receipt path given.
+- `docs/research/KAGGLE_BRIDGE.md:5` "**No live Kaggle session has been run**" →
+  proven live, receipt summarised.
+- `docs/research/KAGGLE_BRIDGE.md:93` "Actual Linux compilation has not been run
+  on this Mac" → proven by the worker build on Kaggle.
+- `docs/subsystems/LAB.md:89` "**No live Kaggle session has been run in this
+  checkout.**" → the live session has run, with counts.
+
+**What was deliberately not claimed.** The session ran the same configuration on
+both sides (depth 8, 64 determinizations), so it is a symmetric control: it
+calibrates the instrument and proves the cross-platform build. It is not a
+playing-strength result, and no figure from it is entered in
+`docs/research/STRENGTH_BASELINE.md`.
+
+**Not done, deliberately.** No re-run of the session; no change to code, tests or
+configuration; no edit to earlier fix-log entries (§5 forbids rewriting them).

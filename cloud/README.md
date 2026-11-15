@@ -1,13 +1,23 @@
 # Isolyn cloud bridge
 
-**Status:** the local driver, staged source bundle, app Cloud tab and Kaggle
-worker are implemented and tested offline. The first live attempts exposed two
-deployment issues: dataset ingestion was not complete when the notebook started,
-and Kaggle mounted the dataset under `/kaggle/input/datasets/<owner>/<slug>`
-rather than `/kaggle/input/<slug>`. The driver now waits for `ready`, the
-notebook discovers both mount layouts, and the driver records the slug Kaggle
-actually assigns. A corrected 10,000-game attempt is running; a successful live
-receipt is still unproven. No token is stored in this repository or read by the
+**Status: proven live.** The first 10,000-round session
+(`cloud-1v1-d8x64-n10000-s1`, kernel `johan21era/isolyn-lab-0000`) completed on
+2026-11-15 at 01:59 UTC and was fetched and hash-verified. Kaggle reports the
+kernel as `KernelWorkerStatus.COMPLETE`. Receipt: 4 shards × 2,500 rounds,
+10,000 rounds, 176,591 decisions, **0 incomplete**, 1,847 s on 4 Linux x86_64
+cores, source commit `2ed1e9d`, assembled `assembled.csv` (20,712,340 bytes,
+sha256 `b93e66aa…`). The run proves the Linux build and the cross-platform RNG
+in one go; it is a symmetric control (both sides depth 8 / 64 determinizations),
+so it is not a strength measurement.
+
+Getting there took three deployment issues, all now fixed: dataset ingestion was
+not complete when the notebook started; Kaggle mounted the dataset under
+`/kaggle/input/datasets/<owner>/<slug>` rather than `/kaggle/input/<slug>`; and
+the first push was queried under a kernel slug Kaggle had not assigned, so
+`kernels status` returned `Permission 'kernels.get' was denied`. The driver now
+waits for `ready`, the notebook discovers both mount layouts, and the driver
+records and reuses the slug Kaggle actually assigns. A retry twenty minutes
+later completed normally. No token is stored in this repository or read by the
 app.
 
 The cloud bridge lets Kaggle run the existing C++ self-play harness as a private
@@ -128,8 +138,10 @@ The local verifier never trusts those values; it recomputes them.
   multiply quota is abuse.
 - No model training. The Python trainer remains a scaffold; this bridge only
   generates and verifies self-play data.
-- No live Kaggle run has been recorded here yet. The first live 10,000-game
-  session is still the acceptance gate.
+- The acceptance gate is **passed**: a live 10,000-round session ran on
+  2026-11-15 and its receipt is stored under
+  `~/Library/Application Support/IsolynV2.0/runs/cloud/cloud-1v1-d8x64-n10000-s1/`.
+  Treat earlier "unproven" notes in this file and in `docs/` as superseded.
 
 ## Verification locally
 
