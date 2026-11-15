@@ -2716,3 +2716,41 @@ prove itself before it can start a session.
   about two seconds with `steps: 0`, no runner, and the same billing annotation.
   It is not a test result and must not be called green.
 - No game-rule or search change; no strength claim.
+
+## OPS-42 — Validate cloud CSV plan fields and reject symlinks (2026-11-14)
+
+**Scope:** finish the data-integrity boundary around downloaded artifacts. OPS-41
+proved the mounted code; this change proves each row belongs to the planned shard
+and refuses symlinked shard, log and receipt paths.
+
+### Change
+
+- `cloud_verify.inspect_csv` now accepts the planned seed and mode and rejects
+  any row whose `seed` or `mode` column differs. The worker and local verifier
+  both pass the plan values.
+- `cloud_verify.validate_session` rejects symlinked shard and log files before
+  resolving them, and `fetch` rejects a downloaded `session.json` that resolves
+  outside the incoming directory.
+- Added regression checks for a wrong seed, a nonzero shard exit, a tampered
+  hash, a row-total mismatch, path traversal and an unexpected upload file.
+
+### Verification (literal)
+
+| Check | Result |
+|---|---|
+| `PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests` | `Ran 42 tests`, `OK` |
+| `./scripts/ci/local.sh` | `LOCAL CI: PASS — 7 step(s), 0 failed` |
+| `./scripts/ci/test_engine.sh` | `Executables run: 20`, `TOTAL CHECKS PASSED: 497`, `TOTAL CHECKS FAILED: 0` |
+| `./scripts/ci/test_bridge.sh` | `Executables run: 2`, `TOTAL CHECKS PASSED: 133`, `TOTAL CHECKS FAILED: 0` |
+| `swift test` | `Executed 120 tests, with 0 failures` |
+| `cloud plan` dry run | `cloud-smoke3: plan only (dry run; nothing written)`; source `1996cef3...`, code `06208ce5f5b7`, 10,000 games in 4 shards, 1 session |
+| `cloud prepare` | `cloud-smoke3: prepared .../dataset`; `dataset files: 66`; `snapshot_files 63` |
+| Prepared-snapshot worker | `snapshot_worker_status=0`; receipt `{'status': 'complete', 'total_games': 1, 'total_rows': 22, 'error': None}`; shard seed 1, rows 22, exit 0 |
+| Hosted CI for `1996cef` | run `43655965395`: both jobs failed with `steps: 0`, no runner, same billing annotation |
+
+### Limits
+
+- No live Kaggle session, upload or fetch; no Kaggle CLI or token is present.
+- Linux compilation remains unproven on this Mac; the snapshot worker ran on
+  macOS.
+- No game-rule or search change; no strength claim.
