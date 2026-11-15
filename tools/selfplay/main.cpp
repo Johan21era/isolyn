@@ -8,6 +8,7 @@
 #include "StableRandom.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -35,6 +36,12 @@ struct Options {
     RootAggregation opponentAggregation = RootAggregation::Mean;
     int voluntaryDraws = 0;
     int opponentVoluntaryDraws = 0;
+    // Sequential testing. 0 disables it and the run plays a fixed --games.
+    // A "pair" is one round with A on each seat, so the test only ever looks
+    // at balanced samples.
+    int sprtPairs = 0;
+    int sprtElo0 = 0;   // H0: the true difference is at most this
+    int sprtElo1 = 5;   // H1: the true difference is at least this
     EvaluationWeights weights{};
     EvaluationWeights opponentWeights{};
     std::uint64_t seed = 1;
@@ -90,6 +97,9 @@ void usage(std::ostream& out) {
         << "  --opponent-weights LIST   evaluation overrides for B\n"
         << "  --seed N                deterministic deal/search seed (default 1)\n"
         << "  --mode MODE             1v1 | 1v1v1 | 2v2 (default 1v1)\n"
+        << "  --sprt-pairs N          stop as soon as the evidence decides; N pairs is the cap\n"
+        << "  --sprt-elo0 N           H0 bound in Elo for the sequential test (default 0)\n"
+        << "  --sprt-elo1 N           H1 bound in Elo for the sequential test (default 5)\n"
         << "  --output PATH           CSV output path (default lab/data/selfplay.csv)\n"
         << "  --check                 verify the linked engine and exit 0\n"
         << "  --help                  show this help\n";
@@ -247,6 +257,74 @@ MatchController createFirstRound(GameMode mode, std::mt19937_64& rng,
     state.setCurrentPlayerIndex((opening.openingPlayerIndex + 1) % state.playerCount());
     return MatchController(std::move(state));
 }
+
+// --- Sequential testing (SPRT) -------------------------------------------
+//
+// A fixed game count pays full price for every experiment, including the ones
+// whose answer is already unambiguous. A sequential test stops as soon as the
+// evidence crosses a decision boundary, so a clear effect costs a fraction of
+// the rounds while both error rates stay bounded.
+//
+// Model: a round scores 1 (A wins), 0.5 (drawn/closed) or 0 (A loses). The LLR
+// accumulates against two Bernoulli hypotheses -- the score A would need
+// against an equal opponent for a difference of elo0 and elo1. Counting a draw
+// as half a win is the standard simplification; it treats each round as if it
+// carried independent variance and so slightly understates the true sample
+// variance, which makes a verdict arrive sooner rather than later. That is a
+// known limitation of this instrument, documented rather than hidden.
+double eloToScore(double elo) {
+    return 1.0 / (1.0 + std::pow(10.0, -elo / 400.0));
+}
+
+// Score for the A side in one round, read from the scores the rules engine
+// already computed. Sides are assigned by the caller's seat alternation, so
+// this is a comparison of participants, not of physical seats.
+double roundScoreForSideA(const GameSummary& summary) {
+    double a = -1.0;
+    double b = -1.0;
+    for (std::size_t i = 0; i < summary.participantSides.size(); ++i) {
+        const int side = summary.participantSides[i];
+        const double score = summary.participantScores[i];
+        if (side == 0) a = score;
+        else if (side == 1) b = score;
+    }
+    if (a < 0.0 || b < 0.0) return 0.5; // no attributable winner: treat as drawn
+    if (a > b) return 1.0;
+    if (a < b) return 0.0;
+    return 0.5;
+}
+
+struct SprtState {
+    double logP = 0.0; // ln(p1 / p0)
+    double logQ = 0.0; // ln((1 - p1) / (1 - p0))
+    double llr = 0.0;
+    double lower = 0.0;
+    double upper = 0.0;
+
+    explicit SprtState(int elo0, int elo1) {
+        const double p0 = eloToScore(static_cast<double>(elo0));
+        const double p1 = eloToScore(static_cast<double>(elo1));
+        logP = std::log(p1 / p0);
+        logQ = std::log((1.0 - p1) / (1.0 - p0));
+        // Wald bounds for alpha = beta = 0.05: accept H1 above ln(19), H0
+        // below -ln(19).
+        const double alpha = 0.05;
+        const double beta = 0.05;
+        lower = std::log(beta / (1.0 - alpha));
+        upper = std::log((1.0 - beta) / alpha);
+    }
+
+    void observe(double score) {
+        llr += score * logP + (1.0 - score) * logQ;
+    }
+
+    // +1 = H1 accepted, -1 = H0 accepted, 0 = still undecided.
+    int verdict() const {
+        if (llr >= upper) return 1;
+        if (llr <= lower) return -1;
+        return 0;
+    }
+};
 
 GameSummary playOneRound(const Options& options,
                          GameMode mode,
@@ -482,6 +560,7 @@ int main(int argc, char** argv) {
             arg == "--time-ms" || arg == "--workers" || arg == "--opponent-workers" ||
             arg == "--aggregation" || arg == "--opponent-aggregation" ||
             arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
+            arg == "--sprt-pairs" || arg == "--sprt-elo0" || arg == "--sprt-elo1" ||
             arg == "--weights" || arg == "--opponent-weights" ||
             arg == "--seed" || arg == "--mode" || arg == "--output") {
             if (i + 1 >= argc) {
@@ -533,7 +612,8 @@ int main(int argc, char** argv) {
             int parsed = 0;
             const bool allowZero = arg == "--time-ms" || arg == "--workers" ||
                                    arg == "--opponent-workers" ||
-                                   arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw";
+                                   arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
+                                   arg == "--sprt-pairs" || arg == "--sprt-elo0";
             if (!parseInt(value, parsed, allowZero)) {
                 std::cerr << "invalid value for " << arg << ": " << value << "\n";
                 return 2;
@@ -548,6 +628,9 @@ int main(int argc, char** argv) {
             else if (arg == "--opponent-workers") options.opponentWorkers = parsed;
             else if (arg == "--voluntary-draw") options.voluntaryDraws = parsed;
             else if (arg == "--opponent-voluntary-draw") options.opponentVoluntaryDraws = parsed;
+            else if (arg == "--sprt-pairs") options.sprtPairs = parsed;
+            else if (arg == "--sprt-elo0") options.sprtElo0 = parsed;
+            else if (arg == "--sprt-elo1") options.sprtElo1 = parsed;
             continue;
         }
         std::cerr << "unknown argument: " << arg << "\n";
@@ -581,14 +664,51 @@ int main(int argc, char** argv) {
     int completed = 0;
     int incomplete = 0;
     std::uint64_t totalDecisions = 0;
-    for (int game = 0; game < options.games; ++game) {
+
+    // Sequential testing replaces the fixed count when requested. Evidence is
+    // observed per round but only acted on at pair boundaries, so every
+    // decision the test makes rests on an equal number of A-first and
+    // B-first rounds.
+    const bool useSprt = options.sprtPairs > 0;
+    if (useSprt && options.sprtElo1 <= options.sprtElo0) {
+        std::cerr << "--sprt-elo1 must be greater than --sprt-elo0\n";
+        return 2;
+    }
+    if (useSprt && options.mode == "1v1v1") {
+        std::cerr << "--sprt-pairs does not apply to 1v1v1: only two of the three "
+                     "seats map to A or B, so a round has no single score for A.\n";
+        return 2;
+    }
+    const int totalGames = useSprt ? options.sprtPairs * 2 : options.games;
+    SprtState sprtState(options.sprtElo0, options.sprtElo1);
+    double sprtScoreSum = 0.0;
+    int gamesPlayed = 0;
+    int sprtVerdict = 0;
+
+    for (int game = 0; game < totalGames; ++game) {
         std::vector<MoveRow> rows;
         const GameSummary summary = playOneRound(options, mode, static_cast<std::uint64_t>(game), rows);
         writeRows(out, static_cast<std::uint64_t>(game), options.seed, mode, summary, rows);
         totalDecisions += static_cast<std::uint64_t>(summary.decisions);
         if (summary.outcome == RoundOutcomeKind::InProgress) ++incomplete;
         else ++completed;
-        if ((game + 1) % 10 == 0 || game + 1 == options.games) {
+        ++gamesPlayed;
+
+        if (useSprt) {
+            const double score = roundScoreForSideA(summary);
+            sprtScoreSum += score;
+            sprtState.observe(score);
+            if ((gamesPlayed % 2 == 0) || gamesPlayed == totalGames) {
+                sprtVerdict = sprtState.verdict();
+                std::cout << "  sprt after " << gamesPlayed << " rounds: score "
+                          << std::fixed << std::setprecision(4)
+                          << (sprtScoreSum / static_cast<double>(gamesPlayed))
+                          << ", LLR " << sprtState.llr << std::endl;
+                if (sprtVerdict != 0) break;
+            }
+        }
+
+        if ((game + 1) % 10 == 0 || game + 1 == totalGames) {
             // Flush each progress line: the launcher publishes shard progress by
             // reading this log while the process is still writing to it.
             std::cout << "  finished " << (game + 1) << "/" << options.games
@@ -600,5 +720,28 @@ int main(int argc, char** argv) {
               << "  completed rounds: " << completed << "\n"
               << "  incomplete rounds: " << incomplete << "\n"
               << "  decisions: " << totalDecisions << "\n";
+
+    if (useSprt) {
+        const double meanScore =
+            gamesPlayed > 0 ? sprtScoreSum / static_cast<double>(gamesPlayed) : 0.0;
+        std::cout << "  sequential test: H0 " << options.sprtElo0 << " Elo vs H1 "
+                  << options.sprtElo1 << " Elo, alpha=beta=0.05, cap " << totalGames
+                  << " rounds\n"
+                  << "  rounds played: " << gamesPlayed << "\n"
+                  << "  score for A: " << std::fixed << std::setprecision(4) << meanScore
+                  << "\n"
+                  << "  LLR: " << sprtState.llr << "  bounds: [" << sprtState.lower << ", "
+                  << sprtState.upper << "]\n";
+        if (sprtVerdict > 0) {
+            std::cout << "  verdict: H1 accepted - A is at least " << options.sprtElo1
+                      << " Elo stronger at alpha=beta=0.05\n";
+        } else if (sprtVerdict < 0) {
+            std::cout << "  verdict: H0 accepted - no difference of " << options.sprtElo1
+                      << " Elo detected at alpha=beta=0.05\n";
+        } else {
+            std::cout << "  verdict: inconclusive - round cap reached\n";
+        }
+    }
+
     return incomplete == 0 ? 0 : 1;
 }

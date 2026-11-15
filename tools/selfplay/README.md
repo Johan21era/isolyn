@@ -88,3 +88,50 @@ horizon.
   `Accelerator/`; search integration is still pending.
 
 Those are the next lab milestones, not hidden behavior.
+
+## Sequential testing (`--sprt-pairs`)
+
+A fixed `--games` count pays the full price for every experiment, including the
+ones whose answer is already unambiguous. `--sprt-pairs N` replaces the fixed
+count with a sequential test: play until the evidence crosses a decision
+boundary, or until N pairs (2N rounds) have been played.
+
+```bash
+./tools/selfplay/build/selfplay \
+  --depth 8 --determinizations 64 \
+  --opponent-depth 8 --opponent-determinizations 64 \
+  --sprt-pairs 5000 --sprt-elo0 0 --sprt-elo1 5 --seed 1
+```
+
+**Model.** A round scores 1 (A wins), 0.5 (drawn or closed with equal scores) or
+0 (A loses). The log-likelihood ratio accumulates against two Bernoulli
+hypotheses — the score A would need against an equal opponent for a difference
+of `--sprt-elo0` and `--sprt-elo1` — with Wald bounds at `alpha = beta = 0.05`:
+accept H1 above `ln(19)`, accept H0 below `-ln(19)`.
+
+**Seat balance.** Evidence is observed every round but only acted on at pair
+boundaries, so every decision rests on an equal number of A-first and B-first
+rounds.
+
+**What it saves.** The saving is arithmetic, not a hope. At `elo0 = 0`,
+`elo1 = 5`, a true +20 Elo effect drifts the LLR by about 7.1e-4 per round and
+decides in roughly 4,100 rounds instead of 10,000; a true +40 Elo effect decides
+in roughly 1,900. A null drifts at about -1.1e-4 per round, so it usually runs to
+the cap — which is the honest outcome, not a failure.
+
+**What it costs.** Counting a draw as half a win treats each round as if it
+carried independent variance and so understates the true sample variance, which
+makes a verdict arrive slightly sooner than a fully correct model would. The
+bias is toward acting earlier, never toward inventing an effect, and it is
+documented rather than hidden.
+
+**Verified 2026-11-15.** Three runs were recomputed independently from their CSVs
+with a Python reimplementation of the same statistic; mean score and LLR matched
+to four decimals (0.5125 / 0.0512, 0.5075 / 0.0449, 0.4863 / -0.1997). Config
+application was confirmed from the same CSVs: the depth-6 side averaged 13,141
+nodes per decision against 6.2 for the depth-1 side.
+
+**Not yet exercised.** No available engine contrast is large enough to cross a
+boundary quickly, so every run above reached its cap. The early-stop path is
+therefore verified by arithmetic and by the null runs, not by a real match that
+stopped early.
