@@ -188,6 +188,26 @@ enum LabPaths {
         return nil
     }
 
+    /// The checkout that holds `lab/data`, as opposed to the staged runtime in
+    /// Application Support. The staged copy exists so the app can run the
+    /// harness; the evidence lives in the checkout, and the test log wants both.
+    /// `repositoryRoot` prefers the staged copy, so this is a separate lookup.
+    static func checkoutRoot(fileManager: FileManager = .default) -> URL? {
+        if let override = ProcessInfo.processInfo.environment["ISOLYN_ROOT"], !override.isEmpty {
+            let url = URL(fileURLWithPath: override)
+            if isRepository(url, fileManager: fileManager) { return url }
+        }
+        var starts: [URL] = [Bundle.main.bundleURL]
+        if let executable = Bundle.main.executableURL {
+            starts.append(executable.deletingLastPathComponent())
+        }
+        starts.append(URL(fileURLWithPath: fileManager.currentDirectoryPath))
+        for start in starts {
+            if let found = findRoot(startingAt: start, fileManager: fileManager) { return found }
+        }
+        return nil
+    }
+
     /// Walks up from an executable's directory. Split out from
     /// `repositoryRoot` so the app-bundle case is testable without a real bundle.
     static func findRoot(startingAt start: URL, fileManager: FileManager = .default) -> URL? {

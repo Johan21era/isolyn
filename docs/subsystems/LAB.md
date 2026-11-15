@@ -116,6 +116,13 @@ The Lab screen removes the terminal from the loop without changing what a run is
 - App runs are written to `~/Library/Application Support/IsolynV2.0/runs`; the
   runner accepts `--runs-dir` (and honours `ISOLYN_RUNS_DIR`) so a single
   invocation can target that store. The CLI default remains `lab/data/runs`.
+- The **Timeline** page is the record rather than the control. It reads every
+  manifest from both stores (the app's `runs` folder and the checkout's
+  `lab/data/runs`), plus cloud receipts, bench ladders and calibration logs,
+  and shows them newest-first, grouped by day, with one row per test. It reads
+  manifests and small JSON only — never a shard CSV — so it refreshes on a
+  five-second loop without touching a run in progress. A bench is dated by its
+  folder name, which names a day but not a minute, so it shows no clock time.
 - One run at a time is enforced three ways: a service guard, a short repeat
   window, and the runner's `run.lock`. The app attaches to a run that is already
   active instead of starting a second process. A merge is a tracked child too;

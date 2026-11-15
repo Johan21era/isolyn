@@ -8,6 +8,7 @@ import SwiftUI
 /// so the same page works for a first-time reader and for an audit.
 struct LabView: View {
     enum Tab: String, CaseIterable, Identifiable {
+        case timeline = "Timeline"
         case runs = "Runs"
         case analyses = "Analyses"
         case cloud = "Cloud"
@@ -15,7 +16,7 @@ struct LabView: View {
     }
 
     @Environment(AppState.self) private var appState
-    @State private var tab: Tab = .runs
+    @State private var tab: Tab = .timeline
 
     var body: some View {
         ScrollView {
@@ -28,9 +29,11 @@ struct LabView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.segmented)
-                .frame(width: 300)
+                .frame(width: 420)
 
                 switch tab {
+                case .timeline:
+                    LabTimelineView()
                 case .runs:
                     LabRunsView()
                 case .analyses:
