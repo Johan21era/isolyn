@@ -1085,7 +1085,7 @@ def collect(ws: Workspace, run_id: str, session_id: str) -> int:
         fetch(ws, run_id, session_id)
     _require(verify(ws, run_id, session_id) == 0,
              "fetched session failed verification; refusing to assemble")
-    assemble(ws, run_id, None)
+    assemble(ws, run_id, None, partial=True)
     return 0
 
 
@@ -1138,35 +1138,46 @@ def _merge_shard(source: Path, destination, offset: int, seed: int) -> int:
     return rows
 
 
-def assemble(ws: Workspace, run_id: str, output: Path | None) -> int:
+def assemble(ws: Workspace, run_id: str, output: Path | None, partial: bool = False) -> int:
     plan_data = _load_plan(ws, run_id)
     ledger = _load_ledger(ws, run_id)
     missing = [session["id"] for session in plan_data["sessions"]
                if not ledger["sessions"].get(session["id"], {}).get("verified_at")]
-    _require(not missing, f"refusing to assemble unverified sessions: {', '.join(missing)}")
+    # A tournament finishes one pairing at a time, so a partial assembly is the
+    # normal case there: it covers the verified sessions and says which are
+    # still outstanding, rather than refusing until every kernel has landed.
+    _require(partial or not missing,
+             f"refusing to assemble unverified sessions: {', '.join(missing)}")
+    if partial and missing:
+        print(f"  assembling {len(plan_data['sessions']) - len(missing)} verified session(s); "
+              f"pending: {', '.join(missing)}")
     output = output or (ws.run_dir(run_id) / "assembled.csv")
     _require(not output.exists(), f"refusing to overwrite existing output: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_name(output.name + ".tmp-" + uuid.uuid4().hex)
 
+    included = [session for session in plan_data["sessions"] if session["id"] not in missing]
     verified_by_shard: dict[int, dict] = {}
-    for session in plan_data["sessions"]:
+    for session in included:
         target = ws.run_dir(run_id) / "sessions" / session["id"]
         receipt = json.loads((target / "session.json").read_text(encoding="utf-8"))
         for shard in cloud_verify.validate_session(receipt, target, plan_data, session):
             index = int(shard["index"])
             _require(index not in verified_by_shard, f"shard {index} appears twice")
             verified_by_shard[index] = shard
-    _require(sorted(verified_by_shard) == list(range(len(plan_data["shards"]))),
-             "verified shards do not cover the plan exactly")
+    expected = [index for session in included
+                for index in range(session["shard_start"], session["shard_end"])]
+    _require(sorted(verified_by_shard) == sorted(expected),
+             "verified shards do not cover the included sessions exactly")
 
     rows = 0
     try:
         with temporary.open("w", newline="", encoding="utf-8") as destination:
             header = None
             offset = 0
-            for shard in plan_data["shards"]:
-                verified = verified_by_shard[shard["index"]]
+            for index in sorted(verified_by_shard):
+                shard = plan_data["shards"][index]
+                verified = verified_by_shard[index]
                 path = Path(verified["path"])
                 with path.open("r", newline="", encoding="utf-8") as source:
                     current = source.readline()
