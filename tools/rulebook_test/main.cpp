@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <deque>
@@ -199,10 +200,61 @@ std::vector<Move> correctMoves(const GameState& state, Kind kind) {
     return correct;
 }
 
+// Everything neither in our hand nor on the board: the boneyard plus the
+// opponent's tiles. With the opponent holding exactly one tile, a uniform prior
+// over this pool is exactly right, which is what makes a Bayes baseline
+// computable rather than a guess.
+std::vector<DominoTile> unknownTiles(const GameState& state, int me) {
+    std::vector<DominoTile> unknown;
+    const auto& chain = state.chain().orderedTiles();
+    for (int a = 0; a <= 6; ++a) {
+        for (int b = a; b <= 6; ++b) {
+            const DominoTile tile(a, b);
+            bool excluded = false;
+            for (const DominoTile& held : state.hand(me)) {
+                if (held == tile) { excluded = true; break; }
+            }
+            if (!excluded) {
+                for (const DominoTile& played : chain) {
+                    if (played == tile) { excluded = true; break; }
+                }
+            }
+            if (!excluded) unknown.push_back(tile);
+        }
+    }
+    return unknown;
+}
+
+// Probability that the opponent's single hidden tile can be played on either end
+// after this move. That is the exact chance of losing to an immediate win, so
+// 1 - risk is what a perfect player maximises.
+double bayesRisk(const GameState& state, const Move& move,
+                 const std::vector<DominoTile>& unknown) {
+    if (unknown.empty()) return 0.0;
+    GameState trial = state;
+    const auto applied = MoveExecutor::apply(trial, 0, move);
+    const int left = trial.chain().leftEnd();
+    const int right = trial.chain().rightEnd();
+    MoveExecutor::undo(trial, applied);
+    int playable = 0;
+    for (const DominoTile& tile : unknown) {
+        if (tile.low() == left || tile.high() == left ||
+            tile.low() == right || tile.high() == right) {
+            ++playable;
+        }
+    }
+    return static_cast<double>(playable) / static_cast<double>(unknown.size());
+}
+
 struct Question {
     GameState state;
     Kind kind;
     std::vector<Move> correct;
+    // Bayes baseline for the hidden-information defence questions: every legal
+    // move's loss probability, and the best achievable safety (1 - min risk).
+    std::vector<Move> legalMoves;
+    std::vector<double> risks;
+    double bestSafety = 1.0;
 };
 
 struct Tally {
@@ -269,7 +321,20 @@ int main(int argc, char** argv) {
                 if (kind == Kind::SharpDefence &&
                     (correct.size() > 1 || legal.size() < 3)) continue;
             }
-            questions.push_back(Question{state, kind, correct});
+
+            Question question{state, kind, correct, {}, {}, 1.0};
+            if (state.hand(1).size() == 1) {
+                const std::vector<DominoTile> unknown = unknownTiles(state, 0);
+                double best = 2.0;
+                for (const Move& move : legal) {
+                    const double risk = bayesRisk(state, move, unknown);
+                    question.legalMoves.push_back(move);
+                    question.risks.push_back(risk);
+                    best = std::min(best, risk);
+                }
+                question.bestSafety = 1.0 - (best > 1.0 ? 1.0 : best);
+            }
+            questions.push_back(question);
             ++gathered;
         }
     }
@@ -288,6 +353,10 @@ int main(int argc, char** argv) {
         Tally byKind[5];
         int illegalTotal = 0;
         int correctTotal = 0;
+        // Bayes comparison, on the hidden-information defence questions only.
+        double achievedSafety = 0.0;
+        double bestSafety = 0.0;
+        int bayesAsked = 0;
 
         for (const Question& question : questions) {
             SearchEngine::Config effective = config;
@@ -315,6 +384,19 @@ int main(int argc, char** argv) {
             } else {
                 ++tally.wrong;
             }
+
+            if (!question.risks.empty()) {
+                ++bayesAsked;
+                bestSafety += question.bestSafety;
+                double chosenRisk = 1.0;
+                for (std::size_t i = 0; i < question.legalMoves.size(); ++i) {
+                    if (question.legalMoves[i] == decision.move) {
+                        chosenRisk = question.risks[i];
+                        break;
+                    }
+                }
+                achievedSafety += 1.0 - chosenRisk;
+            }
         }
 
         const int total = static_cast<int>(questions.size());
@@ -333,6 +415,14 @@ int main(int argc, char** argv) {
             std::cout << "    " << kindName(static_cast<Kind>(k)) << ": "
                       << static_cast<int>(section) << "% of " << tally.asked
                       << " (wrong " << tally.wrong << ", illegal " << tally.illegal << ")\n";
+        }
+        if (bayesAsked > 0) {
+            const double achieved = 100.0 * achievedSafety / bayesAsked;
+            const double best = 100.0 * bestSafety / bayesAsked;
+            std::cout << "    safety vs Bayes: achieved " << static_cast<int>(achieved)
+                      << "% of " << bayesAsked << "   best achievable "
+                      << static_cast<int>(best) << "%   gap "
+                      << static_cast<int>(best - achieved) << " points\n";
         }
         std::cout << "\n";
     }
