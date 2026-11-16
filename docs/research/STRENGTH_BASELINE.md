@@ -242,3 +242,63 @@ per-round results the tournament already writes.
 **Caveat.** One shard was cut at 802 rounds by a command timeout; shards are
 independent seeds, so the pooled figure is valid, but the sample is 3,302 rather
 than the 4,000 planned.
+
+## E-104 — Weights fitted to outcomes, and why they lose (2026-11-16)
+
+**Verdict: the evaluation does predict round outcomes (AUC 0.65), but transplanting
+the fitted coefficients into the search costs −9.2 Elo [−21.6, +3.2]. The two
+objectives are not the same one.**
+
+Every self-play row records the eight evaluation terms from the acting player's
+view, and every round records its winner. `scripts/fit_weights.py` fits a logistic
+model of "this side wins the round" over those terms by gradient descent on
+standardised features.
+
+| Field | Value |
+|---|---|
+| Decisions fitted | 30,000 sampled deterministically from 286,597 |
+| Files | 17 local self-play CSVs |
+| Acting-side win rate | 0.5081 |
+| Log-loss | 0.64411 |
+| **AUC** | **0.6546** |
+
+Contribution to the logit, `coefficient x feature sd` — the only fair comparison
+between a ±1000 term and a 0..7 term:
+
+| Term | Contribution sd |
+|---|---|
+| `winThreat` | 139.50 |
+| `expectedValue` | 7.18 |
+| `mobility` | 0.15 |
+| `pipControl` | 0.08 |
+| `blocking` | 0.014 |
+| `closingOpportunity`, `tempo`, `teamSupport` | 0 (constant in this log) |
+
+Fitted weights, normalised to `expectedValue = 1`: `mobility=2.28`,
+`blocking=0.18`, `pipControl=4.56`, `winThreat=0.039`.
+
+**Measured in play**, keeping `winThreat = 1.0` (attenuating it is already known
+to cost Elo) and `closingOpportunity = 1.0` (too few closed positions to estimate):
+3,000 rounds, depth 8/64, seeds 401–403 → **score 0.48683, −9.2 Elo
+[−21.6, +3.2]**.
+
+**The diagnosis.** A coefficient in this model answers "given this position, how
+often does this side win?" The search does not ask that question; it asks "which
+move is better than its siblings?" A feature can be highly predictive of the final
+result and still be a poor *ranking* signal across plies, and the threat term is
+the clearest case: it is a step that the search converts into an actual win one
+ply later, so its honest proportional weight inside the tree is far larger than a
+saturated logistic coefficient suggests.
+
+**Structural finding worth keeping.** Three terms are *constant* in this log, so no
+amount of data can estimate them here: `tempo` is always 1 because the evaluator is
+called for the player to move; `teamSupport` is always 0 in 1v1; and
+`closingOpportunity` is 0 outside the rare closed position. Their zero coefficients
+are an artefact of the logging, not a statement about their usefulness.
+
+**What this rules out,** for the price of one afternoon: fitting weights to
+round outcomes is not the path. What remains is tuning against the objective the
+engine is actually judged by — self-play results — where each candidate weight set
+is scored by wins, not by correlation.
+
+Reproduce: `python3 scripts/fit_weights.py '/tmp/tt_s1*.csv' '/tmp/egA*.csv' '/tmp/cw_blind2*.csv' --max-rows 30000`
