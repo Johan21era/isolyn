@@ -1,6 +1,6 @@
 # IsolynV2.0 Self-Play Generator
 
-**Status:** working engine-vs-engine generator, updated 2026-11-14. It links
+**Status:** working engine-vs-engine generator, updated 2026-11-16. It links
 the real `IsolynEngine` and emits one CSV row per move. It is not a strength
 claim and it is not a trainer.
 
@@ -50,6 +50,42 @@ reproducibility.
 `--opponent-depth`/`--opponent-determinizations` configure side B and alternate
 which physical player/team gets A on each game. Reports group results by side,
 so a first-player advantage is not silently attributed to search strength.
+
+## Set-level matches (best-of-N to 151)
+
+Round mode scores one hand and stops. Add `--sets-to-win 3` (or `4`) to play real
+matches under the same `ScoreSystem` the bridge uses: each hand's participant
+scores accumulate to the mode's target, the set winner is credited a set, scores
+reset, and the match ends when someone reaches N sets. `--games` counts MATCHES
+in this mode.
+
+```bash
+./tools/selfplay/build/selfplay \
+  --mode 1v1 --sets-to-win 3 --games 100 \
+  --depth 4 --determinizations 20 \
+  --opponent-depth 4 --opponent-determinizations 20 \
+  --seed 1 --output lab/data/setplay-1v1-set.csv
+```
+
+Two files are written: the match summary to `--output` (one row per match) and
+the move rows to `<output>.rounds.csv`, which keeps the round-mode schema. In the
+rounds file the `game` column is the match index, so hands from different sets
+of the same match share it.
+
+Match CSV:
+
+```text
+match, seed, mode, sets_to_win, target, rounds, incomplete,
+winner_participant, winner_side, sets_a, sets_b, points_a, points_b,
+set_wins_0..3, points_0..3
+```
+
+`sets_a`/`sets_b` attribute sets through the same A/B side mapping as round
+mode. `points_` are cumulative across sets, not per set.
+
+`--set-target 101` is valid only in 1v1. `--sprt-pairs` is round-scoped and is
+rejected with `--sets-to-win`. Same seed and configuration reproduce both CSVs
+byte for byte (checked with `cmp`).
 
 ## CSV fields
 

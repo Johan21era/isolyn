@@ -465,3 +465,36 @@ sign, hand values changed, 1v1v1 changed shape, and draws were capped. It is kep
 for audit only. Cite [`STRENGTH_BASELINE.md`](STRENGTH_BASELINE.md) instead — and
 if that file has no result under the current rules hash, then there is no
 strength claim to cite at all.
+
+## E-027 — Set-level calibration: more hand wins does not mean more match wins (INSTRUMENT ADDED)
+
+Every prior strength number measured hands, not sets. The harness stopped after
+one round, so `ScoreSystem`, the 151 target and the best-of-5 format had never
+appeared in any measurement. `tools/selfplay/README.md` now documents
+`--sets-to-win`, which plays real matches on the same scoring path as the bridge.
+
+- **Design:** symmetric control — both sides depth 4 / 20 determinizations — so
+  this calibrates the instrument and is **not** a strength claim. 200 matches
+  (seeds 1 and 2), best-of-five to 151, 1v1.
+- **Volume:** 9,869 rounds, mean **49.3 rounds per match**; set scorelines
+  (A-B): 3-0 ×43, 3-1 ×73, 3-2 ×84; 0-3 ×17, 1-3 ×32, 2-3 ×43.
+- **Hands:** A 4,940 / B 4,929 — 50.05% A, as a mirror should be.
+- **Matches:** A 108 / B 92 — 54% A, within noise at n=200.
+- **The finding:** in **59 of 200 matches (29.5%) the side that won more hands
+  lost the match.** Hand-level and match-level results diverge in roughly three
+  matches in ten even when the two configurations are identical.
+
+- **Reading.** A round contains most of the variance: one big opponent hand can
+  decide a set, and the target turns pip totals into thresholds, so "won the most
+  hands" and "reached 151 most often" are different questions. A hand-level Elo
+  experiment at a few hundred rounds is therefore a noisy proxy for the game
+  players actually play — not because the search is wrong, but because the
+  objective is different. Any future claim of the form "X is stronger" must be
+  made at set level, or report both and say which one moved.
+- **What this does not say.** It does not say the weaker player wins 30% of the
+  time, and it says nothing about strength. Both sides were identical. It sizes
+  the disconnect between the two scoreboards, which is the precondition for
+  trusting either.
+- **Next.** Re-run the shipped A/B comparisons at match level; match-level
+  sample sizes will need to be larger in rounds than the hand-level ones, and
+  SPRT is not yet wired for matches.

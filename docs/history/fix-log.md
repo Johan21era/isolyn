@@ -3425,3 +3425,31 @@ overlay renders.
   AGENTS.md rather than papered over.
 - **Still not verified:** the overlay was not rendered on screen. This test proves the
   data behind it, not the pixels.
+
+## OPS-56 — Set-level self-play: the harness now plays matches, not hands (2026-11-16)
+
+**Scope:** the top item on the follow-up list. Every strength figure in the repo
+measured one hand; `ScoreSystem`, the 151 target and the best-of-N format had never
+been in any run.
+
+- **Harness change:** `tools/selfplay` gains `--sets-to-win 3|4`, `--set-target`, and
+  `--rounds-per-match`. In that mode `--games` counts matches. Each hand's scores go
+  through the real `ScoreSystem`; sets are credited, scores reset, and the match ends
+  at N sets. `playOneRound` now takes an explicit deal seed and side assignment so a
+  match can fix A/B to a side for its whole duration.
+- **Output:** match summary to `--output` (one row per match), move rows to
+  `<output>.rounds.csv` with the unchanged round-mode schema (its `game` column is
+  the match index). Round mode is byte-compatible with before.
+- **Determinism:** re-running seed 1 reproduced both CSVs byte for byte (`cmp`).
+  Smoke-tested in 1v1, 1v1v1 and 2v2.
+- **Measurement (E-027):** 200 symmetric matches (d4x20, seeds 1–2), 9,869 rounds,
+  mean 49.3 rounds per match. Hands: A 4,940 / B 4,929. Matches: A 108 / B 92. In
+  **59 of 200 (29.5%) the side that won more hands lost the match.**
+- **Reading:** hand-level Elo is a noisy proxy for match strength. This is a
+  symmetric control, not a strength claim, and it says nothing about which side is
+  better — both were identical.
+- **Not done:** SPRT is still round-scoped and is rejected with `--sets-to-win`;
+  match-level A/B comparisons have not been re-run.
+- **Verification:** `./tools/selfplay/build.sh` builds; round-mode regression (4
+  rounds) unchanged; engine 514 / bridge 136 / Swift 126 unchanged; docs and rules
+  audits PASS.

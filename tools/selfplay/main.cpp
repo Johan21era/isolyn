@@ -4,6 +4,7 @@
 #include "MatchController.hpp"
 #include "ProbabilityEngine.hpp"
 #include "RulesEngine.hpp"
+#include "ScoreSystem.hpp"
 #include "SearchEngine.hpp"
 #include "StableRandom.hpp"
 
@@ -48,6 +49,11 @@ struct Options {
     // position's positional score instead. 0 keeps the plain argmax.
     double tieBreakBand = 0.0;
     double opponentTieBreakBand = 0.0;
+    // Set-level play. 0 keeps the historical round-only mode; 3 or 4 plays
+    // best-of-(2N-1) matches under the real ScoreSystem.
+    int setsToWin = 0;
+    int setTarget = 151;
+    int roundsPerMatch = 300;
     int sprtPairs = 0;
     int sprtElo0 = 0;   // H0: the true difference is at most this
     int sprtElo1 = 5;   // H1: the true difference is at least this
@@ -126,6 +132,9 @@ void usage(std::ostream& out) {
         << "  --opponent-weights LIST   evaluation overrides for B\n"
         << "  --seed N                deterministic deal/search seed (default 1)\n"
         << "  --mode MODE             1v1 | 1v1v1 | 2v2 (default 1v1)\n"
+        << "  --sets-to-win N         play best-of matches to N sets (3 or 4); 0 = rounds\n"
+        << "  --set-target N          points that win a set (default 151; 101 is 1v1 only)\n"
+        << "  --rounds-per-match N    safety cap on rounds in one match (default 300)\n"
         << "  --sprt-pairs N          stop as soon as the evidence decides; N pairs is the cap\n"
         << "  --sprt-elo0 N           H0 bound in Elo for the sequential test (default 0)\n"
         << "  --sprt-elo1 N           H1 bound in Elo for the sequential test (default 5)\n"
@@ -357,9 +366,10 @@ struct SprtState {
 
 GameSummary playOneRound(const Options& options,
                          GameMode mode,
-                         std::uint64_t gameIndex,
+                         std::uint64_t dealSeed,
+                         bool aIsFirstSide,
                          std::vector<MoveRow>& rows) {
-    std::mt19937_64 rng(options.seed + gameIndex * 0x9E3779B97F4A7C15ULL);
+    std::mt19937_64 rng(dealSeed);
     std::vector<int> initialHands;
     MatchController controller = createFirstRound(mode, rng, initialHands);
 
@@ -397,9 +407,9 @@ GameSummary playOneRound(const Options& options,
         ? GameState::TranspositionKeyMode::CloserSummary
         : GameState::TranspositionKeyMode::FullHistory;
 
-    // Alternate which physical side gets the A configuration so a one-sided
-    // first-player advantage does not masquerade as a strength difference.
-    const bool aIsFirstSide = (gameIndex % 2 == 0);
+    // The caller alternates which physical side gets the A configuration, so a
+    // one-sided first-player advantage cannot masquerade as a strength
+    // difference. In match mode it is fixed for the whole match.
     auto sideForPlayer = [&](int player) {
         if (mode == GameMode::TwoVsTwo) {
             const int team = RulesEngine::teamIndexForPlayer(player);
@@ -580,6 +590,89 @@ void writeRows(std::ofstream& out,
     }
 }
 
+// --- Set-level play -------------------------------------------------------
+//
+// The round harness above scores one hand and stops. A real game is a race to
+// 151 points (R-06) inside a best-of-(2N-1) match, so this layer replays the
+// round generator and feeds each hand's participant scores through the same
+// ScoreSystem the bridge uses. Nothing about round play changes; only the
+// accounting around it.
+struct MatchSummary {
+    int rounds = 0;
+    int incompleteRounds = 0;
+    int winnerParticipant = -1;
+    int winnerSide = -1;
+    int setsA = 0;
+    int setsB = 0;
+    long long pointsA = 0;
+    long long pointsB = 0;
+    std::vector<int> setWins;
+    std::vector<long long> points;
+    std::uint64_t decisions = 0;
+};
+
+MatchSummary playOneMatch(const Options& options,
+                          GameMode mode,
+                          std::uint64_t matchIndex,
+                          std::ofstream& roundsOut) {
+    const int participantCount =
+        mode == GameMode::TwoVsTwo ? 2 : Dealer::playerCountForMode(mode);
+    const bool aIsFirstSide = (matchIndex % 2 == 0);
+    const std::uint64_t baseSeed =
+        options.seed + matchIndex * 0x9E3779B97F4A7C15ULL;
+
+    // Mirrors playOneRound's sideForPlayer: in 2v2 a participant IS a team.
+    auto sideOfParticipant = [&](int participant) {
+        return participant == (aIsFirstSide ? 0 : 1) ? 0 : 1;
+    };
+
+    MatchSummary match;
+    match.setWins.assign(static_cast<std::size_t>(participantCount), 0);
+    match.points.assign(static_cast<std::size_t>(participantCount), 0);
+
+    ScoreSystem scores(mode, participantCount, options.setTarget);
+
+    for (int round = 0; round < options.roundsPerMatch && match.winnerParticipant < 0; ++round) {
+        std::vector<MoveRow> rows;
+        const std::uint64_t dealSeed =
+            baseSeed + static_cast<std::uint64_t>(round) * 0xD1B54A32D192ED03ULL;
+        const GameSummary summary = playOneRound(options, mode, dealSeed, aIsFirstSide, rows);
+        writeRows(roundsOut, matchIndex, options.seed, mode, summary, rows);
+
+        ++match.rounds;
+        match.decisions += static_cast<std::uint64_t>(summary.decisions);
+        if (summary.outcome == RoundOutcomeKind::InProgress) {
+            ++match.incompleteRounds;
+            continue;
+        }
+
+        for (std::size_t i = 0; i < summary.participantScores.size(); ++i) {
+            match.points[i] += summary.participantScores[i];
+            if (sideOfParticipant(static_cast<int>(i)) == 0) {
+                match.pointsA += summary.participantScores[i];
+            } else {
+                match.pointsB += summary.participantScores[i];
+            }
+        }
+
+        scores.applyRoundScores(summary.participantScores);
+        if (!scores.hasMatchEnded()) continue;
+
+        const int winner = scores.winningParticipant();
+        match.setWins[static_cast<std::size_t>(winner)]++;
+        if (sideOfParticipant(winner) == 0) ++match.setsA;
+        else ++match.setsB;
+
+        if (match.setWins[static_cast<std::size_t>(winner)] >= options.setsToWin) {
+            match.winnerParticipant = winner;
+            match.winnerSide = sideOfParticipant(winner);
+        } else {
+            scores = ScoreSystem(mode, participantCount, options.setTarget);
+        }
+    }
+    return match;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -632,6 +725,7 @@ int main(int argc, char** argv) {
             arg == "--aggregation" || arg == "--opponent-aggregation" ||
             arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
             arg == "--sprt-pairs" || arg == "--sprt-elo0" || arg == "--sprt-elo1" ||
+            arg == "--sets-to-win" || arg == "--set-target" || arg == "--rounds-per-match" ||
             arg == "--tt-key" || arg == "--opponent-tt-key" ||
             arg == "--endgame-limit" || arg == "--opponent-endgame-limit" ||
             arg == "--weights" || arg == "--opponent-weights" ||
@@ -708,7 +802,8 @@ int main(int argc, char** argv) {
                                    arg == "--opponent-workers" ||
                                    arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
                                    arg == "--sprt-pairs" || arg == "--sprt-elo0" ||
-                                   arg == "--endgame-limit" || arg == "--opponent-endgame-limit";
+                                   arg == "--endgame-limit" || arg == "--opponent-endgame-limit" ||
+                                   arg == "--sets-to-win";
             if (!parseInt(value, parsed, allowZero)) {
                 std::cerr << "invalid value for " << arg << ": " << value << "\n";
                 return 2;
@@ -726,12 +821,29 @@ int main(int argc, char** argv) {
             else if (arg == "--sprt-pairs") options.sprtPairs = parsed;
             else if (arg == "--sprt-elo0") options.sprtElo0 = parsed;
             else if (arg == "--sprt-elo1") options.sprtElo1 = parsed;
+            else if (arg == "--sets-to-win") options.setsToWin = parsed;
+            else if (arg == "--set-target") options.setTarget = parsed;
+            else if (arg == "--rounds-per-match") options.roundsPerMatch = parsed;
             else if (arg == "--endgame-limit") options.endgameTileLimit = parsed;
             else if (arg == "--opponent-endgame-limit") options.opponentEndgameTileLimit = parsed;
             continue;
         }
         std::cerr << "unknown argument: " << arg << "\n";
         usage(std::cerr);
+        return 2;
+    }
+
+    if (options.setsToWin != 0 && options.setsToWin != 3 && options.setsToWin != 4) {
+        std::cerr << "--sets-to-win must be 3 or 4 (0 = round mode)\n";
+        return 2;
+    }
+    if (options.setTarget != 151 &&
+        !(mode == GameMode::OneVsOne && options.setTarget == 101)) {
+        std::cerr << "--set-target must be 151, or 101 in 1v1\n";
+        return 2;
+    }
+    if (options.setsToWin > 0 && options.sprtPairs > 0) {
+        std::cerr << "--sprt-pairs is round-scoped; do not combine it with --sets-to-win\n";
         return 2;
     }
 
@@ -762,6 +874,72 @@ int main(int argc, char** argv) {
               << " (positional tempo " << options.opponentPositionalWeights.tempo
               << ", mobility " << options.opponentPositionalWeights.mobility << ")\n";
 
+    if (options.setsToWin > 0) {
+        const std::filesystem::path roundsPath = std::string(outputPath) + ".rounds.csv";
+        std::ofstream roundsOut(roundsPath);
+        if (!roundsOut) {
+            std::cerr << "could not open rounds output: " << roundsPath << "\n";
+            return 2;
+        }
+        writeHeader(roundsOut);
+        out << "match,seed,mode,sets_to_win,target,rounds,incomplete,"
+               "winner_participant,winner_side,sets_a,sets_b,points_a,points_b,"
+               "set_wins_0,set_wins_1,set_wins_2,set_wins_3,"
+               "points_0,points_1,points_2,points_3\n";
+
+        int matchesA = 0;
+        int matchesB = 0;
+        int unfinished = 0;
+        long long totalRounds = 0;
+        std::uint64_t matchDecisions = 0;
+
+        for (int matchIndex = 0; matchIndex < options.games; ++matchIndex) {
+            const MatchSummary summary = playOneMatch(
+                options, mode, static_cast<std::uint64_t>(matchIndex), roundsOut);
+
+            out << matchIndex << ',' << options.seed << ',' << modeName(mode) << ','
+                << options.setsToWin << ',' << options.setTarget << ','
+                << summary.rounds << ',' << summary.incompleteRounds << ','
+                << summary.winnerParticipant << ',' << summary.winnerSide << ','
+                << summary.setsA << ',' << summary.setsB << ','
+                << summary.pointsA << ',' << summary.pointsB;
+            for (int p = 0; p < 4; ++p) {
+                out << ',' << (p < static_cast<int>(summary.setWins.size())
+                                   ? summary.setWins[static_cast<std::size_t>(p)] : 0);
+            }
+            for (int p = 0; p < 4; ++p) {
+                out << ',' << (p < static_cast<int>(summary.points.size())
+                                   ? summary.points[static_cast<std::size_t>(p)] : 0);
+            }
+            out << '\n';
+
+            totalRounds += summary.rounds;
+            matchDecisions += summary.decisions;
+            if (summary.winnerSide == 0) ++matchesA;
+            else if (summary.winnerSide == 1) ++matchesB;
+            else ++unfinished;
+
+            if ((matchIndex + 1) % 5 == 0 || matchIndex + 1 == options.games) {
+                std::cout << "  finished " << (matchIndex + 1) << "/" << options.games
+                          << " matches (" << totalRounds << " rounds, "
+                          << matchDecisions << " decisions)" << std::endl;
+            }
+        }
+
+        std::cout << "wrote " << outputPath << " (matches) and " << roundsPath
+                  << " (moves)\n"
+                  << "  matches: " << options.games << "\n"
+                  << "  A match wins: " << matchesA << "\n"
+                  << "  B match wins: " << matchesB << "\n"
+                  << "  unfinished: " << unfinished << "\n"
+                  << "  rounds: " << totalRounds
+                  << " (mean " << (options.games > 0
+                          ? static_cast<double>(totalRounds) / options.games : 0.0)
+                  << " per match)\n"
+                  << "  decisions: " << matchDecisions << "\n";
+        return unfinished == 0 ? 0 : 1;
+    }
+
     writeHeader(out);
 
     int completed = 0;
@@ -790,7 +968,10 @@ int main(int argc, char** argv) {
 
     for (int game = 0; game < totalGames; ++game) {
         std::vector<MoveRow> rows;
-        const GameSummary summary = playOneRound(options, mode, static_cast<std::uint64_t>(game), rows);
+        const GameSummary summary = playOneRound(
+            options, mode,
+            options.seed + static_cast<std::uint64_t>(game) * 0x9E3779B97F4A7C15ULL,
+            game % 2 == 0, rows);
         writeRows(out, static_cast<std::uint64_t>(game), options.seed, mode, summary, rows);
         totalDecisions += static_cast<std::uint64_t>(summary.decisions);
         if (summary.outcome == RoundOutcomeKind::InProgress) ++incomplete;
