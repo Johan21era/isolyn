@@ -98,10 +98,20 @@ public:
     // combines partners' hand values for 2v2 via RulesEngine's
     // team-index helpers before scoring -- team scoring, not individual
     // scoring, is what actually applies in that mode.
+    //
+    // `positionalWeights` opts into the two-regime evaluation: when it is not
+    // null and no participant can empty their hand on their next turn, those
+    // weights replace `weights` for the positional terms. The regime is a
+    // property of the state, decided once, so every player is scored under the
+    // same vector and positions stay comparably valued.
+    //
+    // Null (the default) keeps the single-vector evaluation exactly as it was,
+    // arithmetic included: the threat predicate is not even called.
     static EvaluationBreakdown evaluate(GameMode mode,
                                         const GameState& state,
                                         int playerIndex,
-                                        const EvaluationWeights& weights = EvaluationWeights{});
+                                        const EvaluationWeights& weights = EvaluationWeights{},
+                                        const EvaluationWeights* positionalWeights = nullptr);
 
     // Computes every player's total from one pass over the state. Search uses
     // this at leaves so mobility, blocking, threat, closed scoring, and 2v2
@@ -109,7 +119,8 @@ public:
     // the `total` fields the per-player API would return.
     static EvaluationTotals evaluateAll(GameMode mode,
                                         const GameState& state,
-                                        const EvaluationWeights& weights = EvaluationWeights{});
+                                        const EvaluationWeights& weights = EvaluationWeights{},
+                                        const EvaluationWeights* positionalWeights = nullptr);
 
     // Same totals with the caller's already-computed closed-position fact.
     // Closed internal search nodes use this after their early-termination
@@ -119,7 +130,8 @@ public:
         GameMode mode,
         const GameState& state,
         bool positionClosed,
-        const EvaluationWeights& weights = EvaluationWeights{});
+        const EvaluationWeights& weights = EvaluationWeights{},
+        const EvaluationWeights* positionalWeights = nullptr);
 };
 
 } // namespace isolyn

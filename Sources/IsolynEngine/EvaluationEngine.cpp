@@ -62,7 +62,8 @@ double teamMobility(const GameState& state, int teamIndex) {
 EvaluationBreakdown EvaluationEngine::evaluate(GameMode mode,
                                                const GameState& state,
                                                int playerIndex,
-                                               const EvaluationWeights& weights) {
+                                               const EvaluationWeights& weights,
+                                               const EvaluationWeights* positionalWeights) {
     EvaluationBreakdown breakdown{};
 
     // Terminal Domino state. Once ANY hand is empty, the round is over;
@@ -175,21 +176,39 @@ EvaluationBreakdown EvaluationEngine::evaluate(GameMode mode,
         breakdown.teamSupport = 0.25 * ourMobility;
     }
 
-    breakdown.total = weights.mobility * breakdown.mobility
-                     + weights.blocking * breakdown.blocking
-                     + weights.expectedValue * breakdown.expectedValue
-                     + weights.closingOpportunity * breakdown.closingOpportunity
-                     + weights.winThreat * breakdown.winThreat
-                     + weights.pipControl * breakdown.pipControl
-                     + weights.tempo * breakdown.tempo
-                     + weights.teamSupport * breakdown.teamSupport;
+    // Two-regime selection. The regime is a property of the position, not of
+    // the player being scored, so every player in one state is evaluated under
+    // the same vector. The predicate is only consulted when a second vector
+    // exists, which keeps the single-vector path byte-for-byte unchanged.
+    const EvaluationWeights* effective = &weights;
+    if (positionalWeights != nullptr) {
+        bool anyThreat = false;
+        for (int p = 0; p < state.playerCount(); ++p) {
+            if (hasImmediateDominoWin(state, p)) {
+                anyThreat = true;
+                break;
+            }
+        }
+        if (!anyThreat) effective = positionalWeights;
+    }
+    const EvaluationWeights& w = *effective;
+
+    breakdown.total = w.mobility * breakdown.mobility
+                     + w.blocking * breakdown.blocking
+                     + w.expectedValue * breakdown.expectedValue
+                     + w.closingOpportunity * breakdown.closingOpportunity
+                     + w.winThreat * breakdown.winThreat
+                     + w.pipControl * breakdown.pipControl
+                     + w.tempo * breakdown.tempo
+                     + w.teamSupport * breakdown.teamSupport;
     return breakdown;
 }
 
 static EvaluationTotals evaluateAllImpl(GameMode mode,
                                         const GameState& state,
                                         const EvaluationWeights& weights,
-                                        std::optional<bool> knownClosed) {
+                                        std::optional<bool> knownClosed,
+                                        const EvaluationWeights* positionalWeights) {
     EvaluationTotals result;
     const int playerCount = state.playerCount();
     result.playerCount = playerCount;
@@ -230,6 +249,22 @@ static EvaluationTotals evaluateAllImpl(GameMode mode,
         threats[static_cast<std::size_t>(p)] =
             state.hand(p).size() == 1 && facts.legalMoves > 0;
     }
+
+    // Two-regime selection: one vector per state, chosen from the threat scan
+    // that already ran above. Null (the default) keeps the single-vector path
+    // and costs nothing.
+    const EvaluationWeights* effective = &weights;
+    if (positionalWeights != nullptr) {
+        bool anyThreat = false;
+        for (int p = 0; p < playerCount; ++p) {
+            if (threats[static_cast<std::size_t>(p)]) {
+                anyThreat = true;
+                break;
+            }
+        }
+        if (!anyThreat) effective = positionalWeights;
+    }
+    const EvaluationWeights& w = *effective;
 
     std::array<double, 4> closing{};
     const bool positionClosed = knownClosed.value_or(
@@ -321,30 +356,32 @@ static EvaluationTotals evaluateAllImpl(GameMode mode,
 
         const double expectedValue = -static_cast<double>(handValues[static_cast<std::size_t>(p)]);
         result.totals[static_cast<std::size_t>(p)] =
-            weights.mobility * mobility[static_cast<std::size_t>(p)]
-            + weights.blocking * -opponentMobility
-            + weights.expectedValue * expectedValue
-            + weights.closingOpportunity * closing[static_cast<std::size_t>(p)]
-            + weights.winThreat * winThreat
-            + weights.pipControl * pipControl[static_cast<std::size_t>(p)]
-            + weights.tempo * tempo
-            + weights.teamSupport * teamSupport[static_cast<std::size_t>(p)];
+            w.mobility * mobility[static_cast<std::size_t>(p)]
+            + w.blocking * -opponentMobility
+            + w.expectedValue * expectedValue
+            + w.closingOpportunity * closing[static_cast<std::size_t>(p)]
+            + w.winThreat * winThreat
+            + w.pipControl * pipControl[static_cast<std::size_t>(p)]
+            + w.tempo * tempo
+            + w.teamSupport * teamSupport[static_cast<std::size_t>(p)];
     }
     return result;
 }
 
 EvaluationTotals EvaluationEngine::evaluateAll(GameMode mode,
                                                const GameState& state,
-                                               const EvaluationWeights& weights) {
-    return evaluateAllImpl(mode, state, weights, std::nullopt);
+                                               const EvaluationWeights& weights,
+                                               const EvaluationWeights* positionalWeights) {
+    return evaluateAllImpl(mode, state, weights, std::nullopt, positionalWeights);
 }
 
 EvaluationTotals EvaluationEngine::evaluateAllWithClosed(
     GameMode mode,
     const GameState& state,
     bool positionClosed,
-    const EvaluationWeights& weights) {
-    return evaluateAllImpl(mode, state, weights, positionClosed);
+    const EvaluationWeights& weights,
+    const EvaluationWeights* positionalWeights) {
+    return evaluateAllImpl(mode, state, weights, positionClosed, positionalWeights);
 }
 
 } // namespace isolyn

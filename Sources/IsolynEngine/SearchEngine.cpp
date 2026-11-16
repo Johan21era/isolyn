@@ -77,10 +77,11 @@ struct RawEvaluation {
 RawEvaluation evaluateAll(GameMode mode,
                           const GameState& state,
                           const EvaluationWeights& weights,
-                          std::optional<bool> positionClosed = std::nullopt) {
+                          std::optional<bool> positionClosed = std::nullopt,
+                          const EvaluationWeights* positionalWeights = nullptr) {
     const EvaluationTotals totals = positionClosed.has_value()
-        ? EvaluationEngine::evaluateAllWithClosed(mode, state, *positionClosed, weights)
-        : EvaluationEngine::evaluateAll(mode, state, weights);
+        ? EvaluationEngine::evaluateAllWithClosed(mode, state, *positionClosed, weights, positionalWeights)
+        : EvaluationEngine::evaluateAll(mode, state, weights, positionalWeights);
     RawEvaluation raw;
     raw.values = totals.totals;
     raw.count = static_cast<std::uint8_t>(totals.playerCount);
@@ -240,6 +241,7 @@ struct SearchContext {
     bool exactEndgameUsed = false;
 
     EvaluationWeights weights{};
+    const EvaluationWeights* positionalWeights = nullptr;
     int maxVoluntaryDraws = 0;
     TranspositionTable* tt = nullptr;
     bool tableStarted = false;
@@ -500,13 +502,13 @@ SearchValue searchZeroSum(GameState& state,
     if (depthRemaining <= 0 && !exactEndgame) {
         // evaluateAll derives Closed from the mobility it already computes,
         // so a horizon leaf needs no separate all-player legality scan.
-        RawEvaluation raw = evaluateAll(context.mode, state, context.weights);
+        RawEvaluation raw = evaluateAll(context.mode, state, context.weights, std::nullopt, context.positionalWeights);
         return SearchValue{relativeScore(raw, player, context.mode), raw};
     }
 
     const bool closed = MoveGenerator::isPositionClosed(state);
     if (closed) {
-        RawEvaluation raw = evaluateAll(context.mode, state, context.weights, true);
+        RawEvaluation raw = evaluateAll(context.mode, state, context.weights, true, context.positionalWeights);
         return SearchValue{relativeScore(raw, player, context.mode), raw};
     }
 
@@ -615,7 +617,7 @@ SearchValue searchZeroSum(GameState& state,
         auto searchChild = [&](int depth, double childAlpha, double childBeta) -> SearchValue {
             if (emptied) {
                 SearchValue value;
-                value.raw = evaluateAll(context.mode, state, context.weights);
+                value.raw = evaluateAll(context.mode, state, context.weights, std::nullopt, context.positionalWeights);
                 value.score = kTerminalWinScore + relativeScore(value.raw, player, context.mode);
                 return value;
             }
@@ -680,12 +682,12 @@ RawEvaluation searchMulti(GameState& state,
     const int player = state.currentPlayerIndex();
     if (depthRemaining <= 0) {
         // evaluateAll derives Closed from mobility without a second scan.
-        return evaluateAll(context.mode, state, context.weights);
+        return evaluateAll(context.mode, state, context.weights, std::nullopt, context.positionalWeights);
     }
 
     const bool closed = MoveGenerator::isPositionClosed(state);
     if (closed) {
-        return evaluateAll(context.mode, state, context.weights, true);
+        return evaluateAll(context.mode, state, context.weights, true, context.positionalWeights);
     }
 
     std::vector<DominoTile> drawn = resolveForcedDraws(state, player);
@@ -727,7 +729,7 @@ RawEvaluation searchMulti(GameState& state,
 
                         RawEvaluation child;
                 if (emptied) {
-                    child = evaluateAll(context.mode, state, context.weights);
+                    child = evaluateAll(context.mode, state, context.weights, std::nullopt, context.positionalWeights);
             child[static_cast<std::size_t>(player)] += kTerminalWinScore;
         } else {
             const int next = nextActivePlayer(state, player);
@@ -801,6 +803,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         ctx.cancelRequested = cancelRequested;
         ctx.sharedAbort = &stopFlag;
         ctx.weights = config.weights;
+        ctx.positionalWeights = config.useConditionalWeights ? &config.positionalWeights : nullptr;
         ctx.maxVoluntaryDraws = config.maxVoluntaryDraws;
     }
 
@@ -891,7 +894,8 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 RawEvaluation raw;
                 double candidateScore = 0.0;
                 if (emptied) {
-                    raw = evaluateAll(mode, trial, config.weights);
+                    raw = evaluateAll(mode, trial, config.weights, std::nullopt,
+                                 config.useConditionalWeights ? &config.positionalWeights : nullptr);
                     if (mode == GameMode::OneVsOneVsOne) {
                         raw[static_cast<std::size_t>(player)] += kTerminalWinScore;
                         candidateScore = raw[static_cast<std::size_t>(player)];

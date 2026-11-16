@@ -125,6 +125,12 @@ public:
         // calibration measurable instead of theoretical.
         EvaluationWeights weights{};
 
+        // Second weight vector for quiet positions -- ones where no
+        // participant can empty their hand on their next turn. Unused unless
+        // useConditionalWeights is set, so the default path is unchanged.
+        EvaluationWeights positionalWeights{};
+        bool useConditionalWeights = false;
+
         // Voluntary draws a player may consider AT THIS DECISION. 0 disables the
         // option; kUnlimitedVoluntaryDraws is the rulebook-compliant analysis
         // setting. A draw does not consume the turn, so its continuation keeps

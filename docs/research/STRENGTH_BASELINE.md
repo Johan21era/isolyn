@@ -150,3 +150,53 @@ Reproduce:
   --opponent-depth 8 --opponent-determinizations 64 --games 1000 \
   --tt-key closer --opponent-tt-key full --seed 101
 ```
+
+## E-102 — What the positional evaluation is actually worth (2026-11-15)
+
+**Verdict: the seven positional terms are worth about 15 Elo in total. The
+two-regime design is not worth pursuing, and it is not being adopted.**
+
+The engine's evaluation is a ±1000 step function (an immediate domino) plus seven
+small terms that are the only signal in the 92% of positions where no step fires.
+A two-regime evaluation -- a second weight vector for those quiet positions -- was
+designed to give that field its own shape.
+
+Rather than test the design directly, this measures its **ceiling**: how much are
+those seven terms worth at all? Side B keeps the standard vector when a domino is
+available and is given **every weight zeroed** when it is not, so in quiet
+positions its evaluation is exactly zero. Side A is the shipped engine.
+
+| Field | Value |
+|---|---|
+| A configuration | depth 8, 64 determinizations, shipped weights |
+| B configuration | depth 8, 64 determinizations, positional weights all zero |
+| Rounds | 3,000 (seeds 201–203) |
+| A score | 0.52100 |
+| **Elo (A − B)** | **+14.6, 95% CI [+2.2, +27.0]** |
+
+**Wiring was proven before the number was read**, because a null here would
+otherwise be indistinguishable from a broken flag: the harness echoes both sides'
+regime settings at startup, and all eight leaf-evaluation call sites in
+`SearchEngine.cpp` pass the second vector (`grep -n "evaluateAll("` shows the
+pointer at each one).
+
+**What this means.** Any reweighting of those seven terms -- conditional or not --
+operates on a quantity worth roughly 15 Elo end to end. The best possible outcome
+of the two-regime programme was a fraction of that, which is below the ruler's
+resolution for a realistic effort. The machine stays in the tree, default off, as
+an instrument; the *idea* is retired.
+
+**What it points at instead.** The engine is not short of search (E-101) and not
+short of positional tuning (E-102). It is short of **any graded signal at all** in
+the quiet majority of positions. That is a term that does not exist yet, not a
+weight that needs moving.
+
+Reproduce:
+
+```bash
+./tools/selfplay/build/selfplay --depth 8 --determinizations 64 \
+  --opponent-depth 8 --opponent-determinizations 64 --games 1000 \
+  --opponent-conditional-weights \
+  --opponent-positional-weights mobility=0,blocking=0,expectedValue=0,\
+closingOpportunity=0,winThreat=0,pipControl=0,tempo=0,teamSupport=0 --seed 201
+```

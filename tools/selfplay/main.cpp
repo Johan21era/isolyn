@@ -46,6 +46,11 @@ struct Options {
     // so positions reached by different move orders share an entry.
     bool compactTtKey = false;
     bool opponentCompactTtKey = false;
+    // Two-regime evaluation: a second weight vector for quiet positions.
+    bool conditionalWeights = false;
+    bool opponentConditionalWeights = false;
+    EvaluationWeights positionalWeights{};
+    EvaluationWeights opponentPositionalWeights{};
     EvaluationWeights weights{};
     EvaluationWeights opponentWeights{};
     std::uint64_t seed = 1;
@@ -97,6 +102,10 @@ void usage(std::ostream& out) {
         << "  --opponent-aggregation P  root rule for B (default: mean)\n"
         << "  --voluntary-draw N      voluntary draws per turn allowed for A (default 0)\n"
         << "  --opponent-voluntary-draw N  same for B (default 0)\n"
+        << "  --conditional-weights   evaluate A in two regimes (off by default)\n"
+        << "  --positional-weights LIST  A's weights when no immediate win exists\n"
+        << "  --opponent-conditional-weights   same for B\n"
+        << "  --opponent-positional-weights LIST  B's quiet-position weights\n"
         << "  --tt-key K              transposition key for A: full | closer (default full)\n"
         << "  --opponent-tt-key K     transposition key for B (default full)\n"
         << "  --weights LIST           evaluation overrides, e.g. tempo=0,blocking=2\n"
@@ -350,6 +359,8 @@ GameSummary playOneRound(const Options& options,
     configA.maxVoluntaryDraws = options.voluntaryDraws;
     configA.useSelectiveSearch = options.depth >= 24;
     configA.weights = options.weights;
+    configA.positionalWeights = options.positionalWeights;
+    configA.useConditionalWeights = options.conditionalWeights;
     configA.transpositionKeyMode = options.compactTtKey
         ? GameState::TranspositionKeyMode::CloserSummary
         : GameState::TranspositionKeyMode::FullHistory;
@@ -364,6 +375,8 @@ GameSummary playOneRound(const Options& options,
     configB.maxVoluntaryDraws = options.opponentVoluntaryDraws;
     configB.useSelectiveSearch = options.opponentDepth >= 24;
     configB.weights = options.opponentWeights;
+    configB.positionalWeights = options.opponentPositionalWeights;
+    configB.useConditionalWeights = options.opponentConditionalWeights;
     configB.transpositionKeyMode = options.opponentCompactTtKey
         ? GameState::TranspositionKeyMode::CloserSummary
         : GameState::TranspositionKeyMode::FullHistory;
@@ -567,6 +580,14 @@ int main(int argc, char** argv) {
             std::cout << "selfplay: linked real engine; ok\n";
             return 0;
         }
+        if (arg == "--conditional-weights") {
+            options.conditionalWeights = true;
+            continue;
+        }
+        if (arg == "--opponent-conditional-weights") {
+            options.opponentConditionalWeights = true;
+            continue;
+        }
         if (arg == "--games" || arg == "--depth" || arg == "--determinizations" ||
             arg == "--opponent-depth" || arg == "--opponent-determinizations" ||
             arg == "--time-ms" || arg == "--workers" || arg == "--opponent-workers" ||
@@ -575,6 +596,7 @@ int main(int argc, char** argv) {
             arg == "--sprt-pairs" || arg == "--sprt-elo0" || arg == "--sprt-elo1" ||
             arg == "--tt-key" || arg == "--opponent-tt-key" ||
             arg == "--weights" || arg == "--opponent-weights" ||
+            arg == "--positional-weights" || arg == "--opponent-positional-weights" ||
             arg == "--seed" || arg == "--mode" || arg == "--output") {
             if (i + 1 >= argc) {
                 std::cerr << "missing value for " << arg << "\n";
@@ -602,6 +624,16 @@ int main(int argc, char** argv) {
                 }
                 if (arg == "--weights") options.weights = target;
                 else options.opponentWeights = target;
+                continue;
+            }
+            if (arg == "--positional-weights" || arg == "--opponent-positional-weights") {
+                EvaluationWeights target = EvaluationWeights{};
+                if (!applyWeightList(value, target)) {
+                    std::cerr << "invalid positional weights: " << value << "\n";
+                    return 2;
+                }
+                if (arg == "--positional-weights") options.positionalWeights = target;
+                else options.opponentPositionalWeights = target;
                 continue;
             }
             if (arg == "--tt-key" || arg == "--opponent-tt-key") {
@@ -680,7 +712,13 @@ int main(int argc, char** argv) {
               << "  opponent determinizations: " << options.opponentDeterminizations << "\n"
               << "  time-ms: " << options.timeMs << "\n"
               << "  seed: " << options.seed << "\n"
-              << "  output: " << outputPath << "\n";
+              << "  output: " << outputPath << "\n"
+              << "  A conditional: " << (options.conditionalWeights ? "on" : "off")
+              << " (positional tempo " << options.positionalWeights.tempo
+              << ", mobility " << options.positionalWeights.mobility << ")\n"
+              << "  B conditional: " << (options.opponentConditionalWeights ? "on" : "off")
+              << " (positional tempo " << options.opponentPositionalWeights.tempo
+              << ", mobility " << options.opponentPositionalWeights.mobility << ")\n";
 
     writeHeader(out);
 
