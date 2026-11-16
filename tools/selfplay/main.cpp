@@ -42,6 +42,10 @@ struct Options {
     int sprtPairs = 0;
     int sprtElo0 = 0;   // H0: the true difference is at most this
     int sprtElo1 = 5;   // H1: the true difference is at least this
+    // Transposition-table key. "closer" drops history the search cannot see,
+    // so positions reached by different move orders share an entry.
+    bool compactTtKey = false;
+    bool opponentCompactTtKey = false;
     EvaluationWeights weights{};
     EvaluationWeights opponentWeights{};
     std::uint64_t seed = 1;
@@ -93,6 +97,8 @@ void usage(std::ostream& out) {
         << "  --opponent-aggregation P  root rule for B (default: mean)\n"
         << "  --voluntary-draw N      voluntary draws per turn allowed for A (default 0)\n"
         << "  --opponent-voluntary-draw N  same for B (default 0)\n"
+        << "  --tt-key K              transposition key for A: full | closer (default full)\n"
+        << "  --opponent-tt-key K     transposition key for B (default full)\n"
         << "  --weights LIST           evaluation overrides, e.g. tempo=0,blocking=2\n"
         << "  --opponent-weights LIST   evaluation overrides for B\n"
         << "  --seed N                deterministic deal/search seed (default 1)\n"
@@ -344,6 +350,9 @@ GameSummary playOneRound(const Options& options,
     configA.maxVoluntaryDraws = options.voluntaryDraws;
     configA.useSelectiveSearch = options.depth >= 24;
     configA.weights = options.weights;
+    configA.transpositionKeyMode = options.compactTtKey
+        ? GameState::TranspositionKeyMode::CloserSummary
+        : GameState::TranspositionKeyMode::FullHistory;
 
     SearchEngine::Config configB;
     configB.maxDepthPlies = options.opponentDepth;
@@ -355,6 +364,9 @@ GameSummary playOneRound(const Options& options,
     configB.maxVoluntaryDraws = options.opponentVoluntaryDraws;
     configB.useSelectiveSearch = options.opponentDepth >= 24;
     configB.weights = options.opponentWeights;
+    configB.transpositionKeyMode = options.opponentCompactTtKey
+        ? GameState::TranspositionKeyMode::CloserSummary
+        : GameState::TranspositionKeyMode::FullHistory;
 
     // Alternate which physical side gets the A configuration so a one-sided
     // first-player advantage does not masquerade as a strength difference.
@@ -561,6 +573,7 @@ int main(int argc, char** argv) {
             arg == "--aggregation" || arg == "--opponent-aggregation" ||
             arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
             arg == "--sprt-pairs" || arg == "--sprt-elo0" || arg == "--sprt-elo1" ||
+            arg == "--tt-key" || arg == "--opponent-tt-key" ||
             arg == "--weights" || arg == "--opponent-weights" ||
             arg == "--seed" || arg == "--mode" || arg == "--output") {
             if (i + 1 >= argc) {
@@ -589,6 +602,16 @@ int main(int argc, char** argv) {
                 }
                 if (arg == "--weights") options.weights = target;
                 else options.opponentWeights = target;
+                continue;
+            }
+            if (arg == "--tt-key" || arg == "--opponent-tt-key") {
+                if (value != "full" && value != "closer") {
+                    std::cerr << "invalid tt key: " << value << " (expected full or closer)\n";
+                    return 2;
+                }
+                const bool compact = value == "closer";
+                if (arg == "--tt-key") options.compactTtKey = compact;
+                else options.opponentCompactTtKey = compact;
                 continue;
             }
             if (arg == "--aggregation" || arg == "--opponent-aggregation") {

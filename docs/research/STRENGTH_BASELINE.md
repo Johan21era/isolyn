@@ -107,3 +107,46 @@ Recommended order for tomorrow:
 ## Results
 
 None yet. This section stays empty until a run completes under the hash above.
+
+## E-101 — Compact transposition key (2026-11-15)
+
+**Verdict: no detectable strength effect. The mechanism engaged; the strength did not.**
+
+`GameState::hash()` mixed the whole move list into the transposition key, but the
+only consumer of that history is `RulesEngine::determineCloser`, which reads two
+facts: who played last, and (in 1v1) who played the most recent non-double.
+`TranspositionKeyMode::CloserSummary` keeps exactly those and drops the rest, so
+positions reached by different move orders share an entry.
+
+| Field | Value |
+|---|---|
+| A configuration | depth 8, 64 determinizations, `TranspositionKeyMode::CloserSummary` |
+| B configuration | depth 8, 64 determinizations, `TranspositionKeyMode::FullHistory` |
+| Rounds | 9,960 (10 seeds: 101–110, one shard cut at 960) |
+| A score | 0.50467 |
+| **Elo (A − B)** | **+3.2, 95% CI [−3.6, +10.1]** |
+| SPRT (θ = 5 Elo, α = β = 0.05) | LLR 0.307, undecided |
+
+**Mechanism check** (same runs, so this isolates whether the change did anything):
+1,633 TT hits per decision for the compact key against 31.6 for the full key —
+**52× more** — and 97,390 nodes per decision against 121,143, **20% fewer**.
+
+So the key behaves exactly as designed and the search gets a fifth cheaper per
+decision, and the win rate moves by an amount the interval cannot distinguish
+from zero. This is evidence for the reading that the engine is **resolution-starved
+rather than node-starved**: it does not need more search, because more search is
+not what its evaluation can use.
+
+**Caveat that must travel with this number.** Depth was fixed and there was no
+time limit, so saved nodes were simply not spent. Under the 15-second budgeted
+tiers those nodes would convert into depth, and this measurement says nothing
+about that case. Re-running with `--time-ms 15000` per side is the test that would
+close that gap; it has not been done.
+
+Reproduce:
+
+```bash
+./tools/selfplay/build/selfplay --depth 8 --determinizations 64 \
+  --opponent-depth 8 --opponent-determinizations 64 --games 1000 \
+  --tt-key closer --opponent-tt-key full --seed 101
+```
