@@ -3453,3 +3453,24 @@ been in any run.
 - **Verification:** `./tools/selfplay/build.sh` builds; round-mode regression (4
   rounds) unchanged; engine 514 / bridge 136 / Swift 126 unchanged; docs and rules
   audits PASS.
+
+## OPS-57 — Hand-to-match transfer measured; analysis hazard documented (2026-11-16)
+
+**Scope:** follow-on to E-027. Does a hand-level edge survive into matches?
+
+- **Run:** A depth 4/20 vs B depth 2/6, seed 3. Hand leg 1,000 rounds; match leg
+  400 best-of-five matches (19,323 hands, mean 48.3).
+- **Result:** hands **53.5%** [50.4, 56.6] (+24.4 Elo); matches **65.5%**
+  [60.7, 70.0] (+111.4 Elo). Scorelines 3-0 ×71, 3-1 ×96, 3-2 ×95, 0-3 ×26,
+  1-3 ×53, 2-3 ×59; zero winner/scoreline inconsistencies.
+- **Check:** a majority-of-48-hands model at p=0.535 predicts 63.5%, inside the
+  observed interval — the amplification is variance reduction, not a hidden
+  mechanic.
+- **Hazard found and documented:** unused `participant_side*`/`participant_score*`
+  slots are zero-filled. Reading all four slots instead of `participant_count`
+  makes a pad row (side 0, score 0) overwrite a real side-0 score; that produced a
+  false "deeper side won 0 of 1,000 hands" reading before it was caught. The
+  README now warns to filter on `participant_count`.
+- **Not done:** match-level SPRT; no re-ranking of shipped tiers.
+- **Verification:** docs and rules audits PASS; engine/bridge/Swift counts
+  unchanged (514/136/126).

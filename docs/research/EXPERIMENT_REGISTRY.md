@@ -498,3 +498,37 @@ appeared in any measurement. `tools/selfplay/README.md` now documents
 - **Next.** Re-run the shipped A/B comparisons at match level; match-level
   sample sizes will need to be larger in rounds than the hand-level ones, and
   SPRT is not yet wired for matches.
+
+## E-028 — A small hand edge is roughly doubled in match terms (TRANSFER MEASURED)
+
+E-027 showed the two scoreboards can disagree. It did not say whether a hand-level
+edge survives into matches, or by how much. This measures the same two
+configurations both ways.
+
+- **Setup:** A = depth 4 / 20 determinizations, B = depth 2 / 6, seed 3, 1v1.
+  B is a deliberately weak control, not a shipped tier; the point is the transfer,
+  not the tier.
+- **Hand leg:** 1,000 hands, A **53.5%** [50.4, 56.6] — **+24.4 Elo**.
+- **Match leg:** 400 best-of-five matches, 19,323 hands, mean 48.3 per match.
+  A **65.5%** [60.7, 70.0] — **+111.4 Elo**. Scorelines: 3-0 ×71, 3-1 ×96,
+  3-2 ×95; 0-3 ×26, 1-3 ×53, 2-3 ×59.
+- **The transfer:** the same edge is worth roughly **2.1× in win probability and
+  +87 Elo** at match level. A 53.5% hand result is a 65.5% match result.
+- **Why, and a check.** A match is close to a majority vote over ~48 hands, so
+  variance shrinks. An independent-hands model at p=0.535 over 48 hands predicts
+  **63.5%**; the observed 65.5% [60.7, 70.0] contains it. The amplification is
+  ordinary variance reduction — no match-specific mechanic is needed to explain it.
+- **Within these matches**, the side with more hand wins still lost 22.5% of the
+  time (90/400), against 29.5% in the E-027 mirror. Divergence shrinks when one
+  side is actually better, but does not vanish.
+- **Reading.** Hand-level Elo *understates* what the same edge does to matches, by
+  about a factor of two in win probability at this effect size. That cuts both
+  ways: a "+10 Elo" lab result is a bigger deal for players than it sounds, and a
+  hand-level null is weaker evidence of "no practical effect" than it looks. Both
+  must be stated with their level.
+- **Cost.** 400 matches cost 19.3k hands for a ±4.7-point interval; 1,000 hands
+  gave ±3.1. Per hand, match testing is less efficient, so hand-level screening
+  remains the right first filter — but its effect size must be translated, not
+  quoted as a match expectation.
+- **Not claimed.** One matchup, one seed, no match-level SPRT; best-of-five to 151
+  only. This does not re-rank any shipped tier.

@@ -108,6 +108,11 @@ before the mandated opening tile is removed. They are the starting-hand
 quality signal used by the lab's calibration report. For 2v2, the lab combines
 the two partner values before correlating hand quality with the team result.
 
+Unused participant slots (when `participant_count` is below 4) are zero-filled
+in both `participant_side*` and `participant_score*`. Always filter on
+`participant_count` before reading them: a pad row carries side 0 and score 0 and
+will otherwise overwrite a real side-0 score.
+
 `depth_reached` is the deepest fully completed iterative-deepening depth.
 `tt_hits` and `nodes` are search diagnostics. `exact_endgame` is set when the
 late-endgame solver ran to the terminal instead of stopping at a heuristic
