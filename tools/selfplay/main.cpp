@@ -39,6 +39,10 @@ struct Options {
     // Sequential testing. 0 disables it and the run plays a fixed --games.
     // A "pair" is one round with A on each seat, so the test only ever looks
     // at balanced samples.
+    // Total tiles left in all hands at which the search stops guessing and
+    // solves the sampled world exactly. 0 disables the solver.
+    int endgameTileLimit = 8;
+    int opponentEndgameTileLimit = 8;
     int sprtPairs = 0;
     int sprtElo0 = 0;   // H0: the true difference is at most this
     int sprtElo1 = 5;   // H1: the true difference is at least this
@@ -106,6 +110,8 @@ void usage(std::ostream& out) {
         << "  --positional-weights LIST  A's weights when no immediate win exists\n"
         << "  --opponent-conditional-weights   same for B\n"
         << "  --opponent-positional-weights LIST  B's quiet-position weights\n"
+        << "  --endgame-limit N       exact-solve when this many tiles remain, A (default 8)\n"
+        << "  --opponent-endgame-limit N  same for B (default 8)\n"
         << "  --tt-key K              transposition key for A: full | closer (default full)\n"
         << "  --opponent-tt-key K     transposition key for B (default full)\n"
         << "  --weights LIST           evaluation overrides, e.g. tempo=0,blocking=2\n"
@@ -353,7 +359,7 @@ GameSummary playOneRound(const Options& options,
     configA.maxDepthPlies = options.depth;
     configA.determinizationCount = options.determinizations;
     configA.timeLimitMs = options.timeMs;
-    configA.endgameTileLimit = 8;
+    configA.endgameTileLimit = options.endgameTileLimit;
     configA.workerThreads = options.workers;
     configA.rootAggregation = options.aggregation;
     configA.maxVoluntaryDraws = options.voluntaryDraws;
@@ -369,7 +375,7 @@ GameSummary playOneRound(const Options& options,
     configB.maxDepthPlies = options.opponentDepth;
     configB.determinizationCount = options.opponentDeterminizations;
     configB.timeLimitMs = options.timeMs;
-    configB.endgameTileLimit = 8;
+    configB.endgameTileLimit = options.opponentEndgameTileLimit;
     configB.workerThreads = options.opponentWorkers;
     configB.rootAggregation = options.opponentAggregation;
     configB.maxVoluntaryDraws = options.opponentVoluntaryDraws;
@@ -595,6 +601,7 @@ int main(int argc, char** argv) {
             arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
             arg == "--sprt-pairs" || arg == "--sprt-elo0" || arg == "--sprt-elo1" ||
             arg == "--tt-key" || arg == "--opponent-tt-key" ||
+            arg == "--endgame-limit" || arg == "--opponent-endgame-limit" ||
             arg == "--weights" || arg == "--opponent-weights" ||
             arg == "--positional-weights" || arg == "--opponent-positional-weights" ||
             arg == "--seed" || arg == "--mode" || arg == "--output") {
@@ -668,7 +675,8 @@ int main(int argc, char** argv) {
             const bool allowZero = arg == "--time-ms" || arg == "--workers" ||
                                    arg == "--opponent-workers" ||
                                    arg == "--voluntary-draw" || arg == "--opponent-voluntary-draw" ||
-                                   arg == "--sprt-pairs" || arg == "--sprt-elo0";
+                                   arg == "--sprt-pairs" || arg == "--sprt-elo0" ||
+                                   arg == "--endgame-limit" || arg == "--opponent-endgame-limit";
             if (!parseInt(value, parsed, allowZero)) {
                 std::cerr << "invalid value for " << arg << ": " << value << "\n";
                 return 2;
@@ -686,6 +694,8 @@ int main(int argc, char** argv) {
             else if (arg == "--sprt-pairs") options.sprtPairs = parsed;
             else if (arg == "--sprt-elo0") options.sprtElo0 = parsed;
             else if (arg == "--sprt-elo1") options.sprtElo1 = parsed;
+            else if (arg == "--endgame-limit") options.endgameTileLimit = parsed;
+            else if (arg == "--opponent-endgame-limit") options.opponentEndgameTileLimit = parsed;
             continue;
         }
         std::cerr << "unknown argument: " << arg << "\n";

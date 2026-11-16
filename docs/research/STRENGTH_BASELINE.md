@@ -200,3 +200,45 @@ Reproduce:
   --opponent-positional-weights mobility=0,blocking=0,expectedValue=0,\
 closingOpportunity=0,winThreat=0,pipControl=0,tempo=0,teamSupport=0 --seed 201
 ```
+
+## E-103 — Exact endgame solving, two tiles earlier (2026-11-16)
+
+**Verdict: no detectable effect. Perfect play from ten remaining tiles is worth
+the same as perfect play from eight, at twice the cost.**
+
+The search stops estimating and solves the sampled world exactly once the
+boneyard is empty and at most `endgameTileLimit` tiles remain across all hands.
+Raising that limit replaces heuristic endgame judgement with proof. This is a
+different kind of change from a weight or a depth setting: it cannot make the
+evaluation wrong inside the solved region, only outside it.
+
+| Field | Value |
+|---|---|
+| A configuration | depth 8, 64 determinizations, `endgameTileLimit = 10` |
+| B configuration | depth 8, 64 determinizations, `endgameTileLimit = 8` |
+| Rounds | 3,302 (seeds 301–303, one shard cut at 802) |
+| A score | 0.50091 |
+| **Elo (A − B)** | **+0.6, 95% CI [−11.2, +12.5]** |
+| Cost | 100 rounds: 7 s at limit 8, 13 s at 10, 23 s at 11, 57 s at 12 |
+
+The interval excludes anything above +12 Elo. With 3,302 rounds it does not
+exclude a small gain; it does exclude the kind of gain that would justify paying
+twice for every endgame decision.
+
+**Why this matters more than another null.** Combined with E-101 (a 52× better
+transposition table: no effect), E-102 (the entire positional evaluation: ~15 Elo)
+and the earlier depth result, four independent levers now measure zero or nearly
+zero. The engine's decisions are remarkably insensitive to *how well it searches
+and how well it scores positions*. That is not what a weak-but-tunable engine
+looks like; it is what an engine whose decisions are dominated by something else
+looks like.
+
+The remaining explanation the data supports is that the handcrafted evaluation
+family has been mined out. The next step that can plausibly move the number is
+not another term or another ply: it is **fitting the weights to outcomes** rather
+than choosing them by hand, using the per-decision evaluation breakdowns and
+per-round results the tournament already writes.
+
+**Caveat.** One shard was cut at 802 rounds by a command timeout; shards are
+independent seeds, so the pooled figure is valid, but the sample is 3,302 rather
+than the 4,000 planned.
