@@ -153,3 +153,69 @@ is a knowledge ordering rather than a win-rate one.
   pass the defence question and still be poor.
 - The exam measures a tier's choices, not its win rate. A high exam score is not
   a strength claim and must not be quoted as one.
+
+## The control that changed the conclusion
+
+**Retraction.** The section above says "the evaluator does not price the opponent's
+threat". That claim is now **falsified** and must not be cited. It was inferred from
+a defence score near 55% without controlling for whether the question was
+answerable at all.
+
+Every defence question so far hid the opponent's tiles. The engine's belief assigns
+them by sampling, so a move that loses only to the opponent's *actual* tile looks
+safe in most sampled worlds. A low score there is consistent with two very
+different stories: a blind engine, or an engine being asked to see through the
+backs of the tiles. The first exam could not tell them apart.
+
+`defence, all tiles known` separates them. The chain is grown until a handful of
+tiles remain, the opponent is left holding exactly one, and the boneyard is empty —
+so every tile is accounted for and the opponent's immediate win is **deducible**.
+Missing it there is a mistake; missing it in the other section may be unavoidable.
+
+| Tier | defence (hidden tiles) | defence (all tiles known) |
+|---|---|---|
+| s100 d2x8 | 61% | **99%** |
+| s400 d2x8 | 56% | **99%** |
+| s900 d3x16 | 67% | **99%** |
+| s1600 d4x24 | 62% | **99%** |
+| s2300 d5x40 | 66% | **99%** |
+| s3000 d8x64 | 59% | **99%** |
+
+100 questions per cell, 0 illegal moves.
+
+### What this means
+
+**The engine is not blind to the opponent's threat.** Given complete information it
+blocks the immediate win 99% of the time — at depth 2, in the weakest tier, as
+reliably as at depth 8. The capability is present and it does not need search depth.
+Whatever the ~40% miss rate in the hidden-information section is, it is not a
+missing evaluation term.
+
+**Therefore no opponent-threat term was added.** It would have been a change made
+to fix a bug that this control shows was not there, and it would have made the
+engine defensive against threats that only exist in its own sampling noise. The
+request was "teach the engine to value blocking"; the measurement says it already
+does, and that the apparent failure was my exam demanding clairvoyance.
+
+**What the remaining hidden-information gap could still be.** Two things are not
+yet separated: (a) the engine is playing well under uncertainty, or (b) it is
+leaving value on the table because its belief sampling is too coarse to notice a
+1-in-N threat. Distinguishing them requires a Bayes-optimal baseline — the move
+that minimises the probability of the opponent's win over all hands consistent
+with what is known — which is not yet implemented. Until that exists, the
+hidden-information defence score is **not** evidence of a defect and must not be
+quoted as one.
+
+### Re-scored totals, with the control included
+
+| Tier | Score |
+|---|---|
+| s100 d2x8 | 85 |
+| s400 d2x8 | 81 |
+| s900 d3x16 | 86 |
+| s1600 d4x24 | 86 |
+| s2300 d5x40 | 87 |
+| s3000 d8x64 | 85 |
+
+Still 100% on win-now and win-with-a-draw-on-offer at every tier, and still zero
+illegal moves across all 3,000 answers.

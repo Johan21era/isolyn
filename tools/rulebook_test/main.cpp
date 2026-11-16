@@ -49,7 +49,7 @@ using namespace isolyn;
 
 namespace {
 
-enum class Kind { WinNow, WinWithDraw, Defence, SharpDefence };
+enum class Kind { WinNow, WinWithDraw, Defence, SharpDefence, DefenceKnown };
 
 const char* kindName(Kind kind) {
     switch (kind) {
@@ -57,6 +57,7 @@ const char* kindName(Kind kind) {
     case Kind::WinWithDraw: return "win+draw";
     case Kind::Defence: return "defence";
     case Kind::SharpDefence: return "sharp defence";
+    case Kind::DefenceKnown: return "defence, all tiles known";
     }
     return "?";
 }
@@ -67,7 +68,7 @@ struct Setup {
     Chain chain;
 };
 
-Setup buildSetup(std::mt19937_64& rng) {
+Setup buildSetup(std::mt19937_64& rng, bool completeInfo = false) {
     std::vector<DominoTile> pool;
     for (int a = 0; a <= 6; ++a) {
         for (int b = a; b <= 6; ++b) pool.emplace_back(a, b);
@@ -106,8 +107,44 @@ Setup buildSetup(std::mt19937_64& rng) {
 
     std::uniform_int_distribution<int> handSize(1, 3);
     Setup setup;
-    setup.chain = Chain::fromKnownState(played, leftEnd, rightEnd);
     setup.hands.assign(2, {});
+
+    if (completeInfo) {
+        // Grow the chain until only a handful of tiles remain, then give the
+        // opponent exactly one. With every tile visible their immediate win is
+        // deducible, so a missed block is a mistake rather than a guess -- the
+        // difference between measuring judgement and measuring clairvoyance.
+        while (pool.size() > 6) {
+            bool extended = false;
+            for (std::size_t k = 0; k < pool.size(); ++k) {
+                const DominoTile tile = pool[k];
+                const bool atRight = tile.low() == rightEnd || tile.high() == rightEnd;
+                const bool atLeft = tile.low() == leftEnd || tile.high() == leftEnd;
+                if (!atRight && !atLeft) continue;
+                pool.erase(pool.begin() + static_cast<std::ptrdiff_t>(k));
+                if (atRight) {
+                    rightEnd = tile.low() == rightEnd ? tile.high() : tile.low();
+                    played.push_back(tile);
+                } else {
+                    leftEnd = tile.low() == leftEnd ? tile.high() : tile.low();
+                    played.push_front(tile);
+                }
+                extended = true;
+                break;
+            }
+            if (!extended) break;
+        }
+        setup.chain = Chain::fromKnownState(played, leftEnd, rightEnd);
+        setup.hands[1].push_back(pool.back());
+        pool.pop_back();
+        while (!pool.empty()) {
+            setup.hands[0].push_back(pool.back());
+            pool.pop_back();
+        }
+        return setup;
+    }
+
+    setup.chain = Chain::fromKnownState(played, leftEnd, rightEnd);
     const int mine = handSize(rng);
     const int theirs = handSize(rng);
     for (int i = 0; i < mine && !pool.empty(); ++i) {
@@ -152,7 +189,8 @@ std::vector<Move> correctMoves(const GameState& state, Kind kind) {
         }
         MoveExecutor::undo(trial, applied);
 
-        if (kind == Kind::Defence || kind == Kind::SharpDefence) {
+        if (kind == Kind::Defence || kind == Kind::SharpDefence ||
+            kind == Kind::DefenceKnown) {
             if (!empties && !opponentWins) correct.push_back(move);
         } else if (empties) {
             correct.push_back(move);
@@ -210,12 +248,13 @@ int main(int argc, char** argv) {
 
     std::mt19937_64 rng(seed);
     std::vector<Question> questions;
-    for (Kind kind : {Kind::WinNow, Kind::WinWithDraw, Kind::Defence, Kind::SharpDefence}) {
+    for (Kind kind : {Kind::WinNow, Kind::WinWithDraw, Kind::Defence, Kind::SharpDefence,
+                      Kind::DefenceKnown}) {
         int gathered = 0;
         int attempts = 0;
         while (gathered < perSection && attempts < perSection * 800) {
             ++attempts;
-            Setup setup = buildSetup(rng);
+            Setup setup = buildSetup(rng, kind == Kind::DefenceKnown);
             GameState state(GameMode::OneVsOne, setup.hands, setup.boneyard, setup.chain, {}, 0);
             const std::vector<Move> legal = MoveGenerator::generate(state, 0);
             if (legal.empty()) continue;
@@ -224,7 +263,8 @@ int main(int argc, char** argv) {
             // A question only discriminates if some legal move is wrong, and a
             // sharp question has at most one right answer to pick out of three
             // or more -- guessing must be punished, not rewarded.
-            if (kind == Kind::Defence || kind == Kind::SharpDefence) {
+            if (kind == Kind::Defence || kind == Kind::SharpDefence ||
+                kind == Kind::DefenceKnown) {
                 if (correct.size() >= legal.size()) continue;
                 if (kind == Kind::SharpDefence &&
                     (correct.size() > 1 || legal.size() < 3)) continue;
@@ -245,7 +285,7 @@ int main(int argc, char** argv) {
         config.useSelectiveSearch = profile.maxDepthPlies >= 24;
 
         std::mt19937_64 searchRng(seed + static_cast<std::uint64_t>(mode));
-        Tally byKind[4];
+        Tally byKind[5];
         int illegalTotal = 0;
         int correctTotal = 0;
 
@@ -285,7 +325,7 @@ int main(int argc, char** argv) {
                   << "   correct " << correctTotal << "/" << total
                   << "   wrong " << (total - correctTotal - illegalTotal)
                   << "   illegal " << illegalTotal << "\n";
-        for (int k = 0; k < 4; ++k) {
+        for (int k = 0; k < 5; ++k) {
             const Tally& tally = byKind[k];
             if (tally.asked == 0) continue;
             const double section =
