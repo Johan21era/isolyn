@@ -3474,3 +3474,24 @@ been in any run.
 - **Not done:** match-level SPRT; no re-ranking of shipped tiers.
 - **Verification:** docs and rules audits PASS; engine/bridge/Swift counts
   unchanged (514/136/126).
+
+## OPS-58 — Match-level SPRT wired and calibrated (2026-11-16)
+
+**Scope:** make match-level A/B questions affordable; E-028 showed a fixed run
+costs ~19k hands per question.
+
+- **Harness:** `--sprt-pairs N` now works with `--sets-to-win` (cap 2N matches, one
+  Bernoulli observation per match, verdict read only at even counts for exact
+  color balance). Rejects 1v1v1 matches; validates `--sprt-elo1 > --sprt-elo0`.
+- **`--check`:** now asserts Wald's bounds at alpha=beta=0.05 and that both
+  verdicts are reachable — prints `sprt: ok (H1 after 207 wins, H0 after 204 losses)`.
+- **Calibration (H1):** d4x20 vs d2x6, seed 3. Stopped at 100 matches, 64–36
+  (64.0%), LLR 2.9976, H1 accepted; 4,851 hands and 20 s, against 19,323 hands and
+  80 s for the fixed 400-match run.
+- **Calibration (null):** d4x20 mirror, seed 4, cap 120. Reached H0 at 118 matches,
+  44.9%, LLR −2.9447.
+- **Determinism:** the H1 run repeated byte-for-byte (`cmp`).
+- **Not done:** pairing a match with a color-swapped replay of the same deals;
+  1v1v1 match SPRT; multi-seed calibration.
+- **Verification:** `build.sh` clean; `--check` passes; docs/rules/security audits
+  PASS; engine and bridge suites re-run unchanged (514 / 136).

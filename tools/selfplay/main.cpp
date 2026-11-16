@@ -136,6 +136,7 @@ void usage(std::ostream& out) {
         << "  --set-target N          points that win a set (default 151; 101 is 1v1 only)\n"
         << "  --rounds-per-match N    safety cap on rounds in one match (default 300)\n"
         << "  --sprt-pairs N          stop as soon as the evidence decides; N pairs is the cap\n"
+        << "                          (round mode: 2N rounds; match mode: 2N matches)\n"
         << "  --sprt-elo0 N           H0 bound in Elo for the sequential test (default 0)\n"
         << "  --sprt-elo1 N           H1 bound in Elo for the sequential test (default 5)\n"
         << "  --output PATH           CSV output path (default lab/data/selfplay.csv)\n"
@@ -686,7 +687,32 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (arg == "--check") {
-            std::cout << "selfplay: linked real engine; ok\n";
+            // Prove the sequential-test arithmetic before it is used to stop a
+            // run: Wald's bounds at alpha=beta=0.05, and both verdicts reachable.
+            SprtState winCheck(0, 5);
+            if (std::abs(winCheck.upper - std::log(19.0)) > 1e-9 ||
+                std::abs(winCheck.lower + std::log(19.0)) > 1e-9) {
+                std::cerr << "sprt bounds: FAIL\n";
+                return 1;
+            }
+            int wins = 0;
+            while (winCheck.verdict() == 0 && wins < 100000) {
+                winCheck.observe(1.0);
+                ++wins;
+            }
+            SprtState lossCheck(0, 5);
+            int losses = 0;
+            while (lossCheck.verdict() == 0 && losses < 100000) {
+                lossCheck.observe(0.0);
+                ++losses;
+            }
+            if (winCheck.verdict() != 1 || lossCheck.verdict() != -1) {
+                std::cerr << "sprt verdicts: FAIL\n";
+                return 1;
+            }
+            std::cout << "selfplay: linked real engine; ok\n"
+                      << "  sprt: ok (H1 after " << wins << " wins, H0 after "
+                      << losses << " losses)\n";
             return 0;
         }
         if (arg == "--conditional-weights") {
@@ -842,8 +868,14 @@ int main(int argc, char** argv) {
         std::cerr << "--set-target must be 151, or 101 in 1v1\n";
         return 2;
     }
-    if (options.setsToWin > 0 && options.sprtPairs > 0) {
-        std::cerr << "--sprt-pairs is round-scoped; do not combine it with --sets-to-win\n";
+    if (options.sprtPairs > 0 && options.sprtElo1 <= options.sprtElo0) {
+        std::cerr << "--sprt-elo1 must be greater than --sprt-elo0\n";
+        return 2;
+    }
+    if (options.setsToWin > 0 && options.sprtPairs > 0 &&
+        mode == GameMode::OneVsOneVsOne) {
+        std::cerr << "--sprt-pairs does not apply to 1v1v1: only two of the three "
+                     "seats map to A or B, so a match has no single score for A.\n";
         return 2;
     }
 
@@ -893,7 +925,19 @@ int main(int argc, char** argv) {
         long long totalRounds = 0;
         std::uint64_t matchDecisions = 0;
 
-        for (int matchIndex = 0; matchIndex < options.games; ++matchIndex) {
+        // Sequential testing over whole matches. A match is one Bernoulli
+        // observation (no draws are possible), and the verdict is only read at
+        // even counts so every decision rests on an equal number of A-first and
+        // B-first matches. A mirror matchup has to be run to the cap: at p=0.5
+        // the LLR random-walks, so "no verdict" is the honest outcome there.
+        const bool matchSprt = options.sprtPairs > 0;
+        const int totalMatches = matchSprt ? options.sprtPairs * 2 : options.games;
+        SprtState matchSprtState(options.sprtElo0, options.sprtElo1);
+        double matchScoreSum = 0.0;
+        int matchesPlayed = 0;
+        int matchVerdict = 0;
+
+        for (int matchIndex = 0; matchIndex < totalMatches; ++matchIndex) {
             const MatchSummary summary = playOneMatch(
                 options, mode, static_cast<std::uint64_t>(matchIndex), roundsOut);
 
@@ -918,9 +962,25 @@ int main(int argc, char** argv) {
             if (summary.winnerSide == 0) ++matchesA;
             else if (summary.winnerSide == 1) ++matchesB;
             else ++unfinished;
+            ++matchesPlayed;
 
-            if ((matchIndex + 1) % 5 == 0 || matchIndex + 1 == options.games) {
-                std::cout << "  finished " << (matchIndex + 1) << "/" << options.games
+            if (matchSprt) {
+                const double score = summary.winnerSide == 0 ? 1.0
+                    : (summary.winnerSide == 1 ? 0.0 : 0.5);
+                matchScoreSum += score;
+                matchSprtState.observe(score);
+                if ((matchIndex + 1) % 2 == 0 || matchIndex + 1 == totalMatches) {
+                    matchVerdict = matchSprtState.verdict();
+                    std::cout << "  sprt after " << matchesPlayed << " matches: score "
+                              << std::fixed << std::setprecision(4)
+                              << (matchScoreSum / static_cast<double>(matchesPlayed))
+                              << ", LLR " << matchSprtState.llr << std::endl;
+                    if (matchVerdict != 0) break;
+                }
+            }
+
+            if ((matchIndex + 1) % 5 == 0 || matchIndex + 1 == totalMatches) {
+                std::cout << "  finished " << (matchIndex + 1) << "/" << totalMatches
                           << " matches (" << totalRounds << " rounds, "
                           << matchDecisions << " decisions)" << std::endl;
             }
@@ -928,15 +988,38 @@ int main(int argc, char** argv) {
 
         std::cout << "wrote " << outputPath << " (matches) and " << roundsPath
                   << " (moves)\n"
-                  << "  matches: " << options.games << "\n"
+                  << "  matches: " << matchesPlayed << "\n"
                   << "  A match wins: " << matchesA << "\n"
                   << "  B match wins: " << matchesB << "\n"
                   << "  unfinished: " << unfinished << "\n"
                   << "  rounds: " << totalRounds
-                  << " (mean " << (options.games > 0
-                          ? static_cast<double>(totalRounds) / options.games : 0.0)
+                  << " (mean " << (matchesPlayed > 0
+                          ? static_cast<double>(totalRounds) / matchesPlayed : 0.0)
                   << " per match)\n"
                   << "  decisions: " << matchDecisions << "\n";
+
+        if (matchSprt) {
+            const double meanScore = matchesPlayed > 0
+                ? matchScoreSum / static_cast<double>(matchesPlayed) : 0.0;
+            std::cout << "  sequential test: H0 " << options.sprtElo0 << " Elo vs H1 "
+                      << options.sprtElo1 << " Elo, alpha=beta=0.05, cap "
+                      << totalMatches << " matches\n"
+                      << "  matches played: " << matchesPlayed << "\n"
+                      << "  score for A: " << std::fixed << std::setprecision(4)
+                      << meanScore << "\n"
+                      << "  LLR: " << matchSprtState.llr << "  bounds: ["
+                      << matchSprtState.lower << ", " << matchSprtState.upper << "]\n";
+            if (matchVerdict > 0) {
+                std::cout << "  verdict: H1 accepted - A wins at least "
+                          << options.sprtElo1 << " Elo more matches at alpha=beta=0.05\n";
+            } else if (matchVerdict < 0) {
+                std::cout << "  verdict: H0 accepted - no " << options.sprtElo1
+                          << " Elo match edge detected at alpha=beta=0.05\n";
+            } else {
+                std::cout << "  verdict: inconclusive - match cap reached\n";
+            }
+        }
+
         return unfinished == 0 ? 0 : 1;
     }
 

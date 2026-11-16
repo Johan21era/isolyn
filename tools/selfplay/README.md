@@ -87,6 +87,33 @@ mode. `points_` are cumulative across sets, not per set.
 rejected with `--sets-to-win`. Same seed and configuration reproduce both CSVs
 byte for byte (checked with `cmp`).
 
+### Sequential testing at match level
+
+`--sprt-pairs N` also works in match mode. The cap becomes `2N` matches, each match
+is one Bernoulli observation (a match cannot be drawn), and the verdict is read only
+after an even number of matches, so every decision rests on an equal number of
+A-first and B-first matches. `--sprt-elo0` / `--sprt-elo1` mean the same as in round
+mode. `--sprt-pairs` is rejected for 1v1v1 matches, where a match has no single
+score for A.
+
+```bash
+./tools/selfplay/build/selfplay \
+  --mode 1v1 --sets-to-win 3 --sprt-pairs 200 \
+  --sprt-elo0 0 --sprt-elo1 50 \
+  --depth 4 --determinizations 20 \
+  --opponent-depth 2 --opponent-determinizations 6 \
+  --seed 3 --output /tmp/match-sprt.csv
+```
+
+Calibration: a known 65.5% matchup stopped at **100 matches** (64.0%, LLR 2.998)
+where the fixed run needed 400. A mirror reached H0 at 118 matches. A mirror is not
+guaranteed to decide before the cap — at p = 0.5 the LLR random-walks, so
+"inconclusive" is a valid and common outcome. Accepting H0 means "no edge of
+`--sprt-elo1` detected", not "the two are equal".
+
+`--check` now also exercises the sequential arithmetic: Wald's bounds and both
+verdicts.
+
 ## CSV fields
 
 Each row is one decision, repeated with the round's final result:

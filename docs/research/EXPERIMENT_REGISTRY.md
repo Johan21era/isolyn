@@ -532,3 +532,29 @@ configurations both ways.
   quoted as a match expectation.
 - **Not claimed.** One matchup, one seed, no match-level SPRT; best-of-five to 151
   only. This does not re-rank any shipped tier.
+
+## E-029 — Match-level SPRT: same verdict, a quarter of the hands (INSTRUMENT ADDED)
+
+E-028 priced a match-level experiment at ~48 hands per sample, so a 400-match
+question costs ~19k hands. `--sprt-pairs` now also runs over whole matches: binary
+observations, verdict checked only at even match counts for color balance.
+
+- **Calibration, known effect:** d4x20 vs d2x6 (E-028 fixed run: 65.5% over 400).
+  The sequential run stopped at **100 matches**, 64 wins / 36 losses (**64.0%**),
+  LLR 2.9976 against bounds ±2.9444, **H1 accepted** (≥50 Elo). Hands spent:
+  **4,851 vs 19,323** — 25% of the fixed cost, 20 s vs 80 s.
+- **Calibration, null:** d4x20 vs d4x20 mirror, cap 120 matches. It reached
+  **H0 at 118 matches**, score 44.9% (A 53, B 65 of 118), LLR
+  −2.9447. H0 means "no 50 Elo edge detected", not "equal".
+- **Determinism:** repeating the H1 run reproduced the match CSV byte for byte.
+- **Guards:** 1v1v1 matches are rejected (no single score for A); `--sprt-elo1`
+  must exceed `--sprt-elo0`. `--check` now asserts Wald's bounds and that both
+  verdicts are reachable (H1 after 207 wins, H0 after 204 losses at 0 vs 5 Elo).
+- **Reading.** Match-level testing is now affordable for clear effects: a
+  +50-Elo-sized question costs ~5k hands instead of ~19k. Small effects still cost
+  the full cap, and nulls cannot be shortened — at p=0.5 the LLR random-walks, so
+  a mirror usually ends "inconclusive" or drifts to H0.
+- **Limits.** One seed per calibration; matches are treated as independent
+  observations (they share no deal seeds, but share the engine's style); the
+  group-sequential check at even counts is slightly conservative. This is an
+  instrument, not a strength claim.
