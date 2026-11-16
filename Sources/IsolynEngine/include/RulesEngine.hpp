@@ -99,25 +99,25 @@ public:
     // remaining hands.")
     static int combineTeamValue(int partnerAValue, int partnerBValue);
 
-    // R-06: all three modes lose at 151 by default. In 1v1 the players may
-    // agree before the game to play every set to 101 instead; the other modes
-    // are locked at 151. `oneVsOneTarget` is ignored outside 1v1.
-    static constexpr int kOneVsOneMatchTarget = 151;
+    // R-06: every mode races to 151, and the first participant to reach or
+    // pass it WINS the set -- the points were scored off the opponent. In 1v1
+    // the players may agree before the game to play every set to 101 instead;
+    // the other modes are locked at 151, so `oneVsOneTarget` is ignored
+    // outside 1v1. There is one 151 for every mode, which is why there is one
+    // constant for it.
+    static constexpr int kMatchTarget = 151;
     static constexpr int kOneVsOneShortMatchTarget = 101;
-    static constexpr int kOneVsOneVsOneMatchTarget = 151;
-    static constexpr int kTwoVsTwoMatchTarget = 151;
 
     static int matchTarget(
         GameMode mode,
-        int oneVsOneTarget = kOneVsOneMatchTarget);
+        int oneVsOneTarget = kMatchTarget);
 
-    // Whether a running score has reached or exceeded the mode's
-    // match-loss threshold ("reaches OR EXCEEDS" -- the threshold value
-    // itself already loses, not just scores strictly above it).
+    // Whether a running score has reached or passed the target. Reaching it is
+    // enough to win, so this is >=, never >.
     static bool hasReachedMatchTarget(
         GameMode mode,
         int runningScore,
-        int oneVsOneTarget = kOneVsOneMatchTarget);
+        int oneVsOneTarget = kMatchTarget);
 
     // Who starts the next round, given who just won by Domino or was
     // credited as the closer. A one-line pass-through by design: Rules

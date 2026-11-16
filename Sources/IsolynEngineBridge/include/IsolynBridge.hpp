@@ -339,13 +339,6 @@ struct MatchResultDTO {
     int32_t setWinnerParticipantIndex;            // valid only when setEnded; -1 otherwise
     bool setEnded;                                // true iff this set has just been won
     bool nextRoundStartsSet;                      // true iff the next round opens a NEW set (double-six ritual)
-    // R-22. For 1v1v1 these describe which seats are still alive in the
-    // current set; the other modes always report every participant active.
-    int32_t activeParticipantCount;
-    int32_t activePerParticipant[kMaxPlayers];
-    int32_t eliminatedPerParticipant[kMaxPlayers];
-    int32_t lastEliminatedParticipantIndex;       // -1 when nobody went out this round
-    bool nextRoundIsSurvivor;                     // true iff the next round is the carried-points 1v1
 };
 
 // Search configuration for one difficulty tier. This is deliberately a
@@ -386,10 +379,8 @@ MatchHandle bridge_match_begin_with_format_and_target(
 MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finishedRound);
 
 // Deals the next round using the match's own recorded state: a first-round
-// ritual deal after a set win, a 1v1-style survivor deal for the two live
-// seats after an R-22 elimination, or an ordinary subsequent round. This is
-// the only correct way to continue a match that can enter the survivor
-// phase; callers must not guess the mode of the next deal. Returns
+// ritual deal after a set win, or an ordinary subsequent round otherwise.
+// Callers must not guess the deal shape themselves. Returns
 // kInvalidSessionHandle if the match is over, has no pending next round, or
 // the deal fails.
 SessionHandle bridge_match_create_next_round(MatchHandle match);

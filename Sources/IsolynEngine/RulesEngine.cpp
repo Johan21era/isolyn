@@ -126,15 +126,11 @@ int RulesEngine::combineTeamValue(int partnerAValue, int partnerBValue) {
 }
 
 int RulesEngine::matchTarget(GameMode mode, int oneVsOneTarget) {
-    switch (mode) {
-        case GameMode::OneVsOne:
-            return oneVsOneTarget == kOneVsOneShortMatchTarget
-                ? kOneVsOneShortMatchTarget
-                : kOneVsOneMatchTarget;
-        case GameMode::OneVsOneVsOne: return kOneVsOneVsOneMatchTarget;
-        case GameMode::TwoVsTwo: return kTwoVsTwoMatchTarget;
+    // Only 1v1 may choose the short race; every other mode is locked at 151.
+    if (mode == GameMode::OneVsOne && oneVsOneTarget == kOneVsOneShortMatchTarget) {
+        return kOneVsOneShortMatchTarget;
     }
-    return kOneVsOneMatchTarget; // unreachable
+    return kMatchTarget;
 }
 
 bool RulesEngine::hasReachedMatchTarget(

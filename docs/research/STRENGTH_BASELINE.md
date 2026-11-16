@@ -49,8 +49,8 @@ The rulebook now says:
 - the winner of a hand is credited with the loser's total (R-03, R-05), where the
   old implementation let the losing hand accumulate its own points;
 - the double blank is worth ten alone and zero when paired (R-19);
-- 1v1v1 plays to 151, not 101 (R-06), and a player who reaches it is eliminated
-  into a carried-points 1v1 (R-22);
+- 1v1v1 plays to 151, not 101 (R-06), and the first player to reach or pass it
+  wins the set outright (R-22: no elimination, no survivor phase);
 - drawing is unlimited once the first draw of a hand has happened (R-15; the
   live turn has no cap, while one search decision evaluates at most one draw
   and re-searches after it, because a draw leaves the same player to move).

@@ -14,8 +14,8 @@
 >   when `roundScores` changed meaning, so the engine in these runs is not the
 >   engine in the tree.
 > - **Hand values changed.** A lone double blank is now worth ten (R-19).
-> - **1v1v1 changed.** It plays to 151, not 101 (R-06), and eliminates a player
->   into a carried-points 1v1 (R-22).
+> - **1v1v1 changed.** It plays to 151, not 101 (R-06), and the first player to
+>   reach or pass it wins the set outright (R-22: no elimination).
 > - **Draws changed.** The rulebook allows unlimited draws per turn (R-15); these
 >   runs capped a turn at one.
 >

@@ -63,8 +63,8 @@ Ten rules never reach the decision path. Most are correctly outside it — deali
 counts, mode definitions, the double-six ritual, who starts the next hand. Two are
 not:
 
-- **R-06** — a set is won at 151, *which means reaching 151 loses the set*.
-- **R-22** — in 1v1v1 the first player to 151 is eliminated.
+- **R-06** — a set is won at 151: reaching or passing it wins the set.
+- **R-22** — 1v1v1 ends the same way: first to 151 wins, no elimination.
 
 Verified structurally, not inferred: `SearchEngine::Config` has no score field,
 and no file on the decision path reads `raceTarget`, `currentScore` or

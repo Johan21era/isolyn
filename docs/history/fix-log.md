@@ -3366,3 +3366,37 @@ leaving it as a trap, and deleting the assertions that described it.
   cannot be captured here, and there is no app-layer harness that plays a full set.
   The set-end inputs are covered by the bridge end-to-end test (1v1v1 finishes
   155-95-129, winner 0, all seats active) and by reading the overlay against them.
+
+## OPS-54 — Fresh-eyes review of the rules-2/3 change (2026-11-16)
+
+**Scope:** the threshold rename, the `winningParticipant` inversion, the bridge branch
+removal and the end-to-end test, reviewed for leftovers and contradictions.
+
+- **Contradiction found and fixed:** `RulesEngine.hpp` still documented R-06 as "all
+  three modes **lose** at 151" and called the target a "match-loss threshold", with a
+  comment claiming the threshold value "already loses". That is the rules-version-1
+  reading and directly contradicts the rulebook. The comment now states that reaching
+  or passing the target wins the set, and `hasReachedMatchTarget` is documented as
+  `>=` because reaching it is enough.
+- **Simplified:** the three identical 151 constants (`kOneVsOneMatchTarget`,
+  `kOneVsOneVsOneMatchTarget`, `kTwoVsTwoMatchTarget`) are one `kMatchTarget = 151`;
+  `matchTarget` is an if/return instead of a switch with an unreachable default.
+- **Leftover API removed:** `MatchResultDTO` no longer carries
+  `activeParticipantCount`, `activePerParticipant`, `eliminatedPerParticipant`,
+  `lastEliminatedParticipantIndex` or `nextRoundIsSurvivor`. Nothing read them after
+  OPS-53, and a struct field that always reports "nobody is out" is a standing
+  invitation to write survivor logic again. The bridge's `finalActiveCount` /
+  `finalLastEliminated` locals and the per-participant neutral fills went with them.
+- **Simplified test:** the end-to-end set test reads `rec.scoresPerParticipant`
+  directly instead of copying scores into `lastScores` every round, and its
+  "nobody is eliminated" check is gone with the field it read.
+- **Stale wording fixed:** `bridge_match_create_next_round`'s contract no longer
+  promises a survivor deal; `GameViewModel.Phase.matchOver` no longer says "crossed
+  the loss threshold"; a smoke-test message says "151 target", not "151 loss
+  threshold".
+- **Verification:** engine `TOTAL CHECKS PASSED: 514`; bridge `TOTAL CHECKS PASSED:
+  136` (`138 - 2`: the removed field check ran once per mode); `swift build` →
+  `Build complete!`; `swift test` → `Executed 125 tests, with 0 failures`; docs,
+  rules and security audits → `RESULT: PASS`.
+- **Rulebook:** unchanged. R-06 and R-22 already read correctly; no rule text moved,
+  so the seal stays rules version 4.

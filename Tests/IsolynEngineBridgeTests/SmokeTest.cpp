@@ -583,7 +583,7 @@ int main() {
         CHECK(midChainOk, "a mid-set round starts with an empty chain, no mandated opener");
         CHECK(sawSetEnd, "at least one set ended during the best-of-5 game");
         CHECK(setWinnerOk, "a set end names a valid set winner");
-        CHECK(thresholdOk, "the set ended because someone reached the 151 loss threshold");
+        CHECK(thresholdOk, "the set ended because someone reached the 151 target");
         CHECK(setWinsOk, "set wins accumulate exactly one per completed set");
         CHECK(setStarterOk, "a set end has no ordinary next starter");
         CHECK(scoreResetOk, "a new set's first round starts from zero, not the previous set's total");
@@ -802,7 +802,6 @@ int main() {
             MatchResultDTO rec{};
             bool ended = false;
             int rounds = 0;
-            int lastScores[3] = {0, 0, 0};
 
             while (s != kInvalidSessionHandle && rounds < 400) {
                 driveRound(s);
@@ -811,9 +810,6 @@ int main() {
                 s = kInvalidSessionHandle;
                 ++rounds;
                 if (rec.status != BridgeStatus::Ok) break;
-                for (int p = 0; p < race.players; ++p) {
-                    lastScores[p] = rec.scoresPerParticipant[p];
-                }
                 if (rec.setEnded) { ended = true; break; }
                 s = bridge_match_create_next_round(m);
             }
@@ -824,21 +820,19 @@ int main() {
                 const bool inRange = winner >= 0 && winner < race.players;
                 CHECK(inRange, "the finished set names a winner");
                 if (inRange) {
-                    CHECK(lastScores[winner] >= 151,
+                    CHECK(rec.scoresPerParticipant[winner] >= 151,
                           "the set winner is the participant who reached the 151 target");
 
                     bool holdsHighest = true;
                     for (int p = 0; p < race.players; ++p) {
-                        if (lastScores[p] > lastScores[winner]) holdsHighest = false;
+                        if (rec.scoresPerParticipant[p] > rec.scoresPerParticipant[winner]) holdsHighest = false;
                     }
                     CHECK(holdsHighest, "the set goes to the highest score, not the lowest");
 
                     CHECK(rec.setWinsPerParticipant[winner] == 1,
                           "the set win is recorded exactly once, against the winner");
-                    CHECK(rec.activeParticipantCount == race.players,
-                          "nobody is eliminated: every participant is still active at the set end");
                     std::printf("   %s: %d rounds, scores", race.label, rounds);
-                    for (int p = 0; p < race.players; ++p) std::printf(" %d", lastScores[p]);
+                    for (int p = 0; p < race.players; ++p) std::printf(" %d", rec.scoresPerParticipant[p]);
                     std::printf(" -> winner %d\n", winner);
                 }
             }

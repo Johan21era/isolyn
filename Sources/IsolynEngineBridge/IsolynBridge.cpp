@@ -227,7 +227,7 @@ struct MatchStateImpl {
     bool nextRoundStartsSet = false;
     int nextRoundStarter = -1;
     std::mutex mutex;
-    MatchStateImpl(GameMode m, int sets, int target = RulesEngine::kOneVsOneMatchTarget)
+    MatchStateImpl(GameMode m, int sets, int target = RulesEngine::kMatchTarget)
         : mode(m), scores(m, participantCountForMode(m), target), setsToWin(sets), targetScore(target) {}
 };
 HandleTable<MatchStateImpl>& matchTable() { static HandleTable<MatchStateImpl> t; return t; }
@@ -507,13 +507,6 @@ MatchResultDTO failedMatch(BridgeStatus status) noexcept {
     r.setWinnerParticipantIndex = -1;
     r.setEnded = false;
     r.nextRoundStartsSet = false;
-    r.activeParticipantCount = 0;
-    for (int p = 0; p < kMaxPlayers; ++p) {
-        r.activePerParticipant[p] = 0;
-        r.eliminatedPerParticipant[p] = 0;
-    }
-    r.lastEliminatedParticipantIndex = -1;
-    r.nextRoundIsSurvivor = false;
     return r;
 }
 
@@ -525,17 +518,17 @@ MatchHandle bridge_match_begin(GameModeDTO mode) {
 
 MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin) {
     return bridge_match_begin_with_format_and_target(
-        mode, setsToWin, RulesEngine::kOneVsOneMatchTarget);
+        mode, setsToWin, RulesEngine::kMatchTarget);
 }
 
 MatchHandle bridge_match_begin_with_format_and_target(
     GameModeDTO mode, int32_t setsToWin, int32_t targetScore) {
     if (!isValidMode(mode)) return kInvalidMatchHandle;
     if (setsToWin != 3 && setsToWin != 4) return kInvalidMatchHandle;
-    if (targetScore != RulesEngine::kOneVsOneMatchTarget &&
+    if (targetScore != RulesEngine::kMatchTarget &&
         targetScore != RulesEngine::kOneVsOneShortMatchTarget) return kInvalidMatchHandle;
     if (mode != GameModeDTO::OneVsOne &&
-        targetScore != RulesEngine::kOneVsOneMatchTarget) return kInvalidMatchHandle;
+        targetScore != RulesEngine::kMatchTarget) return kInvalidMatchHandle;
     try {
         const GameMode engineMode = toEngine(mode);
         auto impl = std::make_unique<MatchStateImpl>(engineMode, setsToWin, targetScore);
@@ -598,15 +591,13 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         m->scores.applyRoundScores(roundScores);
 
         const int setNumberForRound = m->setNumber;
-        bool setEnded = false;
         int setWinner = -1;
         bool gameEnded = false;
 
-        // R-06/R-22 (rules version 3): every mode is a straight race. The first
-        // participant to reach or pass the target wins the set outright. There is
-        // no elimination and no survivor phase -- the owner removed R-22's
-        // survivor rule, so the 1v1v1 set ends the same way 1v1 does.
-        setEnded = m->scores.hasMatchEnded();
+        // R-06/R-22: every mode is a straight race. The first participant to
+        // reach or pass the target wins the set outright; there is no
+        // elimination and no survivor phase.
+        const bool setEnded = m->scores.hasMatchEnded();
         if (setEnded) {
             setWinner = m->scores.winningParticipant();
             m->setWins[setWinner]++;
@@ -627,11 +618,6 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         for (int i = 0; i < participantCount && i < kMaxPlayers; ++i) {
             finalSetScores[i] = m->scores.score(i);
         }
-        // The survivor fields stay in the DTO for API stability and always
-        // report the neutral state: everyone active, nobody eliminated.
-        const int finalActiveCount = participantCount;
-        const int finalLastEliminated = -1;
-
         // Scores reset only when the game continues -- the NEXT set starts at
         // zero with every 1v1v1 seat alive again, and the double-six ritual
         // restarts because the caller is told to create a first-round
@@ -656,8 +642,6 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         for (int i = 0; i < participantCount; ++i) {
             r.scoresPerParticipant[i] = finalSetScores[i];
             r.setWinsPerParticipant[i] = m->setWins[i];
-            r.activePerParticipant[i] = 1;
-            r.eliminatedPerParticipant[i] = 0;
         }
         r.setNumber = setNumberForRound;
         r.setsToWin = m->setsToWin;
@@ -667,9 +651,6 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         r.winnerParticipantIndex = m->matchEnded ? m->winnerParticipantIndex : -1;
         r.nextRoundStarterIndex = (setEnded || gameEnded) ? -1 : nextStarter;
         r.nextRoundStartsSet = setEnded && !gameEnded;
-        r.activeParticipantCount = finalActiveCount;
-        r.lastEliminatedParticipantIndex = finalLastEliminated;
-        r.nextRoundIsSurvivor = false;
         return r;
     } catch (...) { return failedMatch(BridgeStatus::EngineFailure); }
 }

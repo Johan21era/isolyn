@@ -29,7 +29,7 @@ final class GameViewModel {
         case playing
         /// Round reached DominoVictory or Closed; reveal overlay showing.
         case roundOver
-        /// MatchCoordinator reports a participant crossed the loss threshold.
+        /// MatchCoordinator reports a participant won the required sets.
         case matchOver
     }
 
