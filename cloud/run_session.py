@@ -77,6 +77,10 @@ def validate_spec(spec: dict) -> None:
         require(isinstance(config.get(key), int) and config[key] > 0, f"invalid config.{key}")
     for key in ("time_ms", "voluntary_draw", "opponent_voluntary_draw"):
         require(isinstance(config.get(key), int) and config[key] >= 0, f"invalid config.{key}")
+    # Optional: a tournament pairing can select each side's transposition key.
+    for key in ("tt_key", "opponent_tt_key"):
+        if key in config:
+            require(config[key] in ("full", "closer"), f"invalid config.{key}")
     require(config["workers"] <= 4, "workers must not exceed 4")
     parallel = spec.get("parallel")
     require(isinstance(parallel, int) and 1 <= parallel <= 4, "parallel must be 1..4")
@@ -123,6 +127,10 @@ def shard_command(binary: Path, config: dict, shard: dict, csv_path: Path) -> li
         "--voluntary-draw", str(config["voluntary_draw"]),
         "--opponent-voluntary-draw", str(config["opponent_voluntary_draw"]),
     ]
+    if config.get("tt_key"):
+        command += ["--tt-key", str(config["tt_key"])]
+    if config.get("opponent_tt_key"):
+        command += ["--opponent-tt-key", str(config["opponent_tt_key"])]
     return command
 
 

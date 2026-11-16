@@ -398,6 +398,97 @@ def _build_sessions(shards: list[dict], session_games: int) -> list[dict]:
     return sessions
 
 
+CONTENDER_KEYS = ("depth", "det", "tt", "vdraw")
+
+
+def _parse_contenders(values: list[str]) -> list[dict]:
+    """Parse `name=depth:8,det:64,tt:closer,vdraw:0` contender specifications."""
+    contenders = []
+    seen = set()
+    for raw in values:
+        name, _, body = raw.partition("=")
+        name = name.strip()
+        _require(bool(name) and re.fullmatch(r"[a-z0-9][a-z0-9-]{0,15}", name) is not None,
+                 f"contender name must be short and lowercase: {raw!r}")
+        _require(name not in seen, f"duplicate contender {name}")
+        seen.add(name)
+        contender = {"name": name, "depth": 8, "det": 64, "tt": "full", "vdraw": 0}
+        for item in (part.strip() for part in body.split(",")):
+            if not item:
+                continue
+            key, _, value = item.partition(":")
+            _require(key in CONTENDER_KEYS,
+                     f"contender {name}: unknown setting {key!r}")
+            if key == "tt":
+                _require(value in ("full", "closer"),
+                         f"contender {name}: tt must be full or closer")
+                contender["tt"] = value
+                continue
+            try:
+                contender[key] = int(value)
+            except ValueError as exc:
+                raise SystemExit(f"contender {name}: {key} must be an integer") from exc
+        _require(contender["depth"] > 0 and contender["det"] > 0,
+                 f"contender {name}: depth and det must be positive")
+        _require(contender["vdraw"] >= 0, f"contender {name}: vdraw must be non-negative")
+        contenders.append(contender)
+    _require(len(contenders) >= 2, "--contender needs at least two engines")
+    return contenders
+
+
+def _pairing_config(a: dict, b: dict, base: dict) -> dict:
+    return {
+        "mode": base["mode"],
+        "depth": a["depth"],
+        "determinizations": a["det"],
+        "workers": base["workers"],
+        "seed": base["seed"],
+        "opponent_depth": b["depth"],
+        "opponent_determinizations": b["det"],
+        "opponent_workers": base["workers"],
+        "time_ms": base["time_ms"],
+        "voluntary_draw": a["vdraw"],
+        "opponent_voluntary_draw": b["vdraw"],
+        "tt_key": a["tt"],
+        "opponent_tt_key": b["tt"],
+    }
+
+
+def _build_tournament(contenders: list[dict], rounds_per_pairing: int,
+                      per_shard: int, base: dict) -> tuple[list[dict], list[dict]]:
+    """One session per pairing; shards stay one contiguous global list.
+
+    Sessions still index the global shard list, so assembly and verification
+    keep working unchanged; the only new thing a session carries is the config
+    for its own pairing.
+    """
+    shards: list[dict] = []
+    sessions: list[dict] = []
+    for i in range(len(contenders)):
+        for j in range(i + 1, len(contenders)):
+            a, b = contenders[i], contenders[j]
+            start = len(shards)
+            remaining = rounds_per_pairing
+            while remaining > 0:
+                take = min(per_shard, remaining)
+                shards.append({
+                    "index": len(shards),
+                    "seed": base["seed"] + len(shards),
+                    "games": take,
+                })
+                remaining -= take
+            sessions.append({
+                "id": f"{len(sessions):04d}",
+                "label": f"{a['name']}-vs-{b['name']}",
+                "shard_start": start,
+                "shard_end": len(shards),
+                "shard_count": len(shards) - start,
+                "games": rounds_per_pairing,
+                "config": _pairing_config(a, b, base),
+            })
+    return shards, sessions
+
+
 def _default_run_id(args: argparse.Namespace) -> str:
     return f"cloud-{args.mode}-d{args.depth}x{args.determinizations}-n{args.games}-s{args.seed}"
 
@@ -417,8 +508,29 @@ def plan(ws: Workspace, args: argparse.Namespace) -> dict:
     dataset_ref = _ref(owner, args.dataset)
     kernel_slug = _slug(args.kernel, "kernel")
     _require(len(kernel_slug) + 5 <= 50, "kernel slug is too long after the session suffix")
-    shards = _build_shards(args.games, args.games_per_shard, args.seed)
-    sessions = _build_sessions(shards, args.session_games)
+    if args.contender:
+        _require(args.rounds_per_pairing > 0, "--rounds-per-pairing must be positive")
+        _require(args.games_per_shard > 0, "--games-per-shard must be positive")
+        _require(args.parallel >= 1 and args.parallel <= 4, "--parallel must be 1..4")
+        _require(args.workers >= 1 and args.workers <= 4, "--workers must be 1..4")
+        _require(args.parallel * args.workers <= 4,
+                 "--parallel * --workers must not exceed Kaggle's four CPU cores")
+        _require(args.time_ms >= 0, "--time-ms must be non-negative")
+        contenders = _parse_contenders(args.contender)
+        base = {"mode": args.mode, "workers": args.workers, "seed": args.seed,
+                "time_ms": args.time_ms}
+        shards, sessions = _build_tournament(contenders, args.rounds_per_pairing,
+                                             args.games_per_shard, base)
+        config = None
+        games = sum(session["games"] for session in sessions)
+        tournament = {"contenders": contenders,
+                      "rounds_per_pairing": args.rounds_per_pairing}
+    else:
+        config = _validate_config(args)
+        shards = _build_shards(args.games, args.games_per_shard, args.seed)
+        sessions = _build_sessions(shards, args.session_games)
+        games = args.games
+        tournament = None
     result = {
         "schema": PLAN_SCHEMA,
         "run_id": run_id,
@@ -429,7 +541,8 @@ def plan(ws: Workspace, args: argparse.Namespace) -> dict:
         "dataset_ref": dataset_ref,
         "kernel_prefix": kernel_slug,
         "config": config,
-        "games": args.games,
+        "tournament": tournament,
+        "games": games,
         "games_per_shard": args.games_per_shard,
         "session_games": args.session_games,
         "parallel": args.parallel,
@@ -453,11 +566,12 @@ def plan(ws: Workspace, args: argparse.Namespace) -> dict:
         _atomic_json(path, result)
         print(f"{run_id}: wrote {path}")
     print(f"  source: {head}  code: {digest[:12]}")
-    print(f"  corpus: {args.games} games in {len(shards)} shards, {len(sessions)} session(s)")
+    print(f"  corpus: {games} games in {len(shards)} shards, {len(sessions)} session(s)")
     print(f"  dataset: {dataset_ref}  kernel prefix: {owner}/{kernel_slug}")
     for session in sessions:
-        print(f"    session {session['id']}: shards {session['shard_start']}..{session['shard_end'] - 1}, "
-              f"{session['games']} games")
+        label = f" {session['label']}" if session.get("label") else ""
+        print(f"    session {session['id']}{label}: shards {session['shard_start']}.."
+              f"{session['shard_end'] - 1}, {session['games']} games")
     return result
 
 
@@ -481,7 +595,8 @@ def _kernel_metadata(plan_data: dict, session: dict) -> dict:
     # Kaggle derives a new notebook's slug from its title. Keep the title's
     # slug identical to the planned id; otherwise Kaggle silently creates
     # `isolyn-0000-...` while the driver records `isolyn-lab-0000`.
-    title = f"Isolyn lab {session['id']}"
+    label = session.get("label")
+    title = f"Isolyn lab {session['id']}" + (f" {label}" if label else "")
     return {
         "id": kernel_id,
         "title": title[:50],
@@ -532,6 +647,7 @@ def _notebook(plan_data: dict, session: dict) -> dict:
                 "metadata": {},
                 "source": [
                     f"# Isolyn session {session['id']}\n",
+                    f"Pairing: {session.get('label', 'symmetric')}\n",
                     f"Run `{plan_data['run_id']}` shards {session['shard_start']}.."
                     f"{session['shard_end'] - 1} on CPU only.\n",
                 ],
@@ -609,7 +725,7 @@ def _write_prepared(ws: Workspace, plan_data: dict) -> Path:
                 "source_commit": plan_data["source_commit"],
                 "code_sha256": plan_data["code_sha256"],
                 "dataset_ref": plan_data["dataset_ref"],
-                "config": plan_data["config"],
+                "config": session.get("config") or plan_data["config"],
                 "parallel": plan_data["parallel"],
                 "max_seconds": plan_data["max_seconds"],
                 "shards": plan_data["shards"][start:end],
@@ -1101,6 +1217,11 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser.add_argument("--voluntary-draw", type=int, default=0)
     plan_parser.add_argument("--opponent-voluntary-draw", type=int, default=0)
     plan_parser.add_argument("--seed", type=int, default=1)
+    plan_parser.add_argument(
+        "--contender", action="append",
+        help="round-robin contender, e.g. champ=depth:8,det:64,tt:closer (repeatable)",
+    )
+    plan_parser.add_argument("--rounds-per-pairing", type=int, default=20_000)
     plan_parser.add_argument("--max-seconds", type=int, default=42_000)
     plan_parser.add_argument("--run-id")
     plan_parser.add_argument("--owner", help="Kaggle owner; defaults to KAGGLE_USERNAME")

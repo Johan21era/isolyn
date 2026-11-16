@@ -178,7 +178,10 @@ def validate_session(
     _require(receipt.get("source_commit") == plan.get("source_commit"), "source commit mismatch")
     _require(receipt.get("code_sha256") == plan.get("code_sha256"), "code digest mismatch")
     _require(receipt.get("dataset_ref") == plan.get("dataset_ref"), "dataset reference mismatch")
-    _require(receipt.get("config") == plan.get("config"), "session configuration mismatch")
+    # A tournament gives each session its own pairing config; a classic run
+    # carries one config for the whole plan.
+    expected_config = session.get("config") or plan.get("config")
+    _require(receipt.get("config") == expected_config, "session configuration mismatch")
 
     expected = plan["shards"][session["shard_start"]:session["shard_end"]]
     declared = receipt.get("shards")
