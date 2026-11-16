@@ -924,6 +924,72 @@ int main() {
               "out-of-range strength clamps to the mythical profile");
     }
 
+    // ---------------------------------------------------------------
+    // R-06 end to end. Every earlier check looked at scoring in isolation;
+    // this one plays a real set from the deal to the 151 finish and asserts
+    // that the player who reached the target is the one credited with it.
+    // ---------------------------------------------------------------
+    std::printf("== R-06 end to end: a full set ends with the player who reached 151 ==\n");
+    {
+        struct Race { GameModeDTO mode; const char* label; int players; };
+        const Race races[2] = {
+            {GameModeDTO::OneVsOne, "1v1", 2},
+            {GameModeDTO::OneVsOneVsOne, "1v1v1", 3},
+        };
+
+        for (const Race& race : races) {
+            MatchHandle m = bridge_match_begin_with_format_and_target(race.mode, 3, 151);
+            CHECK(m != kInvalidMatchHandle, "a 151 set can be started in this mode");
+            if (m == kInvalidMatchHandle) continue;
+
+            SessionHandle s = bridge_session_create_first_round(race.mode);
+            MatchResultDTO rec{};
+            bool ended = false;
+            int rounds = 0;
+            int lastScores[3] = {0, 0, 0};
+
+            while (s != kInvalidSessionHandle && rounds < 400) {
+                driveRound(s);
+                rec = bridge_match_record_round(m, s);
+                bridge_session_close(s);
+                s = kInvalidSessionHandle;
+                ++rounds;
+                if (rec.status != BridgeStatus::Ok) break;
+                for (int p = 0; p < race.players; ++p) {
+                    lastScores[p] = rec.scoresPerParticipant[p];
+                }
+                if (rec.setEnded) { ended = true; break; }
+                s = bridge_match_create_next_round(m);
+            }
+
+            CHECK(ended, "the set reaches a conclusion inside 400 rounds");
+            if (ended) {
+                const int winner = rec.setWinnerParticipantIndex;
+                const bool inRange = winner >= 0 && winner < race.players;
+                CHECK(inRange, "the finished set names a winner");
+                if (inRange) {
+                    CHECK(lastScores[winner] >= 151,
+                          "the set winner is the participant who reached the 151 target");
+
+                    bool holdsHighest = true;
+                    for (int p = 0; p < race.players; ++p) {
+                        if (lastScores[p] > lastScores[winner]) holdsHighest = false;
+                    }
+                    CHECK(holdsHighest, "the set goes to the highest score, not the lowest");
+
+                    CHECK(rec.setWinsPerParticipant[winner] == 1,
+                          "the set win is recorded exactly once, against the winner");
+                    CHECK(rec.activeParticipantCount == race.players,
+                          "nobody is eliminated: every participant is still active at the set end");
+                    std::printf("   %s: %d rounds, scores", race.label, rounds);
+                    for (int p = 0; p < race.players; ++p) std::printf(" %d", lastScores[p]);
+                    std::printf(" -> winner %d\n", winner);
+                }
+            }
+            bridge_match_close(m);
+        }
+    }
+
     if (g_failures == 0) {
         std::printf("\nBridge smoke test: all checks passed\n");
     } else {

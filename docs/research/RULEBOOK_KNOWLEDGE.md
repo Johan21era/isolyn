@@ -398,3 +398,26 @@ phase the rules no longer have. Engine stayed at 524.
 longer be reached through the bridge. They are kept because they are engine-level
 APIs with their own tests, and deleting them is a separate, larger change than the
 rule correction. They no longer describe the game, and that should be cleaned up.
+
+## End-to-end set verification (1v1 and 1v1v1)
+
+Unit tests checked the scores; nothing played a set. `Tests/IsolynEngineBridgeTests/SmokeTest.cpp`
+now does: it starts a real match with `bridge_match_begin_with_format_and_target(mode, 3, 151)`,
+deals with `bridge_session_create_first_round`, plays every round to completion through the
+bridge, records it, and stops when the set ends. It then asserts that the credited winner is a
+participant at or above 151, holds the highest score, is credited exactly one set win, and that
+every participant is still active.
+
+Measured (first legal move, deterministic deals):
+
+| mode | rounds | final scores | credited winner |
+|---|---|---|---|
+| 1v1 | 13 | 161 / 60 | participant 0 |
+| 1v1v1 | 17 | 155 / 95 / 129 | participant 0 |
+
+Before the correction, `winningParticipant()` returned the **lowest** scorer, so the 1v1 run
+would have credited participant 1 with 60 points and the 1v1v1 run would have credited
+participant 1 with 95. Both runs are now green, and the 1v1v1 run is exactly the case R-22 used
+to turn into an elimination.
+
+Bridge check count went from 125 to 139 (+14: seven assertions per mode).
