@@ -3558,3 +3558,33 @@ the shipped ladder actually has.
   key mode.
 - **Not done:** top tiers (8/64+) still need the Kaggle bridge; ~3 s/match locally.
 - **Verification:** docs, rules and security audits PASS. No code changed.
+
+## OPS-62 — Tier labels corrected one rung; depth-vs-samples decomposition (2026-11-16)
+
+**Symptom.** While checking whether two labels shared a profile, `Opponent.swift`
+showed the app's `AILevel` values are 100/900/1600/2300/3000/5000/10000. The
+`DifficultyModel::kProfiles` table also contains a 400 boundary that the app does
+not expose. OPS-59/60/61 named tiers from the profile table's strength values
+instead of the app's labels, so every tier in them is **one rung too high**.
+
+**Scope.** Documentation only. E-030, E-031 and E-032 each now carry a label-
+correction block; their measurements and intervals are unchanged. OPS-59/60/61 are
+append-only and were not rewritten — this entry is the retraction.
+
+**Correct mapping:** (2,8) Casual, (3,16) Club, (4,24) Elite, (5,40) Expert,
+(8,64) Master, (24,80) Legendary, (48,160) Mythical. The measured steps are
+therefore **Casual→Club** (+34.0 Elo, E-030), **Club→Elite** (+32.5, E-031) and
+**Casual→Elite** (+72.2, E-031).
+
+**New measurement (E-033), 400 matches per arm, seed 21:**
+- depth (4,16) vs (3,16): 229–171, **57.25% [52.4, 62.0], +50.7 Elo**;
+- samples (3,24) vs (3,16): 209–191, **52.25% [47.4, 57.1], +15.6 Elo**, contains 50%.
+
+Depth is the only resolved lever; extra determinizations are not distinguishable
+from noise at this size, matching E-007/E-026. The two arms are not additive and
+are not presented as such.
+
+**Not done:** no code or label changes — whether the app's tiers should be spaced
+wider is a product decision for the owner. Top tiers still need the Kaggle bridge.
+
+**Verification:** docs, rules and security audits PASS. No code changed.

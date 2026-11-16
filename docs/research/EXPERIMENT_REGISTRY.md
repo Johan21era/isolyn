@@ -561,6 +561,11 @@ observations, verdict checked only at even match counts for color balance.
 
 ## E-030 — Club→Elite is worth ~55% of matches, not a blowout (FIRST LADDER STEP MEASURED)
 
+> **Label correction (OPS-62).** The app's public labels do not use the
+> `kProfiles` strength numbers: Casual = (2,8), Club = (3,16), Elite = (4,24).
+> This entry measured **(2,8) vs (3,16)**, so it is **Casual vs Club**, not
+> Club vs Elite. Every number below stands; only the tier names were off by one.
+
 The eight shipped difficulties are just `(depth, determinizations)` pairs in
 `DifficultyModel.hpp`; none of the steps had been measured under the current rules.
 This measures the cheapest boundary end to end, at match level.
@@ -590,6 +595,10 @@ This measures the cheapest boundary end to end, at match level.
 
 ## E-031 — The ladder is evenly spaced: each shipped step is ~55%, two steps ~60% (LADDER CALIBRATION)
 
+> **Label correction (OPS-62).** This entry measured **(4,24) vs (3,16)** and
+> **(4,24) vs (2,8)**: **Elite vs Club** and **Elite vs Casual**, not Expert vs
+> Elite and Expert vs Club. The numbers are unchanged.
+
 E-030 measured the bottom step. This measures the next one and a two-step gap, to
 separate "adjacent labels are close" from "the whole ladder is flat".
 
@@ -618,6 +627,10 @@ separate "adjacent labels are close" from "the whole ladder is flat".
 
 ## E-032 — Small ladder steps are invisible at hand level (TRANSFER AT SMALL EFFECTS)
 
+> **Label correction (OPS-62).** The hand runs compare **(3,16) vs (2,8)** and
+> **(4,24) vs (3,16)** — **Club vs Casual** and **Elite vs Club**. The numbers
+> are unchanged.
+
 E-028 measured the hand→match transfer at a large effect (+24 Elo hands → +111
 matches). The ladder steps are much smaller, so the same two pairs were re-measured
 at hand level to see whether the transfer still holds.
@@ -637,3 +650,27 @@ at hand level to see whether the transfer still holds.
   the cheap filter for search changes expected to be worth tens of Elo.
 - **Limits.** One seed per hand run; two or three seeds per match pair; 1v1,
   best-of-five; the transfer factor is estimated from two noisy ratios.
+
+## E-033 — Depth carries the shipped steps; extra determinizations do not resolve (DECOMPOSITION)
+
+The ladder changes depth and determinizations together, so the measured step
+(E-031) does not say which knob earned it. Two arms hold one knob fixed.
+
+- **Depth arm, (4,16) vs (3,16):** 400 matches, 229–171 — **57.25%
+  [52.4, 62.0], +50.7 Elo**.
+- **Samples arm, (3,24) vs (3,16):** 400 matches, 209–191 — **52.25%
+  [47.4, 57.1], +15.6 Elo**; the interval contains 50%, so **not resolved**.
+- **Full step for reference (4,24) vs (3,16):** 54.67%, +32.5 Elo (E-031).
+- **Reading.** The only lever this design resolves is **depth**. Going 16 → 24
+  determinizations at fixed depth is indistinguishable from noise at 400 matches,
+  consistent with the diminishing sampling returns in E-007 and E-026. A tier
+  ladder that wants to separate players should spend its budget on depth, not on
+  more worlds.
+- **Do not read the arms as an additive decomposition.** They are separate runs
+  with different seeds from the full step, with overlapping intervals; depth +50.7
+  and samples +15.6 exceed the +32.5 full step, which is what noise at these
+  sample sizes looks like. The resolved claim is the direction, not the arithmetic.
+- **Limits.** One seed per arm; 1v1; best-of-five; 400 matches per arm.
+- **Public labels used here** are the app's: Casual `(2,8)`, Club `(3,16)`,
+  Elite `(4,24)`, Expert `(5,40)`, Master `(8,64)`, Legendary `(24,80)`,
+  Mythical `(48,160)`.
