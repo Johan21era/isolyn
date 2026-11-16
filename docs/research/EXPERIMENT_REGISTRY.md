@@ -674,3 +674,28 @@ The ladder changes depth and determinizations together, so the measured step
 - **Public labels used here** are the app's: Casual `(2,8)`, Club `(3,16)`,
   Elite `(4,24)`, Expert `(5,40)`, Master `(8,64)`, Legendary `(24,80)`,
   Mythical `(48,160)`.
+
+## E-034 — Elite→Expert is not resolved at 800 matches (LADDER CALIBRATION, UNRESOLVED)
+
+The third shipped step, measured the same way as E-030/E-031: A = Expert `(5,40)`,
+B = Elite `(4,24)`, best-of-five to 151, fixed 200 matches per seed, seeds 31–34.
+
+- **Per seed:** 108–92 (54.0%), 106–94 (53.0%), 103–97 (51.5%), 105–95 (52.5%).
+- **Pooled:** **800 matches, 422–378 = 52.75% [49.3, 56.2], +19.1 Elo**, mean 49.3
+  hands per match.
+- **The interval contains 50%.** The honest statement is "no edge resolved at this
+  sample size", not "no edge exists" and not "the ladder narrows".
+- **Point estimates across the measured rungs:** Casual→Club +34.0 (800 fixed),
+  Club→Elite +32.5 (600), Elite→Expert **+19.1 (800)**. They decrease, but the
+  intervals overlap; a narrowing trend is plausible and unproven.
+- **Cost lesson.** 800 matches is ~39,000 hands and still cannot resolve a ~3-point
+  effect at 95%. Rungs this small need either many more matches or a different
+  design; they are not cheap.
+
+> **Do not compare this to the older 5-vs-4 hand-level figure (E-026) as though
+> both were current measurements.** E-026 is a pre-rulebook number and its status
+> must be checked against `STRENGTH_BASELINE.md` before use; the ~4x transfer in
+> E-028 would otherwise predict a match effect far larger than observed here.
+
+- **Limits.** 1v1 only; best-of-five; four seeds; no paired-deal design, so deal
+  luck is part of the variance.

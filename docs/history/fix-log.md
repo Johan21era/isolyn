@@ -3588,3 +3588,19 @@ are not presented as such.
 wider is a product decision for the owner. Top tiers still need the Kaggle bridge.
 
 **Verification:** docs, rules and security audits PASS. No code changed.
+
+## OPS-63 — Third ladder rung measured; still unresolved at 800 matches (2026-11-16)
+
+**Scope:** Expert `(5,40)` vs Elite `(4,24)`, same protocol as OPS-59/60.
+
+- **Runs:** fixed 200 matches per seed, seeds 31–34: 54.0%, 53.0%, 51.5%, 52.5%.
+- **Pooled:** 800 matches, 422–378 = **52.75% [49.3, 56.2], +19.1 Elo**, ~49.3
+  hands per match.
+- **Result:** unresolved — the 95% interval contains 50%. Recorded as "no edge
+  resolved", not as "no edge".
+- **Trend note:** the three measured rungs are +34.0, +32.5, +19.1 Elo; the point
+  estimates fall but the intervals overlap, so no narrowing claim is made.
+- **Cost:** ~39,000 hands for a ~3-point effect, still unresolved. Small rungs need
+  more matches or a paired design.
+- **Not done:** paired-deal matches; top tiers (Kaggle); no code changes.
+- **Verification:** docs, rules and security audits PASS. No code changed.
