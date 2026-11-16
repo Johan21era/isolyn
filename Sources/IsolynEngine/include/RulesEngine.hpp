@@ -102,22 +102,22 @@ public:
     // R-06: all three modes lose at 151 by default. In 1v1 the players may
     // agree before the game to play every set to 101 instead; the other modes
     // are locked at 151. `oneVsOneTarget` is ignored outside 1v1.
-    static constexpr int kOneVsOneMatchLossThreshold = 151;
-    static constexpr int kOneVsOneShortMatchLossThreshold = 101;
-    static constexpr int kOneVsOneVsOneMatchLossThreshold = 151;
-    static constexpr int kTwoVsTwoMatchLossThreshold = 151;
+    static constexpr int kOneVsOneMatchTarget = 151;
+    static constexpr int kOneVsOneShortMatchTarget = 101;
+    static constexpr int kOneVsOneVsOneMatchTarget = 151;
+    static constexpr int kTwoVsTwoMatchTarget = 151;
 
-    static int matchLossThreshold(
+    static int matchTarget(
         GameMode mode,
-        int oneVsOneTarget = kOneVsOneMatchLossThreshold);
+        int oneVsOneTarget = kOneVsOneMatchTarget);
 
     // Whether a running score has reached or exceeded the mode's
     // match-loss threshold ("reaches OR EXCEEDS" -- the threshold value
     // itself already loses, not just scores strictly above it).
-    static bool hasReachedMatchLossThreshold(
+    static bool hasReachedMatchTarget(
         GameMode mode,
         int runningScore,
-        int oneVsOneTarget = kOneVsOneMatchLossThreshold);
+        int oneVsOneTarget = kOneVsOneMatchTarget);
 
     // Who starts the next round, given who just won by Domino or was
     // credited as the closer. A one-line pass-through by design: Rules

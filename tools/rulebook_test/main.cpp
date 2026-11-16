@@ -67,7 +67,7 @@ const char* kindName(Kind kind) {
     case Kind::Defence: return "defence";
     case Kind::SharpDefence: return "sharp defence";
     case Kind::DefenceKnown: return "defence, all tiles known";
-    case Kind::PoisonedWin: return "poisoned win at 145 (R-06)";
+    case Kind::PoisonedWin: return "set-winning hand at 145 (R-06)";
     case Kind::SafeWin: return "win at 0 (R-06 control)";
     }
     return "?";
@@ -480,10 +480,9 @@ int main(int argc, char** argv) {
                 continue;
             }
             bool right = false;
-            if (question.kind == Kind::PoisonedWin) {
-                // Winning here would carry the total past 151 and lose the set.
-                right = decision.isDraw;
-            } else if (question.kind == Kind::SafeWin) {
+            if (question.kind == Kind::PoisonedWin || question.kind == Kind::SafeWin) {
+                // R-06 (rules version 2): crossing the target WINS the set, so
+                // taking the hand is correct at 145 exactly as it is at 0.
                 GameState trial = question.state;
                 const auto applied = MoveExecutor::apply(trial, 0, decision.move);
                 right = trial.hand(0).empty();

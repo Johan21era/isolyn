@@ -125,23 +125,23 @@ int RulesEngine::combineTeamValue(int partnerAValue, int partnerBValue) {
     return partnerAValue + partnerBValue;
 }
 
-int RulesEngine::matchLossThreshold(GameMode mode, int oneVsOneTarget) {
+int RulesEngine::matchTarget(GameMode mode, int oneVsOneTarget) {
     switch (mode) {
         case GameMode::OneVsOne:
-            return oneVsOneTarget == kOneVsOneShortMatchLossThreshold
-                ? kOneVsOneShortMatchLossThreshold
-                : kOneVsOneMatchLossThreshold;
-        case GameMode::OneVsOneVsOne: return kOneVsOneVsOneMatchLossThreshold;
-        case GameMode::TwoVsTwo: return kTwoVsTwoMatchLossThreshold;
+            return oneVsOneTarget == kOneVsOneShortMatchTarget
+                ? kOneVsOneShortMatchTarget
+                : kOneVsOneMatchTarget;
+        case GameMode::OneVsOneVsOne: return kOneVsOneVsOneMatchTarget;
+        case GameMode::TwoVsTwo: return kTwoVsTwoMatchTarget;
     }
-    return kOneVsOneMatchLossThreshold; // unreachable
+    return kOneVsOneMatchTarget; // unreachable
 }
 
-bool RulesEngine::hasReachedMatchLossThreshold(
+bool RulesEngine::hasReachedMatchTarget(
     GameMode mode,
     int runningScore,
     int oneVsOneTarget) {
-    return runningScore >= matchLossThreshold(mode, oneVsOneTarget);
+    return runningScore >= matchTarget(mode, oneVsOneTarget);
 }
 
 int RulesEngine::determineNextRoundStarter(int winnerOrCloserPlayerIndex) {

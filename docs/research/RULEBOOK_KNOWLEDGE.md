@@ -1,7 +1,7 @@
 # Rulebook knowledge audit
 
-> **Status: current (2026-11-16).** Rules version: 1. Rulebook hash
-> `79ca7387ac7ac5b85b93b4cee3818defaf4a1d3f406c0d6186edbc60261cfd55`
+> **Status: current (2026-11-16).** Rules version: 2. Rulebook hash
+> `b9ca26706bf9681a8809ab8af169d32968c4536d3fedeace6144291d681459bf`
 > (rules version 1). Measures *knowledge*, not strength: no Elo claim is made
 > here, and none may be derived from it without a separate measurement.
 
@@ -333,3 +333,43 @@ win", not "always".
 **Not a strength claim.** This measures rule compliance on constructed positions.
 Whether score awareness wins games is a separate measurement, and the harness does
 not yet feed a set score into either side.
+
+## Correction (2026-11-16, later the same day): 151 wins
+
+**The section "R-06: the engine can now play the threshold" is retracted in full.**
+It was written under rules version 1, whose R-06 read "reaching 151 loses the set".
+The owner corrected the direction: points are scored off the opponent, so the first
+player to reach or pass 151 **wins** the set. Rules version 2 carries that text.
+
+What changed:
+
+- **Rulebook:** R-06 now reads "the first player to reach or pass 151 wins the set".
+- **Version seal:** `RULES_VERSION` is version 2, hash
+  `b9ca26706bf9681a8809ab8af169d32968c4536d3fedeace6144291d681459bf`.
+- **Engine scoring:** `ScoreSystem::winningParticipant()` returned the *lowest*
+  scorer. It now returns the player who reached the target. The misleadingly named
+  `hasReachedMatchLossThreshold` / `matchLossThreshold` / `k*MatchLossThreshold`
+  became `hasReachedMatchTarget` / `matchTarget` / `k*MatchTarget` throughout.
+- **Search:** a terminal win that carries the player over the target now **adds**
+  a set-win bonus instead of flipping to a catastrophe.
+- **Exam:** the section is now "set-winning hand at 145 (R-06)" and the correct
+  answer is to take the hand.
+
+### Re-measured
+
+| Tier | set-winning hand at 145 | win at 0 (control) |
+|---|---|---|
+| s3000 d8x64 | **100%** | 100% |
+
+**Honest note on what this now proves.** With the direction corrected, both questions
+have the same right answer — win the hand — so the pair no longer discriminates.
+The engine scores 100% at 145 with and without `--no-score-context`, because taking
+the winning hand was already correct and the old feature only ever *prevented* it.
+This section is therefore a compliance control, not evidence that score awareness
+adds value. The earlier 0% → 80% figures measured the engine avoiding a win the
+rules wanted it to take; they are withdrawn with the claim.
+
+**What still has no measurement at all:** whether knowing the score changes any
+decision that matters. Since reaching the target is now simply "win the hand that
+crosses it", the remaining strategic content is small, and the self-play harness
+still plays single hands rather than sets.

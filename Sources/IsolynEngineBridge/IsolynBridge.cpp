@@ -234,7 +234,7 @@ struct MatchStateImpl {
     bool nextRoundIsSurvivor = false;
     int nextRoundStarter = -1;
     std::mutex mutex;
-    MatchStateImpl(GameMode m, int sets, int target = RulesEngine::kOneVsOneMatchLossThreshold)
+    MatchStateImpl(GameMode m, int sets, int target = RulesEngine::kOneVsOneMatchTarget)
         : mode(m), scores(m, participantCountForMode(m), target), setsToWin(sets), targetScore(target) {
         activeCount = participantCountForMode(m);
         for (int p = 0; p < activeCount && p < kMaxPlayers; ++p) active[p] = true;
@@ -535,17 +535,17 @@ MatchHandle bridge_match_begin(GameModeDTO mode) {
 
 MatchHandle bridge_match_begin_with_format(GameModeDTO mode, int32_t setsToWin) {
     return bridge_match_begin_with_format_and_target(
-        mode, setsToWin, RulesEngine::kOneVsOneMatchLossThreshold);
+        mode, setsToWin, RulesEngine::kOneVsOneMatchTarget);
 }
 
 MatchHandle bridge_match_begin_with_format_and_target(
     GameModeDTO mode, int32_t setsToWin, int32_t targetScore) {
     if (!isValidMode(mode)) return kInvalidMatchHandle;
     if (setsToWin != 3 && setsToWin != 4) return kInvalidMatchHandle;
-    if (targetScore != RulesEngine::kOneVsOneMatchLossThreshold &&
-        targetScore != RulesEngine::kOneVsOneShortMatchLossThreshold) return kInvalidMatchHandle;
+    if (targetScore != RulesEngine::kOneVsOneMatchTarget &&
+        targetScore != RulesEngine::kOneVsOneShortMatchTarget) return kInvalidMatchHandle;
     if (mode != GameModeDTO::OneVsOne &&
-        targetScore != RulesEngine::kOneVsOneMatchLossThreshold) return kInvalidMatchHandle;
+        targetScore != RulesEngine::kOneVsOneMatchTarget) return kInvalidMatchHandle;
     try {
         const GameMode engineMode = toEngine(mode);
         auto impl = std::make_unique<MatchStateImpl>(engineMode, setsToWin, targetScore);
@@ -641,7 +641,7 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
             // lowest-score winner rule.
             for (int p = 0; p < participantCount; ++p) {
                 if (!m->active[p]) continue;
-                if (RulesEngine::hasReachedMatchLossThreshold(m->mode, m->scores.score(p))) {
+                if (RulesEngine::hasReachedMatchTarget(m->mode, m->scores.score(p))) {
                     m->active[p] = false;
                     m->activeCount--;
                     m->lastEliminated = p;
@@ -667,7 +667,8 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
                 survivorNext = true;
             }
         } else {
-            // R-07: a set ends at the loss threshold; the lowest score takes it.
+            // R-07 + R-06 (rules version 2): a set ends at the target, and the player who
+            // reached it takes it -- the points were scored off the opponent.
             setEnded = m->scores.hasMatchEnded();
             if (setEnded) {
                 setWinner = m->scores.winningParticipant();

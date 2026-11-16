@@ -61,12 +61,12 @@ int main() {
               "a survivor round credits only participant 1 and leaves the eliminated participant's frozen total alone");
     }
 
-    section("ScoreSystem: winningParticipant is whoever has the strictly lowest score once the match has ended");
+    section("ScoreSystem: R-06 winningParticipant is whoever reached the target, because those points were scored off the opponent");
     {
         ScoreSystem scores(GameMode::OneVsOneVsOne, 3);
         scores.applyRoundScores({0, 60, 151}); // participant 2 crosses 1v1v1's 151 threshold
         check(scores.hasMatchEnded(), "the match ends the instant anyone crosses the threshold");
-        check(scores.winningParticipant() == 0, "participant 0, with the strictly lowest score, is the outright winner");
+        check(scores.winningParticipant() == 2, "participant 2, who reached the target, wins -- not the lowest score");
     }
 
     if (failureCount() == 0) {

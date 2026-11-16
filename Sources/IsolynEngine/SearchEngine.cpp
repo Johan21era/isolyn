@@ -252,12 +252,12 @@ struct SearchContext {
     std::array<std::array<int, kMoveCodeCount>, kMaxHistoryPlayers> history{};
 };
 
-// R-06: in 1v1 the winner is credited with every point still in the opponent's
-// hand. If that credit reaches the race target, whoever emptied has lost the
-// set. Only 1v1 is modelled: 1v1v1 scores each survivor's own hand (R-04) and
-// 2v2 pays the losing team's combined total (R-05), which are different
-// accounting rules and would need their own treatment, not a guess.
-bool winLosesSet(const GameState& state, int player, const SearchContext& context) {
+// R-06 (rules version 2): in 1v1 the winner is credited with every point still
+// in the opponent's hand, and reaching that total WINS the set -- the points were
+// scored off the opponent. A hand that crosses the target therefore ends the
+// whole set, which is strictly better than an ordinary hand win. Only 1v1 is
+// modelled: 1v1v1 and 2v2 use different accounting (R-04, R-05).
+bool winReachesTarget(const GameState& state, int player, const SearchContext& context) {
     if (context.raceTarget <= 0 || context.setScores == nullptr) return false;
     if (context.mode != GameMode::OneVsOne) return false;
     if (player < 0 || player >= static_cast<int>(context.setScores->size())) return false;
@@ -639,9 +639,9 @@ SearchValue searchZeroSum(GameState& state,
                 SearchValue value;
                 value.raw = evaluateAll(context.mode, state, context.weights, std::nullopt, context.positionalWeights);
                 value.score = kTerminalWinScore + relativeScore(value.raw, player, context.mode);
-                // R-06: emptying the hand from near the target loses the set, so
-                // a "win" there is worth a catastrophe, not a jackpot.
-                if (winLosesSet(state, player, context)) value.score = -value.score;
+                // R-06: a hand that carries this player over the target wins the
+                // set outright, so it is worth more than an ordinary hand win.
+                if (winReachesTarget(state, player, context)) value.score += kTerminalWinScore;
                 return value;
             }
             const int next = nextActivePlayer(state, player);
@@ -926,7 +926,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                         candidateScore = raw[static_cast<std::size_t>(player)];
                     } else {
                         candidateScore = kTerminalWinScore + relativeScore(raw, player, mode);
-                        if (winLosesSet(trial, player, ctx)) candidateScore = -candidateScore;
+                        if (winReachesTarget(trial, player, ctx)) candidateScore += kTerminalWinScore;
                     }
                 } else {
                     const int next = nextActivePlayer(trial, player);

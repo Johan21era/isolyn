@@ -14,7 +14,7 @@ namespace isolyn {
 class ScoreSystem {
 public:
     explicit ScoreSystem(GameMode mode, int participantCount,
-                         int oneVsOneTarget = RulesEngine::kOneVsOneMatchLossThreshold);
+                         int oneVsOneTarget = RulesEngine::kOneVsOneMatchTarget);
 
     // How many participants this tracker holds (players for 1v1/1v1v1, teams
     // for 2v2) -- exposed so callers copying scores out can size correctly
@@ -35,7 +35,7 @@ public:
                                          const std::vector<int>& participantIndices);
 
     // Whether any participant has reached or exceeded the mode's
-    // match-loss threshold (RulesEngine::hasReachedMatchLossThreshold).
+    // match-loss threshold (RulesEngine::hasReachedMatchTarget).
     // `oneVsOneTarget` is the R-06 pre-game choice (151 by default, 101 in
     // 1v1 only); the other modes ignore it.
     bool hasMatchEnded() const;

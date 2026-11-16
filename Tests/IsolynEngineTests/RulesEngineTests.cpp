@@ -129,43 +129,43 @@ int main() {
               "the double blank alone hands the winner ten");
     }
 
-    section("RulesEngine: hasReachedMatchLossThreshold -- reaches OR exceeds, not strictly exceeds");
+    section("RulesEngine: hasReachedMatchTarget -- reaches OR exceeds, not strictly exceeds");
     {
-        check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 150),
+        check(!RulesEngine::hasReachedMatchTarget(isolyn::GameMode::OneVsOne, 150),
               "1v1: 150 has not reached the 151 threshold");
-        check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOne, 151),
+        check(RulesEngine::hasReachedMatchTarget(isolyn::GameMode::OneVsOne, 151),
               "1v1: exactly 151 has reached the threshold (RULEBOOK R-06 default)");
-        check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::TwoVsTwo, 150),
+        check(!RulesEngine::hasReachedMatchTarget(isolyn::GameMode::TwoVsTwo, 150),
               "2v2: 150 has not reached the 151 threshold");
-        check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::TwoVsTwo, 151),
+        check(RulesEngine::hasReachedMatchTarget(isolyn::GameMode::TwoVsTwo, 151),
               "2v2: exactly 151 has reached the threshold");
-        check(!RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOneVsOne, 150),
+        check(!RulesEngine::hasReachedMatchTarget(isolyn::GameMode::OneVsOneVsOne, 150),
               "1v1v1: 150 has not reached the 151 threshold");
-        check(RulesEngine::hasReachedMatchLossThreshold(isolyn::GameMode::OneVsOneVsOne, 151),
+        check(RulesEngine::hasReachedMatchTarget(isolyn::GameMode::OneVsOneVsOne, 151),
               "1v1v1: 151 is the locked threshold, not 101 (RULEBOOK R-06)");
     }
 
     section("R-06: 1v1 race target can be 101; other modes stay 151");
     {
-        check(!RulesEngine::hasReachedMatchLossThreshold(
+        check(!RulesEngine::hasReachedMatchTarget(
                   isolyn::GameMode::OneVsOne, 100,
-                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+                  RulesEngine::kOneVsOneShortMatchTarget),
               "1v1 short game: 100 has not reached 101");
-        check(RulesEngine::hasReachedMatchLossThreshold(
+        check(RulesEngine::hasReachedMatchTarget(
                   isolyn::GameMode::OneVsOne, 101,
-                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+                  RulesEngine::kOneVsOneShortMatchTarget),
               "1v1 short game: exactly 101 has reached the threshold");
-        check(!RulesEngine::hasReachedMatchLossThreshold(
+        check(!RulesEngine::hasReachedMatchTarget(
                   isolyn::GameMode::OneVsOneVsOne, 101,
-                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+                  RulesEngine::kOneVsOneShortMatchTarget),
               "1v1v1 ignores the 1v1 short target; 101 is not a loss there");
-        check(!RulesEngine::hasReachedMatchLossThreshold(
+        check(!RulesEngine::hasReachedMatchTarget(
                   isolyn::GameMode::TwoVsTwo, 101,
-                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+                  RulesEngine::kOneVsOneShortMatchTarget),
               "2v2 ignores the 1v1 short target; 101 is not a loss there");
-        check(RulesEngine::hasReachedMatchLossThreshold(
+        check(RulesEngine::hasReachedMatchTarget(
                   isolyn::GameMode::OneVsOne, 151,
-                  RulesEngine::kOneVsOneShortMatchLossThreshold),
+                  RulesEngine::kOneVsOneShortMatchTarget),
               "under the 101 target, a score of 151 is already past the threshold");
     }
 

@@ -1,7 +1,7 @@
-Rules version 1 — dictated by the owner, 2026-11-14.
-sha256: 79ca7387ac7ac5b85b93b4cee3818defaf4a1d3f406c0d6186edbc60261cfd55
-Note: the normative rule text is unchanged from the dictation. This seal reflects
-the 2026-11-15 implementation-status corrections (R-06 and R-15 now ENFORCED,
-and the earlier R-07, R-17, R-18 and R-22 corrections). Do not treat a seal
-change as a rule change or as a reason to discard measurements of the same rule
-text.
+Rules version 2 — R-06 direction corrected by the owner, 2026-11-16.
+sha256: b9ca26706bf9681a8809ab8af169d32968c4536d3fedeace6144291d681459bf
+Note: version 1 transcribed R-06 as "reaching 151 loses the set". On 2026-11-16 the
+owner corrected the direction: points are scored off the opponent, and the first
+player to reach or pass 151 WINS the set. Only the set-level wording changed; the
+per-hand scoring rule (R-03/R-19/R-20: the winner is credited with the loser's
+remaining pips) is unchanged, so hand-level measurements stay comparable.

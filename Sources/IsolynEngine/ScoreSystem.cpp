@@ -34,16 +34,19 @@ void ScoreSystem::applyRoundScoresForParticipants(
 
 bool ScoreSystem::hasMatchEnded() const {
     for (int s : m_scores) {
-        if (RulesEngine::hasReachedMatchLossThreshold(m_mode, s, m_oneVsOneTarget)) return true;
+        if (RulesEngine::hasReachedMatchTarget(m_mode, s, m_oneVsOneTarget)) return true;
     }
     return false;
 }
 
 int ScoreSystem::winningParticipant() const {
     assert(hasMatchEnded());
+    // R-06 (rules version 2): points are scored off the opponent, so the player
+    // who reaches or passes the target WINS the set. This used to return the
+    // lowest scorer, which inverted the finish line.
     int best = 0;
     for (int i = 1; i < static_cast<int>(m_scores.size()); ++i) {
-        if (m_scores[static_cast<std::size_t>(i)] < m_scores[static_cast<std::size_t>(best)]) {
+        if (m_scores[static_cast<std::size_t>(i)] > m_scores[static_cast<std::size_t>(best)]) {
             best = i;
         }
     }
