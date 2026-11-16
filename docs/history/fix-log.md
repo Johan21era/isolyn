@@ -3518,3 +3518,22 @@ rules: Club `(2,8)` vs Elite `(3,16)`, both exact `DifficultyModel` profiles.
   at match level locally; multi-seed pooling machinery is manual.
 - **Verification:** docs, rules and security audits PASS. No engine or app code
   changed.
+
+## OPS-60 — Second ladder step and a two-step gap measured (2026-11-16)
+
+**Scope:** continue E-030's ladder calibration: is the ladder flat, or do the small
+steps add up?
+
+- **Expert vs Elite** (one step): 200 matches per seed, seeds 11–13, pooled 600
+  matches, 328–272 = **54.67% [50.7, 58.6], +32.5 Elo**, ~49 hands/match.
+- **Expert vs Club** (two steps): 200 per seed, seeds 11–12, pooled 400 matches,
+  241–159 = **60.25% [55.4, 64.9], +72.2 Elo**.
+- **Reading:** one step ≈ +33 Elo (55%); two steps ≈ +72 Elo (60%). The measured
+  two-step gap is consistent with the sum of the single steps (+66.5), so the
+  ladder is roughly linear in Elo and evenly spaced, not flat.
+- **Interrupted run:** the first two-step attempt was killed by a runner restart
+  after 68/200 matches of seed 11. Both seeds were re-run from scratch; the partial
+  file was overwritten, and determinism reproduced the same first 68 matches.
+- **Not done:** top tiers (8/64, 24/80, 48/160) remain unmeasured at match level;
+  six-step extrapolation is arithmetic only.
+- **Verification:** docs, rules and security audits PASS. No code changed.

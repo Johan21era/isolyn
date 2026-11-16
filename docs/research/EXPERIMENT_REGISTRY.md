@@ -587,3 +587,31 @@ This measures the cheapest boundary end to end, at match level.
   as a sample of the verdict, not the verdict.
 - **Limits.** One boundary of six; 1v1 only; best-of-five; three seeds. The higher
   tiers (8/64, 24/80, 48/160) are not affordable at match level locally.
+
+## E-031 — The ladder is evenly spaced: each shipped step is ~55%, two steps ~60% (LADDER CALIBRATION)
+
+E-030 measured the bottom step. This measures the next one and a two-step gap, to
+separate "adjacent labels are close" from "the whole ladder is flat".
+
+- **Expert `(4,24)` vs Elite `(3,16)`:** fixed 200 matches per seed, seeds 11–13 —
+  117–83 (58.5%), 103–97 (51.5%), 108–92 (54.0%). Pooled **600 matches, 328–272 =
+  54.67% [50.7, 58.6], +32.5 Elo**, mean 49.0 hands per match.
+- **Expert `(4,24)` vs Club `(2,8)`** (two steps): 200 matches per seed, seeds
+  11–12 — 126–74 (63.0%), 115–85 (57.5%). Pooled **400 matches, 241–159 = 60.25%
+  [55.4, 64.9], +72.2 Elo**.
+- **Additivity check:** E-030's Club→Elite step is +34.0 Elo, this step +32.5; the
+  sum is +66.5, and the measured two-step gap is **+72.2** — consistent within the
+  intervals. The ladder behaves like a roughly constant Elo increment per tier, not
+  a flat one.
+- **Reading.** Each adjacent shipped difficulty is worth about **55% of matches
+  (~+33 Elo)**; two steps are worth **~60% (~+72 Elo)**. So adjacent labels are
+  hard to distinguish by feel, but the ladder as a whole is not decorative: six
+  steps extrapolate to roughly +200 Elo, and Master's `(8,64)` is measured to be a
+  real search step in E-026, not a label.
+- **What this does not say.** The top tiers (8/64, 24/80, 48/160) are not measured
+  here, and the six-step extrapolation is arithmetic, not a result. 1v1 only;
+  best-of-five; two or three seeds per pair.
+- **Operational note.** The runner restarted mid-run on the first attempt at the
+  two-step gap; seed 11 had written 68/200 matches when it died. Both seeds were
+  re-run from scratch and the partial file was overwritten. Determinism means the
+  first 68 matches were reproduced identically, so no evidence was lost.
