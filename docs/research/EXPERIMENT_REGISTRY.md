@@ -615,3 +615,25 @@ separate "adjacent labels are close" from "the whole ladder is flat".
   two-step gap; seed 11 had written 68/200 matches when it died. Both seeds were
   re-run from scratch and the partial file was overwritten. Determinism means the
   first 68 matches were reproduced identically, so no evidence was lost.
+
+## E-032 — Small ladder steps are invisible at hand level (TRANSFER AT SMALL EFFECTS)
+
+E-028 measured the hand→match transfer at a large effect (+24 Elo hands → +111
+matches). The ladder steps are much smaller, so the same two pairs were re-measured
+at hand level to see whether the transfer still holds.
+
+- **Elite vs Club, hands:** 3,000 rounds, 1,507–1,470, 23 ties — **50.62%
+  [48.8, 52.4], +4.3 Elo**. Match level (E-030): 54.9%, +34.0.
+- **Expert vs Elite, hands:** 3,000 rounds, 1,525–1,452, 23 ties — **51.22%
+  [49.4, 53.0], +8.5 Elo**. Match level (E-031): 54.67%, +32.5.
+- **Neither hand interval excludes 50%.** At 3,000 hands the instrument cannot
+  resolve either shipped step, while 400–600 matches resolve both.
+- **Transfer:** the match/hand Elo ratio is 7.9x and 3.8x for the two steps,
+  bracketing E-028's 4.6x. The factor is not constant at small effects — the hand
+  estimates are ±3.6 points wide — but the direction and rough magnitude reproduce.
+- **Reading.** For ladder work, hand-level testing is the wrong instrument: the
+  effect is a fraction of a point per hand, and the same money buys a resolvable
+  match-level answer because the effect is amplified ~4–5x. Hand-level runs remain
+  the cheap filter for search changes expected to be worth tens of Elo.
+- **Limits.** One seed per hand run; two or three seeds per match pair; 1v1,
+  best-of-five; the transfer factor is estimated from two noisy ratios.

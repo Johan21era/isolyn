@@ -3537,3 +3537,24 @@ steps add up?
 - **Not done:** top tiers (8/64, 24/80, 48/160) remain unmeasured at match level;
   six-step extrapolation is arithmetic only.
 - **Verification:** docs, rules and security audits PASS. No code changed.
+
+## OPS-61 — Ladder steps measured at hand level; hand-level cannot see them (2026-11-16)
+
+**Scope:** check whether E-028's hand→match transfer holds at the small effects
+the shipped ladder actually has.
+
+- **Elite vs Club, 3,000 hands:** 1,507–1,470, 23 ties, 50.62% [48.8, 52.4],
+  +4.3 Elo. The match measurement is +34.0 Elo (E-030).
+- **Expert vs Elite, 3,000 hands:** 1,525–1,452, 23 ties, 51.22% [49.4, 53.0],
+  +8.5 Elo. The match measurement is +32.5 Elo (E-031).
+- **Result:** both hand-level intervals contain 50%; both match-level intervals
+  exclude it. Match/hand Elo ratios are 7.9x and 3.8x, bracketing E-028's 4.6x.
+- **Reading:** for ladder-calibration questions, hand-level runs are the wrong
+  instrument; the effect is too small per hand to resolve at 3,000 rounds.
+- **Also checked:** the transposition table's replacement is already depth-
+  preferred (it evicts the shallowest slot), and `find`'s early return at a stale
+  slot is safe because bucket slots fill in order. No change made: the replacement
+  half of the backlog entry is already implemented; the remaining question is the
+  key mode.
+- **Not done:** top tiers (8/64+) still need the Kaggle bridge; ~3 s/match locally.
+- **Verification:** docs, rules and security audits PASS. No code changed.
