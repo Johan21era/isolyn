@@ -558,3 +558,32 @@ observations, verdict checked only at even match counts for color balance.
   observations (they share no deal seeds, but share the engine's style); the
   group-sequential check at even counts is slightly conservative. This is an
   instrument, not a strength claim.
+
+## E-030 — Club→Elite is worth ~55% of matches, not a blowout (FIRST LADDER STEP MEASURED)
+
+The eight shipped difficulties are just `(depth, determinizations)` pairs in
+`DifficultyModel.hpp`; none of the steps had been measured under the current rules.
+This measures the cheapest boundary end to end, at match level.
+
+- **Setup:** A = Elite `(depth 3, 16)`, B = Club `(depth 2, 8)`, exact shipped
+  profiles, 1v1, best-of-five to 151. Match SPRT, H0 = 0 Elo, H1 = 20 Elo,
+  alpha = beta = 0.05, cap 400 matches, seeds 1–3.
+- **Per seed:** seed 1 — 400 matches, 222–178 (**55.5%**), LLR 1.87, inconclusive.
+  seed 2 — stopped at **192**, 125–67 (**65.1%**), LLR 3.02, H1 accepted.
+  seed 3 — 400 matches, 217–183 (**54.3%**), LLR 1.29, inconclusive.
+- **Fixed runs pooled (seeds 1+3, no early stopping):** 800 matches, 439–361,
+  **54.9% [51.4, 58.3], +34.0 Elo**. Mean ~49 hands per match.
+- **All three pooled (992):** 56.9% [53.8, 59.9], +47.9 Elo. This number is
+  **inflated by seed 2's optional stopping** and is not the estimate to quote; the
+  fixed runs are.
+- **Reading.** The first ladder step is directionally right and small: roughly
+  **55% of matches, +34 Elo**. Through E-028's ~2× transfer, that is only ~8 Elo
+  per hand — a difference most players are unlikely to feel between two adjacent
+  labels. This is the first ladder evidence under the current rulebook, and it
+  says the labels are ordered, not that they are far apart.
+- **Instrument lesson.** H1 was set at 20 Elo, below the true effect (~34), which
+  is the slowest case for a sequential test: the LLR creeps at 55% and two of
+  three seeds ran to the cap. Set H1 near the expected effect, and treat one seed
+  as a sample of the verdict, not the verdict.
+- **Limits.** One boundary of six; 1v1 only; best-of-five; three seeds. The higher
+  tiers (8/64, 24/80, 48/160) are not affordable at match level locally.

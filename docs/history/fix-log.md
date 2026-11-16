@@ -3495,3 +3495,26 @@ costs ~19k hands per question.
   1v1v1 match SPRT; multi-seed calibration.
 - **Verification:** `build.sh` clean; `--check` passes; docs/rules/security audits
   PASS; engine and bridge suites re-run unchanged (514 / 136).
+
+## OPS-59 — First shipped difficulty step measured at match level (2026-11-16)
+
+**Scope:** use OPS-58's instrument on a real ladder boundary under the current
+rules: Club `(2,8)` vs Elite `(3,16)`, both exact `DifficultyModel` profiles.
+
+- **Runs:** match SPRT H0 0 / H1 20 Elo, cap 400 matches, seeds 1–3, best-of-five
+  to 151.
+- **Seed 1:** 400 matches, 222–178 (55.5%), LLR 1.87, inconclusive.
+- **Seed 2:** stopped at 192, 125–67 (65.1%), LLR 3.02, H1 accepted.
+- **Seed 3:** 400 matches, 217–183 (54.3%), LLR 1.29, inconclusive.
+- **Estimate from the fixed runs (seeds 1+3):** 800 matches, 54.9%
+  [51.4, 58.3], +34.0 Elo. All-three pooled (992) is 56.9%, inflated by seed 2's
+  early stop; not quoted as the estimate.
+- **Reading:** the step is real but modest — about 55% of matches. First ladder
+  evidence under the current rulebook; the labels are ordered, not far apart.
+- **Instrument lesson recorded:** H1=20 sat below the true ~34 Elo, the slowest
+  case for sequential testing; one seed accepted while two hit the cap. README now
+  says to set H1 near the expected effect.
+- **Not done:** the other five boundaries; higher tiers (8/64+) are not affordable
+  at match level locally; multi-seed pooling machinery is manual.
+- **Verification:** docs, rules and security audits PASS. No engine or app code
+  changed.

@@ -105,6 +105,10 @@ score for A.
   --seed 3 --output /tmp/match-sprt.csv
 ```
 
+Set `--sprt-elo1` near the effect you expect: when the true edge sits just above
+H1 the LLR accumulates slowly, and the run will go to the cap even though the
+observed score is above H1.
+
 Calibration: a known 65.5% matchup stopped at **100 matches** (64.0%, LLR 2.998)
 where the fixed run needed 400. A mirror reached H0 at 118 matches. A mirror is not
 guaranteed to decide before the cap — at p = 0.5 the LLR random-walks, so
