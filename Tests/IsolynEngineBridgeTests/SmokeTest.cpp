@@ -57,10 +57,8 @@ void ensureCurrentPlayerCanMove(SessionHandle s) {
     }
 }
 
-// Plays one 1v1v1 round to completion with the first legal move everywhere.
-// Used by the R-22 search for a set whose FIRST elimination leaves two
-// survivors; the other valid shape (two players crossing together) ends the
-// set immediately and is retried rather than asserted into the survivor path.
+// Plays one round to completion with the first legal move everywhere. Used by
+// the end-to-end set test, which needs a finished round to record.
 SnapshotDTO driveRound(SessionHandle s) {
     for (int op = 0; op < 800; ++op) {
         const int current = bridge_get_snapshot(s, 0).currentPlayerIndex;
@@ -78,44 +76,6 @@ SnapshotDTO driveRound(SessionHandle s) {
         }
     }
     return bridge_get_snapshot(s, 0);
-}
-
-struct SurvivorStart {
-    MatchHandle match = kInvalidMatchHandle;
-    SessionHandle session = kInvalidSessionHandle;
-    MatchResultDTO rec{};
-};
-
-// R-22 is reached through real rounds, so the test cannot inject a score.
-// Retry a handful of matches until one has a first elimination that leaves
-// exactly two survivors; a simultaneous double-cross is a legal set end but
-// exercises no survivor hand.
-SurvivorStart findSurvivorStart() {
-    for (int attempt = 0; attempt < 12; ++attempt) {
-        MatchHandle m = bridge_match_begin(GameModeDTO::OneVsOneVsOne);
-        if (m == kInvalidMatchHandle) continue;
-        SessionHandle s = bridge_session_create_first_round(GameModeDTO::OneVsOneVsOne);
-        if (s == kInvalidSessionHandle) { bridge_match_close(m); continue; }
-
-        for (int round = 0; round < 160; ++round) {
-            SnapshotDTO done = driveRound(s);
-            if (done.roundOutcome == RoundOutcomeDTO::InProgress) break;
-            MatchResultDTO rec = bridge_match_record_round(m, s);
-            if (rec.status != BridgeStatus::Ok) break;
-            if (rec.activeParticipantCount == 2) {
-                return SurvivorStart{m, s, rec};
-            }
-            if (rec.activeParticipantCount == 1) break; // double elimination; retry
-
-            bridge_session_close(s);
-            s = bridge_match_create_next_round(m);
-            if (s == kInvalidSessionHandle) break;
-        }
-
-        if (s != kInvalidSessionHandle) bridge_session_close(s);
-        bridge_match_close(m);
-    }
-    return SurvivorStart{};
 }
 
 // Finds a move NOT present in the given legal-moves list -- used to
@@ -637,110 +597,6 @@ int main() {
         bridge_match_close(m);
     }
 
-    std::printf("== R-22 1v1v1: no survivor phase (rules version 3) ==\n");
-    {
-        SurvivorStart start = findSurvivorStart();
-        // Rules version 3 removed the elimination. No 1v1v1 set may reach a
-        // survivor phase any more, so the search that used to find one must now
-        // find nothing -- and the set simply ends when someone crosses 151.
-        CHECK(start.match == kInvalidMatchHandle && start.session == kInvalidSessionHandle,
-              "1v1v1 never eliminates a participant and never enters a survivor round");
-        if (start.match != kInvalidMatchHandle && start.session != kInvalidSessionHandle) {
-            MatchHandle m = start.match;
-            SessionHandle s = start.session;
-            MatchResultDTO rec = start.rec;
-
-            int live[2] = {-1, -1};
-            int out = -1;
-            for (int p = 0; p < 3; ++p) {
-                if (rec.activePerParticipant[p]) {
-                    if (live[0] < 0) live[0] = p; else live[1] = p;
-                } else {
-                    out = p;
-                }
-            }
-
-            CHECK(rec.activeParticipantCount == 2 && live[0] >= 0 && live[1] >= 0 && out >= 0,
-                  "the first 151 leaves exactly two active seats");
-            CHECK(rec.nextRoundIsSurvivor, "after the first elimination the match reports a survivor round");
-            CHECK(rec.lastEliminatedParticipantIndex == out,
-                  "the reported elimination names the player who crossed 151");
-            CHECK(rec.scoresPerParticipant[out] >= 151,
-                  "the eliminated player's score is frozen at or above 151");
-            CHECK(rec.nextRoundStarterIndex >= 0 && rec.nextRoundStarterIndex < 3 &&
-                      rec.activePerParticipant[rec.nextRoundStarterIndex] != 0,
-                  "the survivor round is dealt with a live seat to open");
-
-            bridge_session_close(s);
-            s = bridge_match_create_next_round(m);
-            CHECK(s != kInvalidSessionHandle, "the bridge deals the carried-points survivor hand");
-            if (s != kInvalidSessionHandle) {
-                SnapshotDTO a = bridge_get_snapshot(s, live[0]);
-                SnapshotDTO b = bridge_get_snapshot(s, live[1]);
-                SnapshotDTO o = bridge_get_snapshot(s, out);
-                CHECK(a.status == BridgeStatus::Ok && b.status == BridgeStatus::Ok &&
-                          a.ownHandCount == 7 && b.ownHandCount == 7 && o.ownHandCount == 0,
-                      "the survivor phase deals 7 tiles to each live seat and 0 to the eliminated seat");
-                CHECK(a.boneyardDrawableCount == 12 && a.mode == GameModeDTO::OneVsOneVsOne,
-                      "the survivor phase uses the ordinary 1v1 boneyard (14 tiles, 2 locked), not a 9-tile 1v1v1 hand");
-                CHECK(a.currentPlayerIndex == live[0] || a.currentPlayerIndex == live[1],
-                      "the survivor round starts on a live seat");
-
-                AnalysisHandle survivorAnalysis = bridge_analysis_snapshot_create(s, live[0]);
-                CHECK(survivorAnalysis != kInvalidAnalysisHandle,
-                      "the survivor phase builds a belief snapshot without applying the 1v1v1 0-0 exclusion");
-                if (survivorAnalysis != kInvalidAnalysisHandle) {
-                    AnalysisResultDTO survivorRun = bridge_analysis_run_with_budget(
-                        survivorAnalysis, 2, 2, 0x5EEDu, 1000);
-                    CHECK(survivorRun.status == BridgeStatus::Ok,
-                          "a bounded search runs in the survivor phase and returns a real move");
-                    bridge_analysis_snapshot_destroy(survivorAnalysis);
-                }
-
-                bool setEndOk = false, setWinnerOk = false, setWinsOk = false;
-                bool setFlagOk = false, setResetOk = false;
-                for (int round = 0; round < 240; ++round) {
-                    SnapshotDTO done = driveRound(s);
-                    if (done.roundOutcome == RoundOutcomeDTO::InProgress) break;
-                    rec = bridge_match_record_round(m, s);
-                    if (rec.status != BridgeStatus::Ok) break;
-
-                    if (rec.activeParticipantCount == 2) {
-                        bridge_session_close(s);
-                        s = bridge_match_create_next_round(m);
-                        if (s == kInvalidSessionHandle) break;
-                        continue;
-                    }
-                    if (rec.activeParticipantCount != 1) break;
-
-                    setEndOk = rec.setEnded;
-                    setWinnerOk = rec.setWinnerParticipantIndex >= 0 &&
-                        rec.activePerParticipant[rec.setWinnerParticipantIndex] != 0 &&
-                        rec.scoresPerParticipant[rec.setWinnerParticipantIndex] < 151;
-                    setWinsOk = rec.setWinsPerParticipant[rec.setWinnerParticipantIndex] == 1;
-                    setFlagOk = rec.nextRoundStartsSet && rec.nextRoundStarterIndex == -1;
-                    bridge_session_close(s);
-                    s = bridge_match_create_next_round(m);
-                    if (s != kInvalidSessionHandle) {
-                        SnapshotDTO fresh = bridge_get_snapshot(s, 0);
-                        const int dealt = fresh.ownHandCount + fresh.otherHandSizes[1] + fresh.otherHandSizes[2];
-                        setResetOk = fresh.mode == GameModeDTO::OneVsOneVsOne && dealt == 26;
-                    }
-                    break;
-                }
-
-                CHECK(setEndOk, "the second elimination ends the set with one survivor");
-                CHECK(setWinnerOk, "the last survivor, not the lowest score, wins the set");
-                CHECK(setWinsOk, "the survivor's set win is recorded exactly once");
-                CHECK(setFlagOk, "the next round after a set win is a fresh-set ritual round");
-                CHECK(setResetOk, "the next set returns to a full three-seat 1v1v1 deal");
-            }
-
-            if (s != kInvalidSessionHandle) bridge_session_close(s);
-            bridge_match_close(m);
-        }
-    }
-
     std::printf("== 2v2 match recording: two team score slots, not four player slots ==\n");
     {
         MatchHandle m = bridge_match_begin(GameModeDTO::TwoVsTwo);
@@ -929,7 +785,7 @@ int main() {
     // this one plays a real set from the deal to the 151 finish and asserts
     // that the player who reached the target is the one credited with it.
     // ---------------------------------------------------------------
-    std::printf("== R-06 end to end: a full set ends with the player who reached 151 ==\n");
+    std::printf("== R-06/R-22 end to end: a full set ends with the player who reached 151 ==\n");
     {
         struct Race { GameModeDTO mode; const char* label; int players; };
         const Race races[2] = {

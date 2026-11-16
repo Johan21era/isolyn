@@ -1,7 +1,7 @@
-Rules version 3 — R-22 survivor phase removed by the owner, 2026-11-16.
-sha256: 911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7
-Note: version 2 corrected R-06 (the first player to reach or pass 151 wins the set;
-version 1 had transcribed it backwards). Version 3 removes R-22's elimination: 1v1v1
-now ends exactly as 1v1 does — first to reach or pass 151 wins the set outright, and
-there is no survivor phase. Per-hand scoring (R-03/R-19/R-20) is unchanged in both,
-so hand-level measurements remain comparable.
+Rules version 4 — 2026-11-16. No rule text changed.
+sha256: 0f2df66a1d6271814131b8bb12886cc8f50ec0317385152ed6a5aec0f2f85937
+Note: version 2 corrected R-06 (the first player to reach or pass 151 wins the set).
+Version 3 removed R-22's elimination: 1v1v1 is a straight race to 151 with no survivor
+phase. Version 4 changes no rule: the digest moved only because R-22's "asserted by"
+cell now names the end-to-end test that plays a full set, after the dead survivor code
+and its pointless assertions were deleted. Per-hand scoring (R-03/R-19/R-20) unchanged.

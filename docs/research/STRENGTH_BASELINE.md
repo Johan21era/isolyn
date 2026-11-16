@@ -6,7 +6,7 @@
 > **VOID** in `PROJECT_OVERDRIVE.md`, `EXPERIMENT_REGISTRY.md` and
 > `BENCHMARK_BASELINE.md`; none of them may be quoted as current.
 
-**Rules version:** `911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7`
+**Rules version:** `0f2df66a1d6271814131b8bb12886cc8f50ec0317385152ed6a5aec0f2f85937`
 
 > The normative rule text is unchanged from the 2026-11-14 dictation. This seal
 > reflects the implementation-status corrections (R-06, R-07, R-15, R-17, R-18

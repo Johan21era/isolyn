@@ -52,15 +52,6 @@ int main() {
               "1v1v1 still ends at its locked 151 threshold");
     }
 
-    section("ScoreSystem: R-22 applies a survivor round to only the live participants");
-    {
-        ScoreSystem scores(GameMode::OneVsOneVsOne, 3);
-        scores.applyRoundScores({0, 60, 151}); // participant 2 is out
-        scores.applyRoundScoresForParticipants({12}, {1});
-        check(scores.score(0) == 0 && scores.score(1) == 72 && scores.score(2) == 151,
-              "a survivor round credits only participant 1 and leaves the eliminated participant's frozen total alone");
-    }
-
     section("ScoreSystem: R-06 winningParticipant is whoever reached the target, because those points were scored off the opponent");
     {
         ScoreSystem scores(GameMode::OneVsOneVsOne, 3);

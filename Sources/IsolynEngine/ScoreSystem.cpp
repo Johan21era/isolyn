@@ -21,17 +21,6 @@ void ScoreSystem::applyRoundScores(const std::vector<int>& roundScores) {
     }
 }
 
-void ScoreSystem::applyRoundScoresForParticipants(
-    const std::vector<int>& roundScores,
-    const std::vector<int>& participantIndices) {
-    assert(roundScores.size() == participantIndices.size());
-    for (std::size_t i = 0; i < roundScores.size(); ++i) {
-        const int p = participantIndices[i];
-        assert(p >= 0 && p < static_cast<int>(m_scores.size()));
-        m_scores[static_cast<std::size_t>(p)] += roundScores[i];
-    }
-}
-
 bool ScoreSystem::hasMatchEnded() const {
     for (int s : m_scores) {
         if (RulesEngine::hasReachedMatchTarget(m_mode, s, m_oneVsOneTarget)) return true;

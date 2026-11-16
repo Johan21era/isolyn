@@ -123,40 +123,6 @@ int main() {
               "an empty boneyard has no pair; the look is not a peek at nothing");
     }
 
-    section("GameState: R-22 survivor phase is a two-hand 1v1 inside the three-seat state");
-    {
-        std::vector<std::vector<DominoTile>> hands = {
-            { DominoTile(3, 3) }, {}, { DominoTile(5, 5) },
-        };
-        std::vector<DominoTile> boneyard = {
-            DominoTile(0, 0), DominoTile(6, 6), DominoTile(4, 4), DominoTile(1, 1),
-        };
-        GameState state(GameMode::OneVsOneVsOne, hands, boneyard);
-
-        auto drawn = state.enforceOneDominoRule();
-        check(drawn.has_value() && state.hand(0).size() == 2,
-              "the two live hands both hold one tile, so the incoming survivor draws even though the seat array has three entries");
-        check(state.hand(2).size() == 1, "the other survivor is untouched by the incoming player's mandatory draw");
-
-        GameState eliminatedTurn(GameMode::OneVsOneVsOne, hands, boneyard, Chain(), {}, 1);
-        check(!eliminatedTurn.enforceOneDominoRule().has_value(),
-              "the empty eliminated seat is never the player who draws");
-
-        std::vector<DominoTile> pairOnly = { DominoTile(0, 0), DominoTile(6, 6) };
-        GameState pairState(GameMode::OneVsOneVsOne, hands, pairOnly);
-        auto pair = pairState.privateLockedPair(0);
-        check(pair.has_value(), "R-17's private look applies to the carried-points survivor duel");
-        check(pairState.privateLockedPair(2).has_value(), "both survivors may look, each for their own hand");
-        check(!pairState.privateLockedPair(1).has_value(), "the eliminated seat has no hand and no look");
-
-        std::vector<std::vector<DominoTile>> threeLive = {
-            { DominoTile(3, 3) }, { DominoTile(5, 5) }, { DominoTile(1, 2) },
-        };
-        GameState normal(GameMode::OneVsOneVsOne, threeLive, pairOnly);
-        check(!normal.privateLockedPair(0).has_value(),
-              "three live hands is still ordinary 1v1v1 -- no private look");
-    }
-
     section("GameState: hash is order-independent for hands but sensitive to turn and draw order");
     {
         std::vector<DominoTile> boneyard = {

@@ -1,7 +1,7 @@
 # Rulebook knowledge audit
 
 > **Status: current (2026-11-16).** Rules version: 2. Rulebook hash
-> `911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7`
+> `0f2df66a1d6271814131b8bb12886cc8f50ec0317385152ed6a5aec0f2f85937`
 > (rules version 1). Measures *knowledge*, not strength: no Elo claim is made
 > here, and none may be derived from it without a separate measurement.
 
@@ -345,7 +345,7 @@ What changed:
 
 - **Rulebook:** R-06 now reads "the first player to reach or pass 151 wins the set".
 - **Version seal:** `RULES_VERSION` is version 2, hash
-  `911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7`.
+  `0f2df66a1d6271814131b8bb12886cc8f50ec0317385152ed6a5aec0f2f85937`.
 - **Engine scoring:** `ScoreSystem::winningParticipant()` returned the *lowest*
   scorer. It now returns the player who reached the target. The misleadingly named
   `hasReachedMatchLossThreshold` / `matchLossThreshold` / `k*MatchLossThreshold`
@@ -421,3 +421,37 @@ participant 1 with 95. Both runs are now green, and the 1v1v1 run is exactly the
 to turn into an elimination.
 
 Bridge check count went from 125 to 139 (+14: seven assertions per mode).
+
+## Dead survivor code removed (2026-11-16, rules version 4)
+
+Rules version 3 removed R-22's elimination, which left a whole layer of code that
+could no longer be reached. It is now deleted rather than left as a trap:
+
+- **GameState:** `enforceOneDominoRule` and `privateLockedPair` used to count
+  *non-empty* hands so a two-hand rule could run inside a three-seat state. They now
+  key off the seat count: two hands means 1v1, anything else means the rule does not
+  apply.
+- **MatchController:** `advanceToNextPlayer` walked past empty hands; it is a plain
+  rotation again, because no seat can be empty.
+- **SearchEngine:** the `nextActivePlayer` helper is gone; the five call sites use
+  the ordinary `(player + 1) % playerCount` rotation.
+- **ProbabilityEngine:** the `survivorDuel` exception that suppressed the 1v1v1 0-0
+  exclusion is gone; the mode alone decides excluded tiles.
+- **ScoreSystem:** `applyRoundScoresForParticipants` (the survivor-round scoring
+  entry point) is removed. Every participant is scored every round.
+- **Bridge:** the `active`/`activeCount`/`lastEliminated`/`nextRoundIsSurvivor` match
+  state, the eliminated-seat rejection in `bridge_match_record_round`, and the
+  carried-points survivor deal in `bridge_match_create_next_round` are removed.
+  The DTO's survivor fields are kept for API stability and always report the neutral
+  state — everyone active, nobody eliminated — which is exactly what the app would
+  have shown had it ever reached that branch.
+
+**Check counts, stated rather than smoothed:** engine 524 → 514 (−10: GameState's
+survivor section 7, MatchController's skip test 2, ScoreSystem's survivor-round test
+1) and bridge 139 → 138 (−1: the inverse "no survivor phase" check, which existed
+only to police the branch now deleted). No assertion was weakened; the assertions
+described a phase the rules no longer have.
+
+**Rulebook:** no rule text changed. R-22's "asserted by" cell now names the end-to-end
+set test (it previously named the deleted survivor check), so the digest moved to
+`0f2df66a…` and the seal is rules version 4.

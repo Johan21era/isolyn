@@ -338,8 +338,9 @@ documented number to match a broken run.
   depth 8 / 64 determinizations), so it calibrates the measurement instrument;
   it is **not** a strength claim and must not be quoted as one.
 - The 1v1 default is now 151 (R-06), the locked pair is no longer publicly
-  revealed (R-17), and 1v1v1 eliminates at 151 before continuing between the
-  survivors (R-22). The pre-game 101 choice is wired through the engine,
+  revealed (R-17), and 1v1v1 is a straight race to 151 exactly like 1v1: the
+  owner removed R-22's elimination and survivor phase on 2026-11-16, and the
+  dead engine code that supported it was deleted with it. The pre-game 101 choice is wired through the engine,
   bridge, app state and 1v1 lobby selector.
 - **Do not claim depth 48 as reached.** A hand contains at most 28 tiles, and
   every placement or voluntary/forced draw consumes one; the tile-consuming

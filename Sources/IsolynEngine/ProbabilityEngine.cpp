@@ -31,19 +31,9 @@ BeliefState ProbabilityEngine::constructFromGameState(const GameState& state, in
     // itself uses, so the two can never disagree about which tiles that
     // is.
     //
-    // R-22 exception: the survivor phase keeps the 1v1v1 mode label and a
-    // third (empty) seat, but it is dealt from the full 1v1 set, including
-    // 0-0, and has the 1v1 boneyard. Applying the 1v1v1 exclusion there
-    // would make the belief omit a tile that is genuinely live.
-    int liveHands = 0;
-    for (int p = 0; p < state.playerCount(); ++p) {
-        if (!state.hand(p).empty()) ++liveHands;
-    }
-    const bool survivorDuel =
-        state.mode() == GameMode::OneVsOneVsOne && liveHands == 2 && state.boneyard().size() > 0;
-    const std::vector<DominoTile> excluded = survivorDuel
-        ? std::vector<DominoTile>{}
-        : Dealer::excludedTilesForMode(state.mode());
+    // There is no survivor phase (R-22), so the mode alone decides which
+    // tiles were never dealt to anyone.
+    const std::vector<DominoTile> excluded = Dealer::excludedTilesForMode(state.mode());
     return BeliefState(myKnown, otherKnown, locationCounts, excluded);
 }
 

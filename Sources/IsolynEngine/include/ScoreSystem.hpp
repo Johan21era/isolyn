@@ -28,12 +28,6 @@ public:
     // the same order.
     void applyRoundScores(const std::vector<int>& roundScores);
 
-    // R-22: applies a round scored over only the still-active participants
-    // to their slots, leaving eliminated players' frozen scores untouched.
-    // `roundScores[i]` belongs to `participantIndices[i]`.
-    void applyRoundScoresForParticipants(const std::vector<int>& roundScores,
-                                         const std::vector<int>& participantIndices);
-
     // Whether any participant has reached or exceeded the mode's
     // match-loss threshold (RulesEngine::hasReachedMatchTarget).
     // `oneVsOneTarget` is the R-06 pre-game choice (151 by default, 101 in
@@ -41,12 +35,9 @@ public:
     bool hasMatchEnded() const;
 
     // The winning participant once hasMatchEnded() is true: whoever has
-    // the strictly lowest running score among all participants.
-    //
-    // R-22 supersedes this for 1v1v1: that mode ends a set when only one
-    // active participant remains, and that survivor is the set winner. The
-    // bridge implements that directly rather than calling this method.
-    // This remains the 1v1/2v2 winner rule.
+    // the highest running score, i.e. the participant who reached the
+    // target (R-06). The same rule serves every mode -- 1v1v1 no longer
+    // eliminates anyone, so there is no separate survivor winner (R-22).
     //
     // Precondition: hasMatchEnded() is true.
     int winningParticipant() const;

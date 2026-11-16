@@ -79,20 +79,11 @@ RoundOutcome MatchController::endTurnWithNoPlay() {
 }
 
 void MatchController::advanceToNextPlayer() {
-    // R-22: in a 1v1v1 survivor round the eliminated seat has no hand and
-    // must never be current. Walking past empty hands is a no-op in every
-    // other mode: a hand only empties by winning, and that returns before
-    // turn advancement.
-    const int current = m_state.currentPlayerIndex();
+    // Every seat is live in every mode: 1v1v1 no longer eliminates anyone
+    // (R-22), and a hand only empties by winning the round, which returns
+    // before turn advancement. A plain rotation is the whole rule.
     const int playerCount = m_state.playerCount();
-    int next = current;
-    for (int step = 1; step <= playerCount; ++step) {
-        const int candidate = (current + step) % playerCount;
-        if (!m_state.hand(candidate).empty()) {
-            next = candidate;
-            break;
-        }
-    }
+    const int next = (m_state.currentPlayerIndex() + 1) % playerCount;
     m_state.setCurrentPlayerIndex(next);
     // R-18: a turn that begins with both 1v1 hands on exactly one tile is
     // not a normal turn -- the incoming player must take one first. The

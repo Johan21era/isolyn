@@ -3308,3 +3308,34 @@ No professional taint analysis or manual review of the bridge pointer handling
 was performed — this is heuristic static analysis. The engine's real security
 property (no decision may observe a concealed tile) still rests on its existing
 tests and soak, not on anything added here.
+
+## OPS-52 — Dead survivor code removed (2026-11-16: R-22's unreachable implementation deleted)
+
+**Scope:** after rules version 3 made 1v1v1 a straight race to 151, the survivor
+machinery could no longer be reached. This entry records deleting it rather than
+leaving it as a trap, and deleting the assertions that described it.
+
+- **Engine removed:** `GameState`'s non-empty-hand counting in `enforceOneDominoRule`
+  and `privateLockedPair` (now keyed off a two-hand seat array), `MatchController`'s
+  empty-seat skip, `SearchEngine`'s `nextActivePlayer` helper, `ProbabilityEngine`'s
+  `survivorDuel` exclusion, and `ScoreSystem::applyRoundScoresForParticipants`.
+- **Bridge removed:** match state `active`/`activeCount`/`lastEliminated`/
+  `nextRoundIsSurvivor`, the eliminated-seat rejection in `bridge_match_record_round`,
+  and the carried-points survivor deal in `bridge_match_create_next_round`.
+- **DTO kept deliberately:** `activePerParticipant`, `eliminatedPerParticipant`,
+  `activeParticipantCount`, `lastEliminatedParticipantIndex` and
+  `nextRoundIsSurvivor` remain, and always report the neutral state (everyone active,
+  nobody out). The Swift app reads them, and removing them is an app change, not this
+  engine change.
+- **Tests removed:** GameState's survivor section (7 checks), MatchController's
+  empty-seat skip (2), ScoreSystem's survivor round (1), the bridge's inverse
+  "no survivor phase" check (1), and the bridge's `findSurvivorStart` helper.
+- **Verification:** `TOTAL CHECKS PASSED: 514` / `TOTAL CHECKS FAILED: 0` (engine,
+  was 524); `TOTAL CHECKS PASSED: 138` / `TOTAL CHECKS FAILED: 0` (bridge, was 139);
+  `swift build` → `Build complete!`; `swift test` → `Executed 125 tests, with 0
+  failures`; Lab → `Ran 55 tests ... OK`; rules/docs/security audits → `RESULT: PASS`.
+- **Rulebook:** no rule text changed. R-22's "asserted by" cell now names the
+  end-to-end set test, so the digest moved to `0f2df66a…` and the seal is version 4.
+- **Not done, deliberately:** the Swift survivor labels remain in `MatchCoordinator`,
+  `EngineTypes`, `GameViewModel` and `RoundEndOverlay`. They are now unreachable, but
+  they are app-layer and were outside this engine cleanup.
