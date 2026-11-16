@@ -87,3 +87,69 @@ this, because the information is not present at the decision at all.
 3. Measure with the harness on near-threshold scores, where the rule actually
    binds. A 0–0 self-play match cannot show this effect and would wrongly return
    zero.
+
+## The exam: scored, per tier
+
+The audit above measures reachability. This section measures **answers**.
+
+`tools/rulebook_test` poses positions whose correct answer is computed by
+simulation, never authored: the legal placements are enumerated, and each one is
+applied to see what it actually does. A question is only kept when at least one
+legal move is wrong, and "sharp" questions allow exactly one right answer out of
+three or more, so guessing is punished rather than rewarded.
+
+Scoring is violent by design: correct `+1`, wrong `0`, **illegal `-5`**. The
+published score is `100 * max(0, correct - 5*illegal) / questions`.
+
+Run: `./tools/rulebook_test/build.sh && ./tools/rulebook_test/build/rulebook_test --per-section 250`
+
+| Tier | Score | win-now | win + draw offered | defence | sharp defence |
+|---|---|---|---|---|---|
+| s100 d2x8 | **77** | 100% | 100% | 54% | 56% |
+| s400 d2x8 | **77** | 100% | 100% | 54% | 56% |
+| s900 d3x16 | **80** | 100% | 100% | 57% | 64% |
+| s1600 d4x24 | **80** | 100% | 100% | 52% | 70% |
+| s2300 d5x40 | **81** | 100% | 100% | 56% | 68% |
+| s3000 d8x64 | **81** | 100% | 100% | 55% | 70% |
+| s5000 d24x80 | **80** | 100% | 100% | 54% | 68% |
+
+1,000 questions per tier for s100–s3000; 200 for s5000 (depth 24 costs ~0.85 s per
+question). Mythical (s10000, depth 48) was not run: the sweep exceeded the host's
+command limit. No illegal move was produced by any tier.
+
+### What the exam shows
+
+**Winning is completely learned.** Every tier, including the weakest, takes a
+winning placement 100% of the time — and does so even when a voluntary draw is on
+offer, so the engine never prefers a draw to a win (R-02 beats R-15 at every
+tier). This is the one capability the score model already prices correctly, and
+the exam confirms it end to end.
+
+**Defence against an immediate loss is not.** Given a position where the opponent
+can empty their hand on their next turn, the engine fails to prevent it **44–48%
+of the time**, and this is flat from depth 2 to depth 24. It is the single largest
+source of lost points at every tier: roughly a quarter of the whole exam.
+
+**Depth buys recognition, not prevention.** When the right answer is unique among
+three or more options ("sharp defence"), the score climbs with depth —
+56% → 64% → 70% — and then plateaus. So search *does* find the saving move when
+the position is narrow. It fails on the wider positions, where several moves look
+acceptable and one of them concedes an immediate loss. That is consistent with
+E-105: the evaluator does not price the opponent's threat, so nothing separates
+the losing move from the safe ones until the search is deep enough to see the loss
+itself.
+
+**This is the first measurement in the campaign that separates the tiers.** Every
+strength experiment returned approximately zero; the exam orders them 77 / 77 /
+80 / 80 / 81 / 81 / 80. The differences are small, but the ordering exists, and it
+is a knowledge ordering rather than a win-rate one.
+
+### Limitations
+
+- Positions are artificial: 1–3 tiles per hand with the rest of the set in the
+  boneyard. They are legal, complete (all 28 tiles accounted for) states, but not
+  deals the app produces.
+- Ground truth is "does not allow an immediate loss", not "is optimal". A move can
+  pass the defence question and still be poor.
+- The exam measures a tier's choices, not its win rate. A high exam score is not
+  a strength claim and must not be quoted as one.
