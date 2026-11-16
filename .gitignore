@@ -31,3 +31,6 @@ __pycache__/
 # records every scanned file as an absolute path and so carries the account name.
 /1v1-*/
 graphify-out/.graphify_*
+
+# Stray numbered copies of the graph export (graph.json itself is tracked).
+graphify-out/graph *.json
