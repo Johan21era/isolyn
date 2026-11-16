@@ -1,7 +1,7 @@
-Rules version 2 — R-06 direction corrected by the owner, 2026-11-16.
-sha256: b9ca26706bf9681a8809ab8af169d32968c4536d3fedeace6144291d681459bf
-Note: version 1 transcribed R-06 as "reaching 151 loses the set". On 2026-11-16 the
-owner corrected the direction: points are scored off the opponent, and the first
-player to reach or pass 151 WINS the set. Only the set-level wording changed; the
-per-hand scoring rule (R-03/R-19/R-20: the winner is credited with the loser's
-remaining pips) is unchanged, so hand-level measurements stay comparable.
+Rules version 3 — R-22 survivor phase removed by the owner, 2026-11-16.
+sha256: 911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7
+Note: version 2 corrected R-06 (the first player to reach or pass 151 wins the set;
+version 1 had transcribed it backwards). Version 3 removes R-22's elimination: 1v1v1
+now ends exactly as 1v1 does — first to reach or pass 151 wins the set outright, and
+there is no survivor phase. Per-hand scoring (R-03/R-19/R-20) is unchanged in both,
+so hand-level measurements remain comparable.

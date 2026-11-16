@@ -1,7 +1,7 @@
 # Rulebook knowledge audit
 
 > **Status: current (2026-11-16).** Rules version: 2. Rulebook hash
-> `b9ca26706bf9681a8809ab8af169d32968c4536d3fedeace6144291d681459bf`
+> `911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7`
 > (rules version 1). Measures *knowledge*, not strength: no Elo claim is made
 > here, and none may be derived from it without a separate measurement.
 
@@ -345,7 +345,7 @@ What changed:
 
 - **Rulebook:** R-06 now reads "the first player to reach or pass 151 wins the set".
 - **Version seal:** `RULES_VERSION` is version 2, hash
-  `b9ca26706bf9681a8809ab8af169d32968c4536d3fedeace6144291d681459bf`.
+  `911fb658b331d71f05e5cfce2cb44667d85b475454c6d627774d87f99aba40e7`.
 - **Engine scoring:** `ScoreSystem::winningParticipant()` returned the *lowest*
   scorer. It now returns the player who reached the target. The misleadingly named
   `hasReachedMatchLossThreshold` / `matchLossThreshold` / `k*MatchLossThreshold`
@@ -373,3 +373,28 @@ rules wanted it to take; they are withdrawn with the claim.
 decision that matters. Since reaching the target is now simply "win the hand that
 crosses it", the remaining strategic content is small, and the self-play harness
 still plays single hands rather than sets.
+
+## R-22 removed: 1v1v1 is a straight race (rules version 3)
+
+The owner ruled that 1v1v1 ends exactly as 1v1 does: **the first participant to
+reach or pass 151 wins the set outright.** There is no elimination and no survivor
+phase.
+
+- **Rulebook:** R-22 rewritten; the "reaches 151 is out / survivors play a carried-
+  points 1v1" text is gone.
+- **Bridge:** the 1v1v1 branch in `bridge_match_record_round` is removed. Every mode
+  now takes the same path — `hasMatchEnded()` then `winningParticipant()`.
+- **Tests:** the survivor-phase smoke section is replaced by its inverse — the search
+  that used to find a survivor round must now find **nothing**. That assertion runs,
+  and the checks that only made sense inside a survivor round are no longer reached.
+
+**Check count, stated rather than smoothed:** bridge went from 141 checks to 125.
+The 16 difference is exactly the survivor-phase assertions (dealt hand sizes, locked
+pair, survivor search, second elimination, carried-point winners) that describe a
+phase the rules no longer have. Engine stayed at 524.
+
+**Dormant code, deliberately left:** `GameState`'s empty-seat handling,
+`privateLockedPair`'s survivor case, and `MatchController`'s empty-seat skip can no
+longer be reached through the bridge. They are kept because they are engine-level
+APIs with their own tests, and deleting them is a separate, larger change than the
+rule correction. They no longer describe the game, and that should be cleaned up.

@@ -637,11 +637,14 @@ int main() {
         bridge_match_close(m);
     }
 
-    std::printf("== R-22 1v1v1 elimination: first to 151 is out, survivors continue as a carried-points 1v1 ==\n");
+    std::printf("== R-22 1v1v1: no survivor phase (rules version 3) ==\n");
     {
         SurvivorStart start = findSurvivorStart();
-        CHECK(start.match != kInvalidMatchHandle && start.session != kInvalidSessionHandle,
-              "found a 1v1v1 set whose first elimination leaves exactly two survivors");
+        // Rules version 3 removed the elimination. No 1v1v1 set may reach a
+        // survivor phase any more, so the search that used to find one must now
+        // find nothing -- and the set simply ends when someone crosses 151.
+        CHECK(start.match == kInvalidMatchHandle && start.session == kInvalidSessionHandle,
+              "1v1v1 never eliminates a participant and never enters a survivor round");
         if (start.match != kInvalidMatchHandle && start.session != kInvalidSessionHandle) {
             MatchHandle m = start.match;
             SessionHandle s = start.session;

@@ -97,7 +97,7 @@ code. A change that edits only the code is a bug.
 | ID | Rule | Status | Enforced by | Asserted by |
 |---|---|---|---|---|
 | R-21 | In 2v2, direct description of a hand is forbidden, but three exchanges are legal: asking a partner "how heavy are you" before a close and hearing "light" or "heavy"; agreeing which partner starts a later hand; and declaring "missing" — holding many of a number but not its double — or how many of a number one holds. | BY_HAND | Nothing: this is conduct between the people at the table. | Owner decision (2026-11-14): record the rule, leave the code untouched. |
-| R-22 | In 1v1v1 a player who reaches 151 is out of the set. The two survivors continue that same set as a 1v1, keeping the points they already hold — 151-86-98 leaves 86 and 98 playing on under standard 1v1 rules — and the first of those two to reach 151 loses the set. The last man standing wins it. | ENFORCED | `Sources/IsolynEngineBridge/IsolynBridge.cpp` (`bridge_match_record_round`, `bridge_match_create_next_round`), `Sources/IsolynEngine/MatchController.cpp` (empty-seat skip) | `Tests/IsolynEngineBridgeTests/SmokeTest.cpp :: R-22 1v1v1 elimination: first to 151 is out, survivors continue as a carried-points 1v1` |
+| R-22 | In 1v1v1 the set ends exactly as it does in 1v1: the first participant to reach or pass 151 wins the set outright. There is no elimination and no survivor phase — the remaining players do not continue. | ENFORCED | `Sources/IsolynEngineBridge/IsolynBridge.cpp` (`bridge_match_record_round`) | `Tests/IsolynEngineBridgeTests/SmokeTest.cpp :: R-22 1v1v1: no survivor phase (rules version 3)` |
 
 ## Known gaps (must shrink, never grow)
 

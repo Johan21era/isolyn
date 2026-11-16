@@ -634,50 +634,18 @@ MatchResultDTO bridge_match_record_round(MatchHandle match, SessionHandle finish
         bool gameEnded = false;
         bool survivorNext = false;
 
-        if (m->mode == GameMode::OneVsOneVsOne) {
-            // R-22: reaching 151 eliminates that player from the set. The
-            // remaining two carry their points into a 1v1; the last survivor
-            // takes the set. This is deliberately NOT ScoreSystem's
-            // lowest-score winner rule.
-            for (int p = 0; p < participantCount; ++p) {
-                if (!m->active[p]) continue;
-                if (RulesEngine::hasReachedMatchTarget(m->mode, m->scores.score(p))) {
-                    m->active[p] = false;
-                    m->activeCount--;
-                    m->lastEliminated = p;
-                }
-            }
-            if (m->activeCount == 1) {
-                setEnded = true;
-                for (int p = 0; p < participantCount; ++p) {
-                    if (m->active[p]) { setWinner = p; break; }
-                }
-                if (setWinner < 0) {
-                    // Defensive: activeCount said one survivor but none was
-                    // found. Fail closed rather than indexing setWins[-1].
-                    return failedMatch(BridgeStatus::InvalidRequest);
-                }
-                m->setWins[setWinner]++;
-                if (m->setWins[setWinner] >= m->setsToWin) {
-                    gameEnded = true;
-                    m->matchEnded = true;
-                    m->winnerParticipantIndex = setWinner;
-                }
-            } else if (m->activeCount == 2) {
-                survivorNext = true;
-            }
-        } else {
-            // R-07 + R-06 (rules version 2): a set ends at the target, and the player who
-            // reached it takes it -- the points were scored off the opponent.
-            setEnded = m->scores.hasMatchEnded();
-            if (setEnded) {
-                setWinner = m->scores.winningParticipant();
-                m->setWins[setWinner]++;
-                if (m->setWins[setWinner] >= m->setsToWin) {
-                    gameEnded = true;
-                    m->matchEnded = true;
-                    m->winnerParticipantIndex = setWinner;
-                }
+        // R-06/R-22 (rules version 3): every mode is a straight race. The first
+        // participant to reach or pass the target wins the set outright. There is
+        // no elimination and no survivor phase -- the owner removed R-22's
+        // survivor rule, so the 1v1v1 set ends the same way 1v1 does.
+        setEnded = m->scores.hasMatchEnded();
+        if (setEnded) {
+            setWinner = m->scores.winningParticipant();
+            m->setWins[setWinner]++;
+            if (m->setWins[setWinner] >= m->setsToWin) {
+                gameEnded = true;
+                m->matchEnded = true;
+                m->winnerParticipantIndex = setWinner;
             }
         }
 
