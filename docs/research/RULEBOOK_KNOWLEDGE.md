@@ -277,3 +277,59 @@ already priced correctly — and the 0-point gap says there is nothing there to 
   lose immediately, which is why it is the right case to score.
 - Safety is measured per decision. It is not a win-rate claim and must not be
   quoted as one.
+
+## R-06: the engine can now play the threshold
+
+The audit's headline gap was that `SearchEngine::Config` had no score field, so the
+engine played every hand as if the set were 0–0. R-06 says reaching 151 **loses**
+the set, and in 1v1 a hand is won by crediting the opponent's remaining points — so
+a hand won from 145 can end your set.
+
+**The change.** `Config::setScores` (empty by default) and `Config::raceTarget`
+(0 by default). When both are supplied, the search prices a terminal win at
+`−kTerminalWinScore` instead of `+kTerminalWinScore` whenever
+
+```
+setScores[player] + (opponent's remaining points) >= raceTarget
+```
+
+Empty or zero keeps the previous behaviour arithmetic-for-arithmetic, so nothing
+shipped changes by default and the engine tests still report 524 checks passed.
+1v1 only: 1v1v1 scores each survivor's own hand (R-04) and 2v2 pays the losing
+team's combined total (R-05), which are different accounting rules and were not
+guessed at.
+
+**The exam section.** A position where the only legal placement empties the hand is
+judged twice — once at 145 (taking the win loses the set; the correct answer is
+*not* to take it) and once at 0 (the same position must be won). The pair is the
+control that stops an engine which simply refuses to win from scoring well.
+
+| Tier | poisoned win at 145 | win at 0 (control) |
+|---|---|---|
+| s100 d2x8 | **100%** | 100% |
+| s900 d3x16 | **90%** | 100% |
+| s3000 d8x64 | **90%** | 100% |
+
+40 questions per cell (`--per-section 40`).
+
+**The control that makes it a result.** With `--no-score-context` the identical
+questions are asked of an engine that is not told the score:
+
+| Setting | poisoned win at 145 | win at 0 |
+|---|---|---|
+| score context **off** | **0%** | 100% |
+| score context **on** | **80–100%** | 100% |
+
+So the behaviour is caused by the new context and not by anything else in the exam,
+and the engine still takes a win when a win is correct.
+
+**Residual, stated rather than smoothed.** 10–15% of poisoned-win positions are
+still won at depth 3 and 8. Some of these are positions where refusing the win is
+genuinely no better — drawing can hand the opponent the same hand on their terms —
+so part of the residual is likely the exam being stricter than the game. It has not
+been separated, and the section should be read as "usually avoids the set-losing
+win", not "always".
+
+**Not a strength claim.** This measures rule compliance on constructed positions.
+Whether score awareness wins games is a separate measurement, and the harness does
+not yet feed a set score into either side.

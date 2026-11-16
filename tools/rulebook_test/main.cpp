@@ -50,7 +50,15 @@ using namespace isolyn;
 
 namespace {
 
-enum class Kind { WinNow, WinWithDraw, Defence, SharpDefence, DefenceKnown };
+enum class Kind {
+    WinNow,
+    WinWithDraw,
+    Defence,
+    SharpDefence,
+    DefenceKnown,
+    PoisonedWin,
+    SafeWin
+};
 
 const char* kindName(Kind kind) {
     switch (kind) {
@@ -59,6 +67,8 @@ const char* kindName(Kind kind) {
     case Kind::Defence: return "defence";
     case Kind::SharpDefence: return "sharp defence";
     case Kind::DefenceKnown: return "defence, all tiles known";
+    case Kind::PoisonedWin: return "poisoned win at 145 (R-06)";
+    case Kind::SafeWin: return "win at 0 (R-06 control)";
     }
     return "?";
 }
@@ -246,10 +256,65 @@ double bayesRisk(const GameState& state, const Move& move,
     return static_cast<double>(playable) / static_cast<double>(unknown.size());
 }
 
+// A position where the only legal placement empties the hand, so the hand is won
+// the moment it is played. -1 means no set context (the ordinary sections).
+Setup buildScoreSetup(std::mt19937_64& rng) {
+    std::vector<DominoTile> pool;
+    for (int a = 0; a <= 6; ++a) {
+        for (int b = a; b <= 6; ++b) pool.emplace_back(a, b);
+    }
+    std::shuffle(pool.begin(), pool.end(), rng);
+    std::uniform_int_distribution<int> pip(0, 6);
+
+    auto take = [&pool](int a, int b) -> bool {
+        const DominoTile tile(a, b);
+        for (std::size_t i = 0; i < pool.size(); ++i) {
+            if (pool[i] == tile) {
+                pool.erase(pool.begin() + static_cast<std::ptrdiff_t>(i));
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const int left = pip(rng);
+    const int middle = pip(rng);
+    const int right = pip(rng);
+    if (!take(left, middle) || !take(middle, right)) return Setup{};
+
+    int other = pip(rng);
+    while (!take(left, other)) {
+        other = pip(rng);
+        if (pool.empty()) return Setup{};
+    }
+
+    Setup setup;
+    std::deque<DominoTile> played{DominoTile(left, middle), DominoTile(middle, right)};
+    setup.chain = Chain::fromKnownState(played, left, right);
+    setup.hands.assign(2, {});
+    setup.hands[0].push_back(DominoTile(left, other));
+
+    // Give the opponent at least 8 points, so winning from 145 crosses 151.
+    int total = 0;
+    while (total < 8 && !pool.empty()) {
+        setup.hands[1].push_back(pool.back());
+        total += pool.back().low() + pool.back().high();
+        pool.pop_back();
+    }
+    if (total < 8) return Setup{};
+
+    while (!pool.empty()) {
+        setup.boneyard.push_back(pool.back());
+        pool.pop_back();
+    }
+    return setup;
+}
+
 struct Question {
     GameState state;
     Kind kind;
     std::vector<Move> correct;
+    int myScore = -1;
     // Bayes baseline for the hidden-information defence questions: every legal
     // move's loss probability, and the best achievable safety (1 - min risk).
     std::vector<Move> legalMoves;
@@ -277,6 +342,10 @@ std::string label(int strength) {
 int main(int argc, char** argv) {
     int perSection = 334;
     std::uint64_t seed = 7;
+    // Control: with this off the score-aware sections are still asked, but the
+    // engine is not told the set score. If the engine passes anyway the section
+    // is measuring nothing.
+    bool scoreAware = true;
     std::vector<int> modes{100, 400, 900, 1600, 2300, 3000, 5000, 10000};
 
     for (int i = 1; i < argc; ++i) {
@@ -285,7 +354,8 @@ int main(int argc, char** argv) {
             if (i + 1 >= argc) return fallback;
             return std::atoi(argv[++i]);
         };
-        if (arg == "--per-section") perSection = value(perSection);
+        if (arg == "--no-score-context") scoreAware = false;
+        else if (arg == "--per-section") perSection = value(perSection);
         else if (arg == "--seed") seed = static_cast<std::uint64_t>(value(static_cast<int>(seed)));
         else if (arg == "--modes") {
             modes.clear();
@@ -322,7 +392,7 @@ int main(int argc, char** argv) {
                     (correct.size() > 1 || legal.size() < 3)) continue;
             }
 
-            Question question{state, kind, correct, {}, {}, 1.0};
+            Question question{state, kind, correct, -1, {}, {}, 1.0};
             if (state.hand(1).size() == 1) {
                 const std::vector<DominoTile> unknown = unknownTiles(state, 0);
                 double best = 2.0;
@@ -339,6 +409,34 @@ int main(int argc, char** argv) {
         }
     }
 
+    // Score-aware sections: the same position judged twice. At 145 the win
+    // crosses 151 and loses the set, so the only correct answer is not to take
+    // it; at 0 the identical position must be won. The pair is the control that
+    // stops an engine that simply refuses to win from passing.
+    {
+        int gathered = 0;
+        int attempts = 0;
+        while (gathered < perSection && attempts < perSection * 400) {
+            ++attempts;
+            Setup setup = buildScoreSetup(rng);
+            if (setup.hands.size() != 2 || setup.hands[0].empty()) continue;
+            GameState state(GameMode::OneVsOne, setup.hands, setup.boneyard, setup.chain, {}, 0);
+            const std::vector<Move> legal = MoveGenerator::generate(state, 0);
+            if (legal.empty()) continue;
+            bool winsNow = false;
+            for (const Move& move : legal) {
+                GameState trial = state;
+                const auto applied = MoveExecutor::apply(trial, 0, move);
+                if (trial.hand(0).empty()) winsNow = true;
+                MoveExecutor::undo(trial, applied);
+            }
+            if (!winsNow) continue;
+            questions.push_back(Question{state, Kind::PoisonedWin, {}, 145, {}, {}, 1.0});
+            questions.push_back(Question{state, Kind::SafeWin, {}, 0, {}, {}, 1.0});
+            ++gathered;
+        }
+    }
+
     std::cout << "rulebook exam: " << questions.size() << " questions, seed " << seed
               << ", one question scores +1, a wrong answer 0, an illegal move -5\n\n";
 
@@ -350,7 +448,7 @@ int main(int argc, char** argv) {
         config.useSelectiveSearch = profile.maxDepthPlies >= 24;
 
         std::mt19937_64 searchRng(seed + static_cast<std::uint64_t>(mode));
-        Tally byKind[5];
+        Tally byKind[7];
         int illegalTotal = 0;
         int correctTotal = 0;
         // Bayes comparison, on the hidden-information defence questions only.
@@ -363,6 +461,11 @@ int main(int argc, char** argv) {
             // The draw is on offer only in the section that tests it.
             effective.maxVoluntaryDraws =
                 question.kind == Kind::WinWithDraw ? SearchEngine::kUnlimitedVoluntaryDraws : 0;
+            if (scoreAware && question.myScore >= 0) {
+                effective.setScores = {question.myScore, 0};
+                effective.raceTarget = 151;
+                effective.maxVoluntaryDraws = SearchEngine::kUnlimitedVoluntaryDraws;
+            }
 
             BeliefState belief = ProbabilityEngine::constructFromGameState(question.state, 0);
             const SearchDecision decision = SearchEngine::chooseBestMove(
@@ -376,8 +479,19 @@ int main(int argc, char** argv) {
                 ++illegalTotal;
                 continue;
             }
-            const bool right = std::find(question.correct.begin(), question.correct.end(),
-                                         decision.move) != question.correct.end();
+            bool right = false;
+            if (question.kind == Kind::PoisonedWin) {
+                // Winning here would carry the total past 151 and lose the set.
+                right = decision.isDraw;
+            } else if (question.kind == Kind::SafeWin) {
+                GameState trial = question.state;
+                const auto applied = MoveExecutor::apply(trial, 0, decision.move);
+                right = trial.hand(0).empty();
+                MoveExecutor::undo(trial, applied);
+            } else {
+                right = std::find(question.correct.begin(), question.correct.end(),
+                                  decision.move) != question.correct.end();
+            }
             if (right) {
                 ++tally.correct;
                 ++correctTotal;
@@ -407,7 +521,7 @@ int main(int argc, char** argv) {
                   << "   correct " << correctTotal << "/" << total
                   << "   wrong " << (total - correctTotal - illegalTotal)
                   << "   illegal " << illegalTotal << "\n";
-        for (int k = 0; k < 5; ++k) {
+        for (int k = 0; k < 7; ++k) {
             const Tally& tally = byKind[k];
             if (tally.asked == 0) continue;
             const double section =

@@ -243,11 +243,31 @@ struct SearchContext {
     EvaluationWeights weights{};
     const EvaluationWeights* positionalWeights = nullptr;
     int maxVoluntaryDraws = 0;
+    // R-06 context. nullptr means score-unaware.
+    const std::vector<int>* setScores = nullptr;
+    int raceTarget = 0;
     TranspositionTable* tt = nullptr;
     bool tableStarted = false;
     std::array<std::array<int, 2>, kKillerSlots> killers{};
     std::array<std::array<int, kMoveCodeCount>, kMaxHistoryPlayers> history{};
 };
+
+// R-06: in 1v1 the winner is credited with every point still in the opponent's
+// hand. If that credit reaches the race target, whoever emptied has lost the
+// set. Only 1v1 is modelled: 1v1v1 scores each survivor's own hand (R-04) and
+// 2v2 pays the losing team's combined total (R-05), which are different
+// accounting rules and would need their own treatment, not a guess.
+bool winLosesSet(const GameState& state, int player, const SearchContext& context) {
+    if (context.raceTarget <= 0 || context.setScores == nullptr) return false;
+    if (context.mode != GameMode::OneVsOne) return false;
+    if (player < 0 || player >= static_cast<int>(context.setScores->size())) return false;
+    int gained = 0;
+    for (int p = 0; p < state.playerCount(); ++p) {
+        if (p != player) gained += RulesEngine::handPoints(state.hand(p));
+    }
+    return (*context.setScores)[static_cast<std::size_t>(player)] + gained >=
+           context.raceTarget;
+}
 
 void startTableIfNeeded(SearchContext& context, TranspositionTable& table) {
     if (context.tableStarted) return;
@@ -619,6 +639,9 @@ SearchValue searchZeroSum(GameState& state,
                 SearchValue value;
                 value.raw = evaluateAll(context.mode, state, context.weights, std::nullopt, context.positionalWeights);
                 value.score = kTerminalWinScore + relativeScore(value.raw, player, context.mode);
+                // R-06: emptying the hand from near the target loses the set, so
+                // a "win" there is worth a catastrophe, not a jackpot.
+                if (winLosesSet(state, player, context)) value.score = -value.score;
                 return value;
             }
             const int next = nextActivePlayer(state, player);
@@ -805,6 +828,8 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
         ctx.weights = config.weights;
         ctx.positionalWeights = config.useConditionalWeights ? &config.positionalWeights : nullptr;
         ctx.maxVoluntaryDraws = config.maxVoluntaryDraws;
+        ctx.setScores = config.setScores.empty() ? nullptr : &config.setScores;
+        ctx.raceTarget = config.raceTarget;
     }
 
     const auto start = std::chrono::steady_clock::now();
@@ -901,6 +926,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                         candidateScore = raw[static_cast<std::size_t>(player)];
                     } else {
                         candidateScore = kTerminalWinScore + relativeScore(raw, player, mode);
+                        if (winLosesSet(trial, player, ctx)) candidateScore = -candidateScore;
                     }
                 } else {
                     const int next = nextActivePlayer(trial, player);

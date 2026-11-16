@@ -132,6 +132,15 @@ public:
         // played. 0 keeps the plain argmax.
         double positionalBand = 0.0;
 
+        // Set context (R-06). Empty `setScores`, or `raceTarget <= 0`, means the
+        // search is score-unaware -- which is the old behaviour exactly, and the
+        // default. When supplied, a hand won in 1v1 is credited with the
+        // opponent's remaining points, and if that credit reaches the target the
+        // player who emptied has LOST the set. The search must price that as a
+        // catastrophe or it will cheerfully play the line that ends the set.
+        std::vector<int> setScores;
+        int raceTarget = 0;
+
         // Evaluation weights used at every leaf. Defaults are the hand-tuned
         // ones; exposing them here is what makes component ablation and
         // calibration measurable instead of theoretical.
