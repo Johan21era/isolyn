@@ -48,8 +48,8 @@ continuing. Do not skip a failing step and continue as if it passed.
 
 ```bash
 ./tools/selfplay/build.sh          # engine + harness compile
-./scripts/ci/test_engine.sh        # expect: 20 executables, 524 checks, 0 failed
-./scripts/ci/test_bridge.sh        # expect: 2 executables, 141 checks, 0 failed
+./scripts/ci/test_engine.sh        # expect: 20 executables, 514 checks, 0 failed
+./scripts/ci/test_bridge.sh        # expect: 2 executables, 136 checks, 0 failed
 swift build                        # expect: Build complete!
 swift test                         # expect: 125 tests, 0 skipped, 0 failures
 PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 55 tests, 0 failures
@@ -75,7 +75,11 @@ and portable build gate took engine 490 → 497 (20 executables); Swift stayed a
 tab and live-run fixes added four Swift tests and eight Python source/
 collection tests (120 → 124 Swift, 47 → 55 Python); the final R-06/R-15
 closeout took engine 497 → 524 and bridge 133 → 141, and added the 101-target
-Swift regression (124 → 125 Swift).
+Swift regression (124 → 125 Swift). Removing R-22's survivor phase (2026-11-16,
+OPS-52 to OPS-54) then took engine 524 → 514 (10 empty-seat/survivor assertions
+deleted with the code) and bridge 141 → 136 (16 survivor-phase checks no longer
+reachable, +14 new end-to-end set checks, −1 inverse survivor check, −2 active-seat
+checks that ran once per mode). Swift stayed at 125.
 If your run differs, the difference is a finding: explain it, do not quietly
 update the numbers.
 
