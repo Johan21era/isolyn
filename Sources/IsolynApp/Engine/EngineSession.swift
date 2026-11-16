@@ -68,9 +68,9 @@ actor EngineSession {
     }
 
     /// R-22 match-scoped continuation. The bridge decides whether the next
-    /// deal is a fresh set's ritual round, an ordinary subsequent round, or
-    /// the survivors' carried-points 1v1 -- the caller must not guess. This
-    /// is the only factory that can deal the survivor phase correctly.
+    /// deal is a fresh set's ritual round or an ordinary subsequent round --
+    /// the caller must not guess. This is the only factory that can deal the
+    /// next round correctly.
     static func createNextRound(matchHandle: isolyn.bridge.MatchHandle) -> EngineSession? {
         let h = isolyn.bridge.bridge_match_create_next_round(matchHandle)
         guard h != isolyn.bridge.kInvalidSessionHandle else { return nil }

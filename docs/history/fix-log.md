@@ -3339,3 +3339,30 @@ leaving it as a trap, and deleting the assertions that described it.
 - **Not done, deliberately:** the Swift survivor labels remain in `MatchCoordinator`,
   `EngineTypes`, `GameViewModel` and `RoundEndOverlay`. They are now unreachable, but
   they are app-layer and were outside this engine cleanup.
+
+## OPS-53 — Survivor UI removed from the Swift app (2026-11-16)
+
+**Scope:** the app-layer survivor state and views that OPS-52 deliberately left alone.
+
+- **What a 1v1v1 set end shows now:** the round overlay's headline ("Player N goes
+  out" / "closes the round"), the turned-up remaining hands, the score deltas, then
+  "Set N to Player X." plus the running set-win line and the "Deal next set" button
+  — the same summary 1v1 and 2v2 show. No elimination banner and no "OUT" seat badge
+  can appear, because the bridge no longer reports an elimination.
+- **Removed:** `MatchCoordinator.activePerParticipant`, `eliminatedPerParticipant`,
+  `lastEliminatedParticipant` and `nextRoundIsSurvivor` with all assignments;
+  `MatchOutcome`'s five survivor fields and their DTO mapping; the overlay's
+  `eliminationBanner` ("…is out at N. The two survivors play on as a 1v1.");
+  `SeatItem.out` and the "OUT" badge, its dimming and its accessibility string;
+  and `GameViewModel.canLookAtLockedPair`'s survivor branch (three seats are never a
+  1v1 now, so it keys off `playerCount == 2`).
+- **Kept:** the C DTO's survivor fields, unchanged and always neutral. The app simply
+  stops reading them; removing them from the bridge ABI is a separate deployment
+  concern.
+- **Verification:** `swift build` → `Build complete!`; `swift test` → `Executed 125
+  tests, with 0 failures`; C++ suites unchanged from OPS-52 (engine 514, bridge 138);
+  docs/rules/security audits PASS.
+- **Not verified:** the overlay was not rendered in a running app — a native window
+  cannot be captured here, and there is no app-layer harness that plays a full set.
+  The set-end inputs are covered by the bridge end-to-end test (1v1v1 finishes
+  155-95-129, winner 0, all seats active) and by reading the overlay against them.

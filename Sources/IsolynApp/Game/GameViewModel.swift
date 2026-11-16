@@ -313,13 +313,9 @@ final class GameViewModel {
     var canLookAtLockedPair: Bool {
         guard let s = snapshot, s.roundOutcome == .inProgress else { return false }
         guard s.boneyardDrawableCount == 0 && s.ownHand.count == 1 else { return false }
-        if s.playerCount == 2 { return true }
-        // R-22 survivor phase: three seats in the state, but exactly one
-        // other live hand. That is a 1v1 and R-17 applies.
-        let otherLiveHands = s.otherHandSizes.enumerated().filter {
-            $0.offset != s.requestingPlayerIndex && $0.element > 0
-        }.count
-        return s.playerCount == 3 && otherLiveHands == 1
+        // R-17 is a two-player rule. 1v1v1 is a three-seat race with no
+        // elimination, so the seat count alone decides.
+        return s.playerCount == 2
     }
 
     var legalMoveSet: Set<Move> { Set(snapshot?.legalMoves ?? []) }
@@ -335,8 +331,6 @@ final class GameViewModel {
     var nextRoundStartsSet: Bool { match?.nextRoundStartsSet ?? false }
     var matchWinnerParticipant: Int? { match?.matchWinner }
     var nextStarterForOverlay: Int? { match?.lastNextStarter }
-    var eliminatedPerParticipant: [Bool] { match?.eliminatedPerParticipant ?? [] }
-    var lastEliminatedParticipant: Int? { match?.lastEliminatedParticipant }
 
     /// Clears a surfaced bridge error once its alert has been shown.
     func dismissAlert() {

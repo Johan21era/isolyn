@@ -296,11 +296,11 @@ struct InteractiveGameBoardView: View {
             }
             .frame(width: 42, height: 42)
             .overlay(alignment: .bottomTrailing) {
-                Text(seat.out ? "OUT" : "\(seat.handCount)")
-                    .font(.system(size: seat.out ? 6.5 : 9, weight: .bold, design: .rounded))
+                Text("\(seat.handCount)")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.black)
-                    .frame(width: seat.out ? 24 : 16, height: 16)
-                    .background(Capsule().fill(seat.out ? IsolynTheme.brass : IsolynTheme.ivory))
+                    .frame(width: 16, height: 16)
+                    .background(Capsule().fill(IsolynTheme.ivory))
                     .offset(x: 2, y: 2)
             }
 
@@ -314,13 +314,11 @@ struct InteractiveGameBoardView: View {
                 .foregroundStyle(seat.active ? IsolynTheme.ivory : IsolynTheme.ivoryMuted)
         }
         .frame(minWidth: 62)
-        .opacity(seat.out ? 0.36 : (seat.active ? 1 : 0.58))
+        .opacity(seat.active ? 1 : 0.58)
         .animation(.easeOut(duration: 0.18), value: seat.active)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            seat.out
-                ? "\(seat.name), out of this set, score \(seat.score)"
-                : "\(seat.name), \(seat.handCount) tiles, score \(seat.score)\(seat.active ? ", acting now" : "")"
+            "\(seat.name), \(seat.handCount) tiles, score \(seat.score)\(seat.active ? ", acting now" : "")"
         )
     }
 
@@ -521,7 +519,6 @@ struct InteractiveGameBoardView: View {
         let active: Bool
         let isSelf: Bool
         /// R-22: this seat crossed 151 and is out of the current set.
-        let out: Bool
     }
 
     private var seatItems: [SeatItem] {
@@ -543,9 +540,7 @@ struct InteractiveGameBoardView: View {
                 score: score,
                 handCount: handCount,
                 active: snap.roundOutcome == .inProgress && snap.currentPlayerIndex == seat,
-                isSelf: seat == snap.requestingPlayerIndex,
-                out: viewModel.eliminatedPerParticipant.indices.contains(seat)
-                    && viewModel.eliminatedPerParticipant[seat]
+                isSelf: seat == snap.requestingPlayerIndex
             )
         }
     }

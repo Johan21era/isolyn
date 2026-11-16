@@ -416,15 +416,6 @@ struct MatchOutcome: Sendable, Equatable {
     let nextRoundStartsSet: Bool
     /// Who opens the NEXT round; -1 when a new set's ritual decides instead.
     let nextRoundStarterIndex: Int
-    /// R-22: how many seats are still alive in the current set (1v1v1 only;
-    /// every seat is active in the other modes).
-    let activeParticipantCount: Int
-    let activePerParticipant: [Bool]
-    let eliminatedPerParticipant: [Bool]
-    /// The participant who crossed 151 this round, when one did.
-    let lastEliminatedParticipantIndex: Int?
-    /// True when the next round is the carried-points 1v1 between survivors.
-    let nextRoundIsSurvivor: Bool
 
     static func fromDtoOrThrow(_ dto: isolyn.bridge.MatchResultDTO) throws -> MatchOutcome {
         guard dto.status == .Ok else {
@@ -444,19 +435,6 @@ struct MatchOutcome: Sendable, Equatable {
             count: Int(dto.participantCount),
             as: Int32.self
         ).map { $0 }
-        var mutableActiveDto = dto
-        let active: [Int32] = withTupleAsArray(
-            &mutableActiveDto.activePerParticipant,
-            capacity: Int(isolyn.bridge.kMaxPlayers),
-            count: Int(dto.participantCount),
-            as: Int32.self
-        )
-        let eliminated: [Int32] = withTupleAsArray(
-            &mutableActiveDto.eliminatedPerParticipant,
-            capacity: Int(isolyn.bridge.kMaxPlayers),
-            count: Int(dto.participantCount),
-            as: Int32.self
-        )
         return MatchOutcome(
             participantCount: Int(dto.participantCount),
             scoresPerParticipant: scores.map { Int($0) },
@@ -468,13 +446,7 @@ struct MatchOutcome: Sendable, Equatable {
             setWinnerParticipantIndex: dto.setEnded ? Int(dto.setWinnerParticipantIndex) : nil,
             setEnded: dto.setEnded,
             nextRoundStartsSet: dto.nextRoundStartsSet,
-            nextRoundStarterIndex: Int(dto.nextRoundStarterIndex),
-            activeParticipantCount: Int(dto.activeParticipantCount),
-            activePerParticipant: active.map { $0 != 0 },
-            eliminatedPerParticipant: eliminated.map { $0 != 0 },
-            lastEliminatedParticipantIndex: dto.lastEliminatedParticipantIndex >= 0
-                ? Int(dto.lastEliminatedParticipantIndex) : nil,
-            nextRoundIsSurvivor: dto.nextRoundIsSurvivor
+            nextRoundStarterIndex: Int(dto.nextRoundStarterIndex)
         )
     }
 }

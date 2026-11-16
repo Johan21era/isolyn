@@ -45,15 +45,6 @@ final class MatchCoordinator {
     /// The participant who took the last set, when it ended.
     private(set) var setWinner: Int?
 
-    /// R-22: which seats are still alive in the current set. Every seat is
-    /// active in 1v1 and 2v2; 1v1v1 shrinks as players cross 151.
-    private(set) var activePerParticipant: [Bool] = []
-    private(set) var eliminatedPerParticipant: [Bool] = []
-    /// The player who went out in the last recorded round, when one did.
-    private(set) var lastEliminatedParticipant: Int?
-    /// True when the next round is the survivors' carried-points 1v1.
-    private(set) var nextRoundIsSurvivor = false
-
     /// Who opens the current/upcoming round. nil before the first record, at
     /// a set boundary (the ritual decides), or after the game ends.
     private(set) var lastNextStarter: Int?
@@ -87,8 +78,6 @@ final class MatchCoordinator {
         }
         self.matchHandle = h
         self.setWins = Array(repeating: 0, count: mode.participantCount)
-        self.activePerParticipant = Array(repeating: true, count: mode.participantCount)
-        self.eliminatedPerParticipant = Array(repeating: false, count: mode.participantCount)
     }
 
     deinit {
@@ -119,10 +108,6 @@ final class MatchCoordinator {
         lastNextStarter = outcome.nextRoundStarterIndex >= 0
             ? outcome.nextRoundStarterIndex
             : nil
-        activePerParticipant = outcome.activePerParticipant
-        eliminatedPerParticipant = outcome.eliminatedPerParticipant
-        lastEliminatedParticipant = outcome.lastEliminatedParticipantIndex
-        nextRoundIsSurvivor = outcome.nextRoundIsSurvivor
         matchWinner = outcome.winnerParticipantIndex
 
         return outcome
@@ -130,8 +115,8 @@ final class MatchCoordinator {
 
     /// Deals the next round. The bridge owns the policy: a fresh set-opening
     /// round after a set (the double-six ritual restarts, R-12), an ordinary
-    /// subsequent round, or R-22's carried-points survivor 1v1. This method
-    /// only mirrors the visible set reset when a new set begins. Non-throwing
+    /// subsequent round. This method only mirrors the visible set reset when a
+    /// new set begins. Non-throwing
     /// by proof: the underlying call returns an optional rather than throwing,
     /// so callers get nil-on-failure with no try-tax.
     func dealNextRound() -> EngineSession? {
@@ -142,18 +127,12 @@ final class MatchCoordinator {
             nextRoundStartsSet = false
             lastSetEnded = false
             setWinner = nil
-            activePerParticipant = Array(repeating: true, count: mode.participantCount)
-            eliminatedPerParticipant = Array(repeating: false, count: mode.participantCount)
-            lastEliminatedParticipant = nil
-            nextRoundIsSurvivor = false
         }
-        // The bridge owns the next-deal policy: ritual first round, ordinary
-        // subsequent round, or R-22 survivor hand. Guessing here was how a
-        // 1v1v1 match would otherwise deal a normal 9-tile round after an
-        // elimination and quietly lose the 1v1 rules.
+        // The bridge owns the next-deal policy: ritual first round or ordinary
+        // subsequent round. Guessing the mode here was how a 1v1v1 match could
+        // quietly deal the wrong shape.
         guard let next = EngineSession.createNextRound(matchHandle: matchHandle) else { return nil }
         lastNextStarter = nil
-        nextRoundIsSurvivor = false
         return next
     }
 
@@ -178,10 +157,6 @@ final class MatchCoordinator {
         nextRoundStartsSet = false
         setWinner = nil
         lastNextStarter = nil
-        activePerParticipant = Array(repeating: true, count: mode.participantCount)
-        eliminatedPerParticipant = Array(repeating: false, count: mode.participantCount)
-        lastEliminatedParticipant = nil
-        nextRoundIsSurvivor = false
         matchWinner = nil
         isClosed = false
     }
