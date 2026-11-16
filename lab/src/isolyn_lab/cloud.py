@@ -866,6 +866,32 @@ def _verify_upload_layout(dataset: Path, kernel: Path, plan_data: dict) -> None:
                      f"refusing unexpected kernel file: {relative}")
 
 
+def _kernel_slug_from_title(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+
+
+def _confirm_kernel(ws: Workspace, candidates: list[str]) -> str:
+    """Return a kernel id Kaggle can actually resolve.
+
+    `kaggle kernels push` can exit zero for a request that never becomes a
+    resolvable notebook -- hitting the concurrent-kernel limit does exactly
+    that, and recording it as pushed loses the session silently. When the push
+    output names no slug, every plausible id is probed once; the first that
+    answers `kernels status` is the real one, and if none answers the push is
+    treated as failed so the ledger stays honest.
+    """
+    for kernel_id in candidates:
+        try:
+            ws.kaggle_fn(["kernels", "status", kernel_id])
+        except Exception:  # noqa: BLE001 - an unresolvable id is the signal
+            continue
+        return kernel_id
+    raise SystemExit(
+        f"Kaggle did not create {candidates[0]}; refusing to record a session that "
+        "cannot be fetched. This usually means the concurrent-kernel limit was hit."
+    )
+
+
 def push(
     ws: Workspace,
     run_id: str,
@@ -948,7 +974,16 @@ def push(
     print("pushing CPU-only private notebook…")
     print("  kaggle " + " ".join(kernel_command))
     kernel_output = ws.kaggle_fn(kernel_command)
-    actual_kernel_id = _pushed_kernel_id(kernel_output, _kernel_id(plan_data, session))
+    planned_id = _kernel_id(plan_data, session)
+    assigned = _pushed_kernel_id(kernel_output, "")
+    if assigned:
+        # The CLI named the notebook it created; that slug is authoritative.
+        actual_kernel_id = assigned
+    else:
+        derived_id = (f"{planned_id.split('/', 1)[0]}/"
+                      f"{_kernel_slug_from_title(kernel_metadata.get('title', ''))}")
+        candidates = [planned_id] + ([derived_id] if derived_id != planned_id else [])
+        actual_kernel_id = _confirm_kernel(ws, candidates)
 
     ledger["sessions"][session_id]["kernel_id"] = actual_kernel_id
     ledger["sessions"][session_id]["pushed_at"] = _now()
