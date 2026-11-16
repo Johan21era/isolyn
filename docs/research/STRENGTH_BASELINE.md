@@ -302,3 +302,54 @@ engine is actually judged by — self-play results — where each candidate weig
 is scored by wins, not by correlation.
 
 Reproduce: `python3 scripts/fit_weights.py '/tmp/tt_s1*.csv' '/tmp/egA*.csv' '/tmp/cw_blind2*.csv' --max-rows 30000`
+
+## E-105 — The objective is flat in weight space (2026-11-16)
+
+**Verdict: perturbing the positional weights by up to ±40% changes what the search
+explores and never changes what it plays. 350 decisions, 350 identical moves.**
+
+E-101 through E-104 each measured "no effect" and left the reason open. This one
+closes it, by looking at the engine's decisions instead of its results.
+
+Two weight sets differing on `mobility`, `blocking`, `pipControl` and
+`closingOpportunity` by up to ±40%, identical seed, depth 8 / 64 determinizations:
+
+| Measurement | Result |
+|---|---|
+| Decisions compared | 350 |
+| Identical chosen move | **350 / 350** |
+| Identical node count | 215 / 350 |
+| Different search tree, same move | 135 / 350 |
+
+The node counts are the important half. The engine *did* explore differently —
+the evaluation shifted, move ordering shifted, pruning shifted — and the selected
+move did not move once. The decision is not "the evaluation ranking with noise on
+top"; it is determined by something the positional terms never reach.
+
+**What that something is.** `winThreat` contributes 139.5 logit units against
+0.15 for mobility and 0.014 for blocking (E-104). An immediate domino is worth
+orders of magnitude more than any positional consideration, so the search's
+decision margin is saturated by threat detection, and every other term sits below
+the granularity of a choice. The engine is, in effect, a threat solver with a
+positional tiebreak that almost never fires.
+
+**Why this retires a whole class of work.** Any method that searches weight space —
+logistic fitting (E-104, −9.2 Elo), grid search, SPSA, gradient-free tuning — is
+optimising a **piecewise-constant** objective. Candidates separated by ±40% play
+byte-identical games, so every gradient estimate is exactly zero and every
+comparison is a coin flip. Measured directly: an SPSA iteration at
+`c = 0.39` produced a paired difference of **+0.0000 (SE 0.0000)** over 200 rounds,
+because both arms were the same game.
+
+`scripts/tune_weights.py` is kept — it is correct, resumable and logged — but it
+cannot succeed while the objective is flat, and the flatness is a property of the
+engine, not of the tuner.
+
+**What this means for "smarter".** The plateau is not a tuning problem. The
+decision procedure has to change so that evaluation can influence a choice at all:
+the search must be made to distinguish lines that its threat term currently
+collapses to equal. Until then, every additional evaluation term, ply, or table
+optimisation is measured work with a known-zero expected return.
+
+Reproduce: `--weights` with the two sets in this section at `--seed 77`, then
+compare `move` (identical) and `nodes` (differing).
