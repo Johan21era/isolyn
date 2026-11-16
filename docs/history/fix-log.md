@@ -3400,3 +3400,28 @@ removal and the end-to-end test, reviewed for leftovers and contradictions.
   rules and security audits → `RESULT: PASS`.
 - **Rulebook:** unchanged. R-06 and R-22 already read correctly; no rule text moved,
   so the seal stays rules version 4.
+
+## OPS-55 — App-layer 1v1v1 set-end test (2026-11-16)
+
+**Scope:** the round-end overlay could still only be verified by reading it. This adds
+a test that plays a real 1v1v1 set through `MatchCoordinator` and pins the values the
+overlay renders.
+
+- **New test:** `Tests/IsolynAppTests/MatchSetEndTests.swift`. It deals a 1v1v1 match,
+  plays each round with the first legal move through the same `EngineSession` calls the
+  game screen uses (submit, forced draw, pass), records the round into the coordinator,
+  and stops at the first set end.
+- **What it asserts, and why those are the overlay's inputs:** `setNumber` and
+  `setWinner` are the "Set N to Player X." line; `scores` is the score strip;
+  `setWins` is the set-win row; `lastSetEnded` and `nextRoundStartsSet` drive the
+  "Deal next set" button. The winner must be at the target (>= 151), hold the highest
+  score, and every one of the three seats must still be on the strip — there is no
+  elimination state to report.
+- **Observed run:** `1v1v1 set end after 12 rounds: scores [140, 31, 156], winner 2`.
+- **Counts:** `swift test` → `Executed 126 tests, with 0 failures` (125 → 126); engine
+  `TOTAL CHECKS PASSED: 514` and bridge `TOTAL CHECKS PASSED: 136` unchanged.
+- **Known flake, not introduced here:** one AI test skips when 16 random deals all let
+  the human act first, so `swift test` sometimes reports 1 skipped. Recorded in
+  AGENTS.md rather than papered over.
+- **Still not verified:** the overlay was not rendered on screen. This test proves the
+  data behind it, not the pixels.

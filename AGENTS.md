@@ -51,7 +51,8 @@ continuing. Do not skip a failing step and continue as if it passed.
 ./scripts/ci/test_engine.sh        # expect: 20 executables, 514 checks, 0 failed
 ./scripts/ci/test_bridge.sh        # expect: 2 executables, 136 checks, 0 failed
 swift build                        # expect: Build complete!
-swift test                         # expect: 125 tests, 0 skipped, 0 failures
+swift test                         # expect: 126 tests, 0 failures (a deal-dependent AI
+                                   #   test may report 1 skipped; see the note below)
 PYTHONPATH=lab/src python3 -m unittest discover -s lab/tests  # expect: 55 tests, 0 failures
 ./scripts/ci/local.sh             # all of the below, in ci.yml's order, one verdict line each
 python3 scripts/rules_audit.py     # expect: RESULT: PASS (N declared holes)
@@ -79,7 +80,11 @@ Swift regression (124 → 125 Swift). Removing R-22's survivor phase (2026-11-16
 OPS-52 to OPS-54) then took engine 524 → 514 (10 empty-seat/survivor assertions
 deleted with the code) and bridge 141 → 136 (16 survivor-phase checks no longer
 reachable, +14 new end-to-end set checks, −1 inverse survivor check, −2 active-seat
-checks that ran once per mode). Swift stayed at 125.
+checks that ran once per mode). Swift stayed at 125 until the 1v1v1 set-end harness
+was added (125 → 126): it plays a real set to 151 through `MatchCoordinator` and
+pins the values the round-end overlay shows. One pre-existing AI test gives up and
+skips when 16 random deals all let the human act first, so `swift test` occasionally
+reports 1 skipped — that is deal-dependent, not a failure.
 If your run differs, the difference is a finding: explain it, do not quietly
 update the numbers.
 
