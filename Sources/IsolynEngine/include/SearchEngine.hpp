@@ -120,6 +120,18 @@ public:
         // Root move selection across sampled worlds. See RootAggregation.
         RootAggregation rootAggregation = RootAggregation::Mean;
 
+        // Two-tier root decision. The primary criterion is the sampled search
+        // value, which is dominated by threats and can leave many moves looking
+        // identical. When this is positive, every candidate within this band of
+        // the best primary criterion is treated as equal, and the tie is broken
+        // by a positional-only evaluation of the REAL position (mobility,
+        // blocking, pip control, closing opportunity) rather than by another
+        // average over sampled worlds. This is what lets a dense positional
+        // signal survive to the decision at all: the band decides what is
+        // equivalent, the positional score decides which equivalent move is
+        // played. 0 keeps the plain argmax.
+        double positionalBand = 0.0;
+
         // Evaluation weights used at every leaf. Defaults are the hand-tuned
         // ones; exposing them here is what makes component ablation and
         // calibration measurable instead of theoretical.

@@ -353,3 +353,44 @@ optimisation is measured work with a known-zero expected return.
 
 Reproduce: `--weights` with the two sets in this section at `--seed 77`, then
 compare `move` (identical) and `nodes` (differing).
+
+## E-106 — A two-tier root decision (2026-11-16)
+
+**Status: UNRESOLVED. The point estimate is positive and the mechanism is proven,
+but the interval crosses zero. Do not cite this as an improvement.**
+
+E-105 showed that perturbing the evaluation changes the search tree and never the
+chosen move: the dense positional terms are nearly constant across sampled worlds,
+so they cancel in the average while the sparse threat term supplies the variance.
+The fix is not a weight but a decision rule — `Config::positionalBand`. Candidates
+within the band of the best sampled value are treated as equivalent, and the tie is
+broken by a positional-only evaluation of the **real** position, which no averaging
+can erase.
+
+**The mechanism engages**, unlike every weight change measured so far:
+
+| Change | Decisions altered |
+|---|---|
+| Weights ±40% (E-105) | 0 / 350 |
+| `positionalBand = 2` | first change at decision 338 of 3,561 |
+| `positionalBand = 10` | first change at decision 124 |
+
+**Measured** (A = banded engine at side 0, B = default; depth 8 / 64):
+
+| Setting | Rounds | Score | Elo |
+|---|---|---|---|
+| band 2 | 3,000 | 0.51200 | **+8.3 [−4.1, +20.8]** |
+| band 10 | 2,897 | 0.50121 | +0.8 [−11.8, +13.5] |
+
+The effect is **not dose-dependent**: a wider band scores worse, which is what the
+design predicts (a band wide enough to override genuine value differences gives
+value away). Only the narrow band is a candidate.
+
+**Why it is not resolved.** At 3,000 rounds the interval is ±12 Elo; a +8 Elo
+effect needs roughly 9,000–12,000 rounds to exclude zero. Two further shards
+(941 rounds) were collected but a host failure prevented pooling and completion.
+The flag defaults to `0.0`, so shipped behaviour is unchanged.
+
+**Next:** pool the partial shards, extend band 2 to ~12,000 rounds, and only then
+promote it. A preliminary +8 Elo is exactly the size of result this project has
+learned to distrust.

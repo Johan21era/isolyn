@@ -43,6 +43,11 @@ struct Options {
     // solves the sampled world exactly. 0 disables the solver.
     int endgameTileLimit = 8;
     int opponentEndgameTileLimit = 8;
+    // Two-tier root decision band: moves within this many evaluation units of
+    // the best sampled value are treated as equal and ranked by the real
+    // position's positional score instead. 0 keeps the plain argmax.
+    double tieBreakBand = 0.0;
+    double opponentTieBreakBand = 0.0;
     int sprtPairs = 0;
     int sprtElo0 = 0;   // H0: the true difference is at most this
     int sprtElo1 = 5;   // H1: the true difference is at least this
@@ -112,6 +117,9 @@ void usage(std::ostream& out) {
         << "  --opponent-positional-weights LIST  B's quiet-position weights\n"
         << "  --endgame-limit N       exact-solve when this many tiles remain, A (default 8)\n"
         << "  --opponent-endgame-limit N  same for B (default 8)\n"
+        << "  --tie-break-band X      A: rank moves within X of the best by the real\n"
+        << "                          position's positional score (default 0 = off)\n"
+        << "  --opponent-tie-break-band X  same for B\n"
         << "  --tt-key K              transposition key for A: full | closer (default full)\n"
         << "  --opponent-tt-key K     transposition key for B (default full)\n"
         << "  --weights LIST           evaluation overrides, e.g. tempo=0,blocking=2\n"
@@ -363,6 +371,7 @@ GameSummary playOneRound(const Options& options,
     configA.workerThreads = options.workers;
     configA.rootAggregation = options.aggregation;
     configA.maxVoluntaryDraws = options.voluntaryDraws;
+    configA.positionalBand = options.tieBreakBand;
     configA.useSelectiveSearch = options.depth >= 24;
     configA.weights = options.weights;
     configA.positionalWeights = options.positionalWeights;
@@ -379,6 +388,7 @@ GameSummary playOneRound(const Options& options,
     configB.workerThreads = options.opponentWorkers;
     configB.rootAggregation = options.opponentAggregation;
     configB.maxVoluntaryDraws = options.opponentVoluntaryDraws;
+    configB.positionalBand = options.opponentTieBreakBand;
     configB.useSelectiveSearch = options.opponentDepth >= 24;
     configB.weights = options.opponentWeights;
     configB.positionalWeights = options.opponentPositionalWeights;
@@ -592,6 +602,28 @@ int main(int argc, char** argv) {
         }
         if (arg == "--opponent-conditional-weights") {
             options.opponentConditionalWeights = true;
+            continue;
+        }
+        if (arg == "--tie-break-band" || arg == "--opponent-tie-break-band") {
+            if (i + 1 >= argc) {
+                std::cerr << "missing value for " << arg << "\n";
+                return 2;
+            }
+            const std::string text = argv[++i];
+            double parsed = 0.0;
+            try {
+                std::size_t used = 0;
+                parsed = std::stod(text, &used);
+                if (used != text.size()) {
+                    std::cerr << "invalid value for " << arg << ": " << text << "\n";
+                    return 2;
+                }
+            } catch (...) {
+                std::cerr << "invalid value for " << arg << ": " << text << "\n";
+                return 2;
+            }
+            if (arg == "--tie-break-band") options.tieBreakBand = parsed;
+            else options.opponentTieBreakBand = parsed;
             continue;
         }
         if (arg == "--games" || arg == "--depth" || arg == "--determinizations" ||

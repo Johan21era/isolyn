@@ -1034,6 +1034,7 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                 }
             };
 
+            std::vector<double> criteria(accumulated.size(), -kInfinity);
             std::size_t bestIndex = 0;
             double bestCriterion = -kInfinity;
             for (std::size_t c = 0; c < accumulated.size(); ++c) {
@@ -1046,10 +1047,43 @@ SearchDecision SearchEngine::chooseBestMove(const GameState& state,
                      mode == GameMode::OneVsOneVsOne)
                         ? rootCriterion(accumulated[c], player, mode)
                         : aggregate(c);
+                criteria[c] = criterion;
                 if (criterion > bestCriterion) {
                     bestCriterion = criterion;
                     bestIndex = c;
                 }
+            }
+
+            // Two-tier decision (E-105). The sampled value decides which moves
+            // are equivalent; a positional-only evaluation of the real position
+            // decides which of those equivalent moves to play. Without this the
+            // dense positional terms never reach the argmax: they are nearly
+            // constant across sampled worlds, so they cancel in the average
+            // while a sparse threat term supplies all of the variance.
+            if (config.positionalBand > 0.0 &&
+                !(drawAllowed && bestIndex == drawIndex)) {
+                EvaluationWeights positionalOnly;
+                positionalOnly.expectedValue = 0.0;
+                positionalOnly.winThreat = 0.0;
+                positionalOnly.tempo = 0.0;
+                positionalOnly.teamSupport = 0.0;
+
+                double bestPositional = -kInfinity;
+                std::size_t positionalIndex = bestIndex;
+                for (std::size_t c = 0; c < accumulated.size(); ++c) {
+                    if (drawAllowed && c == drawIndex) continue;
+                    if (criteria[c] < bestCriterion - config.positionalBand) continue;
+                    GameState trial = state;
+                    const auto applied = MoveExecutor::apply(trial, player, candidates[c]);
+                    const EvaluationBreakdown positional =
+                        EvaluationEngine::evaluate(mode, trial, player, positionalOnly);
+                    MoveExecutor::undo(trial, applied);
+                    if (positional.total > bestPositional) {
+                        bestPositional = positional.total;
+                        positionalIndex = c;
+                    }
+                }
+                bestIndex = positionalIndex;
             }
 
             // The draw is a candidate INDEX but not a Move: drawIndex sits one
